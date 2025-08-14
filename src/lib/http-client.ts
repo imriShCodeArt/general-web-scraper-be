@@ -1,8 +1,15 @@
 import axios, { AxiosResponse } from 'axios';
-import { chromium, Browser, Page } from 'playwright';
+
+// Playwright is optional and only available in development
+let playwright: any = null;
+try {
+  playwright = require('playwright');
+} catch (error) {
+  console.log('Playwright not available in production, using Cheerio only');
+}
 
 export class HTTPClient {
-  private static browser: Browser | null = null;
+  private static browser: any = null;
 
   /**
    * Fetch HTML content from URL with fallback to Playwright
@@ -36,19 +43,23 @@ export class HTTPClient {
    * Fetch HTML using Playwright (for JS-rendered pages)
    */
   private static async fetchWithPlaywright(url: string): Promise<string> {
+    // If Playwright is not available, throw an error
+    if (!playwright) {
+      throw new Error('Playwright not available in production environment');
+    }
+
     try {
       if (!this.browser) {
-        this.browser = await chromium.launch({
+        this.browser = await playwright.chromium.launch({
           headless: true,
           args: ['--no-sandbox', '--disable-setuid-sandbox']
         });
       }
 
-      const page: Page = await this.browser.newPage();
+      const page = await this.browser.newPage();
       
       // Set viewport
       await page.setViewportSize({ width: 1920, height: 1080 });
-      // Note: setUserAgent is not available in this Playwright version, using default
 
       // Navigate to the page
       await page.goto(url, { 
