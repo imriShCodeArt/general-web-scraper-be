@@ -46,6 +46,10 @@ export function ScrapingForm({ onScrapingStart, onScrapingComplete, isProcessing
     return newErrors.length === 0;
   };
 
+  const hasValidUrls = (): boolean => {
+    return urls.some(url => url.trim() && isValidUrl(url.trim()));
+  };
+
   const isValidUrl = (string: string): boolean => {
     try {
       new URL(string);
@@ -198,11 +202,16 @@ export function ScrapingForm({ onScrapingStart, onScrapingComplete, isProcessing
       <div className="pt-4">
         <button
           type="submit"
-          disabled={isProcessing || urls.every(url => !url.trim())}
+          disabled={isProcessing || !hasValidUrls()}
           className="w-full px-4 py-3 text-white bg-primary-600 border border-transparent rounded-md shadow-sm text-sm font-medium hover:bg-primary-700 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed"
         >
           {isProcessing ? 'Processing...' : 'Start Scraping'}
         </button>
+        {!hasValidUrls() && urls.some(url => url.trim()) && (
+          <p className="text-sm text-amber-600 mt-2 text-center">
+            Please enter valid URLs to enable scraping
+          </p>
+        )}
       </div>
 
       {isProcessing && (

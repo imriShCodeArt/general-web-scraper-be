@@ -19,6 +19,22 @@ class CSVStorage {
   constructor() {
     // Use system temp directory for file storage
     this.storageDir = join(tmpdir(), 'csv-storage');
+    
+    // Ensure the directory exists
+    try {
+      if (!existsSync(this.storageDir)) {
+        // Create directory recursively
+        const fs = require('fs');
+        fs.mkdirSync(this.storageDir, { recursive: true });
+        console.log(`[CSVStorage] Created storage directory: ${this.storageDir}`);
+      } else {
+        console.log(`[CSVStorage] Storage directory already exists: ${this.storageDir}`);
+      }
+    } catch (error) {
+      console.warn(`[CSVStorage] Could not create storage directory: ${this.storageDir}`, error);
+      // Fall back to memory-only storage
+    }
+    
     console.log(`[CSVStorage] Storage directory: ${this.storageDir}`);
   }
 

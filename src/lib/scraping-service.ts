@@ -73,7 +73,14 @@ export class ScrapingService {
 
       return {
         success: true,
-        data: products,
+        data: {
+          total_products: products.length,
+          processed_urls: productUrls.length,
+          download_links: {
+            parent: `/api/scrape/download/${requestId}/parent`,
+            variation: `/api/scrape/download/${requestId}/variation`
+          }
+        },
         total_urls: urls.length,
         processed_urls: productUrls.length,
       };
