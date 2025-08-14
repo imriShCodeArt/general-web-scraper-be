@@ -193,7 +193,7 @@ export class ScrapingService {
 
     // Only create variations if the product actually has variation data
     // For simple products, leave variations array empty
-    if (product.variations.length === 0 && (product.attributes.Color?.length > 0 || product.attributes.Size?.length > 0)) {
+    if (product.variations.length === 0 && ((product.attributes.Color && product.attributes.Color.length > 0) || (product.attributes.Size && product.attributes.Size.length > 0))) {
       // This product has attributes but no variations, so it's likely a simple product
       // Don't create artificial variations
       this.logger.info({ url: product.url, title: product.title }, 'Product has attributes but no variations - treating as simple product');

@@ -5,18 +5,18 @@ export async function POST() {
   try {
     // Test data
     const testProducts = [
-      {
-        url: 'https://test.com/product1',
-        title: 'Test Product 1',
-        slug: 'test-product-1',
-        sku: 'TEST-001',
-        stock_status: 'instock',
-        images: ['https://test.com/image1.jpg'],
-        description: 'This is a test product',
-        category: 'Test Category',
-        attributes: {},
-        variations: []
-      }
+             {
+         url: 'https://test.com/product1',
+         title: 'Test Product 1',
+         slug: 'test-product-1',
+         sku: 'TEST-001',
+         stock_status: 'instock' as const,
+         images: ['https://test.com/image1.jpg'],
+         description: 'This is a test product',
+         category: 'Test Category',
+         attributes: {},
+         variations: []
+       }
     ];
 
     const testJobId = `test-${Date.now()}`;

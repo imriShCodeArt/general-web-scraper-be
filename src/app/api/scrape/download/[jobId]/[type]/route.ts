@@ -58,7 +58,7 @@ export async function GET(
     logger.info({ jobId, type, filename, size: csvData.length }, 'Serving CSV download');
 
     // Return the actual CSV file
-    return new NextResponse(csvData, {
+    return new NextResponse(new Uint8Array(csvData), {
       headers: {
         'Content-Type': 'text/csv',
         'Content-Disposition': `attachment; filename="${filename}"`,

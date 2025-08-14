@@ -87,10 +87,11 @@ class CSVStorage {
     // If not in memory, try file system
     if (!stored) {
       console.log(`[CSVStorage] Not found in memory, trying file system...`);
-      stored = this.loadFromFile(jobId);
-      if (stored) {
+      const fileStored = this.loadFromFile(jobId);
+      if (fileStored) {
         // Add back to memory
-        this.storage.set(jobId, stored);
+        this.storage.set(jobId, fileStored);
+        stored = fileStored;
         console.log(`[CSVStorage] Loaded from file and added to memory`);
       }
     }
@@ -141,9 +142,10 @@ class CSVStorage {
     
     // If not in memory, try file system
     if (!stored) {
-      stored = this.loadFromFile(jobId);
-      if (stored) {
-        this.storage.set(jobId, stored);
+      const fileStored = this.loadFromFile(jobId);
+      if (fileStored) {
+        this.storage.set(jobId, fileStored);
+        stored = fileStored;
       }
     }
     
@@ -165,7 +167,7 @@ class CSVStorage {
     const oneHourAgo = new Date(Date.now() - 60 * 60 * 1000);
     
     // Clean memory
-    for (const [jobId, stored] of this.storage.entries()) {
+    for (const [jobId, stored] of Array.from(this.storage.entries())) {
       if (stored.timestamp < oneHourAgo) {
         this.storage.delete(jobId);
       }
