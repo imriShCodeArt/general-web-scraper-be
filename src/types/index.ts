@@ -40,8 +40,8 @@ export type ScrapingJob = {
   completed_at?: Date;
   error?: string;
   csv_downloads?: {
-    parent_products: string;
-    variation_products: string;
+    parent: string;
+    variation: string;
   };
 };
 
@@ -53,7 +53,14 @@ export type TableRow = {
 
 export type ScrapingResult = {
   success: boolean;
-  data?: Product[];
+  data?: {
+    total_products: number;
+    processed_urls: number;
+    download_links: {
+      parent: string;
+      variation: string;
+    };
+  } | Product[];
   error?: string;
   total_urls: number;
   processed_urls: number;

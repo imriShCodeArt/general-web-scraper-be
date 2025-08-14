@@ -42,7 +42,8 @@ export async function POST(request: NextRequest) {
     }
 
          // CSV generation and storage is now handled in the scraping service
-     logger.info({ requestId, productCount: result.data?.length }, 'Scraping completed, CSV data should be stored');
+     const productCount = Array.isArray(result.data) ? result.data.length : result.data?.total_products || 0;
+     logger.info({ requestId, productCount }, 'Scraping completed, CSV data should be stored');
      
      // Verify that CSV data was stored
      const storedJobInfo = csvStorage.getJobInfo(requestId);
@@ -58,7 +59,7 @@ export async function POST(request: NextRequest) {
 
     logger.info({ 
       requestId, 
-      productsCount: result.data?.length,
+      productsCount: productCount,
       processedUrls: result.processed_urls 
     }, 'Scraping completed successfully');
 
@@ -69,7 +70,7 @@ export async function POST(request: NextRequest) {
       success: true,
       requestId,
       data: {
-        total_products: result.data?.length || 0,
+        total_products: productCount,
         processed_urls: result.processed_urls,
         csv_files: {
           parent_products: parentFilename,
