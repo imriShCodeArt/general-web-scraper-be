@@ -10,33 +10,33 @@ interface ScrapingFormProps {
 }
 
 export function ScrapingForm({ onScrapingStart, onScrapingComplete, isProcessing }: ScrapingFormProps) {
-  const [urls, setUrls] = useState<string[]>(['']);
-  const [maxProductsPerUrl, setMaxProductsPerUrl] = useState<number>(100);
+  const [archiveUrls, setArchiveUrls] = useState<string[]>(['']);
+  const [maxProductsPerArchive, setMaxProductsPerArchive] = useState<number>(100);
   const [errors, setErrors] = useState<string[]>([]);
 
-  const addUrlField = () => {
-    setUrls([...urls, '']);
+  const addArchiveUrlField = () => {
+    setArchiveUrls([...archiveUrls, '']);
   };
 
-  const removeUrlField = (index: number) => {
-    if (urls.length > 1) {
-      const newUrls = urls.filter((_, i) => i !== index);
-      setUrls(newUrls);
+  const removeArchiveUrlField = (index: number) => {
+    if (archiveUrls.length > 1) {
+      const newArchiveUrls = archiveUrls.filter((_, i) => i !== index);
+      setArchiveUrls(newArchiveUrls);
     }
   };
 
-  const updateUrl = (index: number, value: string) => {
-    const newUrls = [...urls];
-    newUrls[index] = value;
-    setUrls(newUrls);
+  const updateArchiveUrl = (index: number, value: string) => {
+    const newArchiveUrls = [...archiveUrls];
+    newArchiveUrls[index] = value;
+    setArchiveUrls(newArchiveUrls);
   };
 
-  const validateUrls = (): boolean => {
+  const validateArchiveUrls = (): boolean => {
     const newErrors: string[] = [];
     
-    urls.forEach((url, index) => {
+    archiveUrls.forEach((url, index) => {
       if (!url.trim()) {
-        newErrors[index] = 'URL is required';
+        newErrors[index] = 'Archive URL is required';
       } else if (!isValidUrl(url.trim())) {
         newErrors[index] = 'Please enter a valid URL';
       }
@@ -46,8 +46,8 @@ export function ScrapingForm({ onScrapingStart, onScrapingComplete, isProcessing
     return newErrors.length === 0;
   };
 
-  const hasValidUrls = (): boolean => {
-    return urls.some(url => url.trim() && isValidUrl(url.trim()));
+  const hasValidArchiveUrls = (): boolean => {
+    return archiveUrls.some(url => url.trim() && isValidUrl(url.trim()));
   };
 
   const isValidUrl = (string: string): boolean => {
@@ -62,16 +62,16 @@ export function ScrapingForm({ onScrapingStart, onScrapingComplete, isProcessing
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
-    if (!validateUrls()) {
+    if (!validateArchiveUrls()) {
       return;
     }
 
-    const validUrls = urls.filter(url => url.trim());
+    const validArchiveUrls = archiveUrls.filter(url => url.trim());
     
-          if (validUrls.length === 0) {
-        setErrors(['At least one URL is required']);
-        return;
-      }
+    if (validArchiveUrls.length === 0) {
+      setErrors(['At least one archive URL is required']);
+      return;
+    }
 
     onScrapingStart();
 
@@ -82,8 +82,8 @@ export function ScrapingForm({ onScrapingStart, onScrapingComplete, isProcessing
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({ 
-          urls: validUrls,
-          maxProductsPerUrl: maxProductsPerUrl
+          archiveUrls: validArchiveUrls,
+          maxProductsPerArchive: maxProductsPerArchive
         }),
       });
 
@@ -94,58 +94,57 @@ export function ScrapingForm({ onScrapingStart, onScrapingComplete, isProcessing
         const job: ScrapingJob = {
           id: result.requestId,
           status: 'completed',
-          urls: validUrls,
-          max_products_per_url: maxProductsPerUrl,
+          archive_urls: validArchiveUrls,
+          max_products_per_archive: maxProductsPerArchive,
           total_products: result.data.total_products,
-          processed_products: result.data.processed_urls,
+          processed_products: result.data.processed_archives,
           created_at: new Date(),
           completed_at: new Date(),
           csv_downloads: result.data.download_links,
         };
 
         onScrapingComplete(job);
-             } else {
-         console.error('Scraping failed:', result.error);
-         // Show error to user with more details
-         const errorMessage = `Scraping failed: ${result.error}\n\nThis usually means:\n- No HTML tables found on the page\n- Table structure is different than expected\n- Page requires JavaScript to render content\n\nCheck the browser console for detailed logs.`;
-         alert(errorMessage);
-       }
-         } catch (error) {
-       console.error('API call failed:', error);
-       // Show error to user
-       alert(`Network error: ${error instanceof Error ? error.message : 'Unknown error'}`);
-     }
+      } else {
+        console.error('Archive scraping failed:', result.error);
+        // Show error to user with more details
+        const errorMessage = `Archive scraping failed: ${result.error}\n\nThis usually means:\n- No product links found on the archive page\n- Archive page structure is different than expected\n- Page requires JavaScript to render content\n\nCheck the browser console for detailed logs.`;
+        alert(errorMessage);
+      }
+    } catch (error) {
+      console.error('API call failed:', error);
+      // Show error to user
+      alert(`Network error: ${error instanceof Error ? error.message : 'Unknown error'}`);
+    }
   };
 
   return (
     <form onSubmit={handleSubmit} className="space-y-6">
       <div>
         <label className="block text-sm font-medium text-gray-700 mb-2">
-          Table URLs
+          Product Archive URLs
         </label>
-                 <p className="text-sm text-gray-500 mb-4">
-           Enter URLs of HTML pages containing tables with product information, or XML sitemaps. 
-           The scraper will automatically detect the format and extract product URLs accordingly.
-           <br />
-           <span className="text-green-600 font-medium">✓ Supported: HTML tables, XML sitemaps (.xml files)</span>
-         </p>
+        <p className="text-sm text-gray-500 mb-4">
+          Enter URLs of product archive/category pages. The scraper will automatically detect pagination and extract all products from each archive.
+          <br />
+          <span className="text-green-600 font-medium">✓ Supported: WooCommerce category pages, product archives, shop pages with pagination</span>
+        </p>
         
-        {urls.map((url, index) => (
+        {archiveUrls.map((url, index) => (
           <div key={index} className="flex gap-2 mb-3">
             <input
               type="url"
               value={url}
-              onChange={(e) => updateUrl(index, e.target.value)}
-              placeholder="https://example.com/products-table"
+              onChange={(e) => updateArchiveUrl(index, e.target.value)}
+              placeholder="https://example.com/shop/category-name/"
               className={`flex-1 px-3 py-2 border rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500 ${
                 errors[index] ? 'border-red-300' : 'border-gray-300'
               }`}
               disabled={isProcessing}
             />
-            {urls.length > 1 && (
+            {archiveUrls.length > 1 && (
               <button
                 type="button"
-                onClick={() => removeUrlField(index)}
+                onClick={() => removeArchiveUrlField(index)}
                 className="px-3 py-2 text-red-600 hover:text-red-800 disabled:opacity-50"
                 disabled={isProcessing}
               >
@@ -164,61 +163,55 @@ export function ScrapingForm({ onScrapingStart, onScrapingComplete, isProcessing
             ))}
           </div>
         )}
+        
+        <button
+          type="button"
+          onClick={addArchiveUrlField}
+          className="mt-2 px-4 py-2 text-sm text-primary-600 hover:text-primary-800 disabled:opacity-50"
+          disabled={isProcessing}
+        >
+          + Add Another Archive URL
+        </button>
       </div>
 
-      {/* Max Products Per URL */}
+      {/* Max Products Per Archive */}
       <div>
         <label className="block text-sm font-medium text-gray-700 mb-2">
-          Max Products Per URL
+          Max Products Per Archive
         </label>
         <p className="text-sm text-gray-500 mb-4">
-          Limit the number of products scraped from each table page. This helps control processing time and resource usage.
+          Limit the number of products scraped from each archive page. The scraper will automatically handle pagination to reach this limit.
         </p>
         <input
           type="number"
           min="1"
           max="1000"
-          value={maxProductsPerUrl}
-          onChange={(e) => setMaxProductsPerUrl(parseInt(e.target.value) || 100)}
+          value={maxProductsPerArchive}
+          onChange={(e) => setMaxProductsPerArchive(parseInt(e.target.value) || 100)}
           className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
           disabled={isProcessing}
         />
         <p className="text-xs text-gray-500 mt-1">
-          Range: 1-1000 products per URL
+          Range: 1-1000 products per archive
         </p>
       </div>
 
-      <div className="flex gap-3">
-        <button
-          type="button"
-          onClick={addUrlField}
-          className="px-4 py-2 text-sm font-medium text-primary-600 bg-primary-50 border border-primary-200 rounded-md hover:bg-primary-100 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:ring-offset-2 disabled:opacity-50"
-          disabled={isProcessing}
-        >
-          Add Another URL
-        </button>
-      </div>
-
-      <div className="pt-4">
-        <button
-          type="submit"
-          disabled={isProcessing || !hasValidUrls()}
-          className="w-full px-4 py-3 text-white bg-primary-600 border border-transparent rounded-md shadow-sm text-sm font-medium hover:bg-primary-700 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed"
-        >
-          {isProcessing ? 'Processing...' : 'Start Scraping'}
-        </button>
-        {!hasValidUrls() && urls.some(url => url.trim()) && (
-          <p className="text-sm text-amber-600 mt-2 text-center">
-            Please enter valid URLs to enable scraping
-          </p>
-        )}
-      </div>
-
-      {isProcessing && (
-        <div className="text-center text-sm text-gray-600">
-          <p>This may take several minutes depending on the number of products.</p>
-          <p className="mt-1">Please don't close this page.</p>
-        </div>
+      <button
+        type="submit"
+        disabled={!hasValidArchiveUrls() || isProcessing}
+        className={`w-full px-4 py-3 text-white font-medium rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary-500 ${
+          hasValidArchiveUrls() && !isProcessing
+            ? 'bg-primary-600 hover:bg-primary-700 focus:ring-primary-500'
+            : 'bg-gray-400 cursor-not-allowed'
+        }`}
+      >
+        {isProcessing ? 'Scraping Archives...' : 'Start Scraping Archives'}
+      </button>
+      
+      {!hasValidArchiveUrls() && (
+        <p className="text-sm text-gray-500 text-center">
+          Enter at least one valid archive URL to start scraping
+        </p>
       )}
     </form>
   );

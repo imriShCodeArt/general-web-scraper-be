@@ -1,0 +1,320 @@
+{
+    "program_name": "General Web Scraper - WooCommerce CSV Generator",
+    "version": "0.1.0",
+    "description": "Configuration file demonstrating how this program formats product output for WooCommerce CSV import",
+    
+    "output_formats": {
+      "parent_products_csv": {
+        "filename": "PARENT_PRODUCTS.csv",
+        "description": "Main product data for WooCommerce import",
+        "woocommerce_compatibility": "WooCommerce Product CSV Import Suite",
+        "encoding": "UTF-8",
+        "delimiter": ",",
+        "image_separator": " | "
+      },
+      "variation_products_csv": {
+        "filename": "VARIATION_PRODUCTS.csv", 
+        "description": "Product variations data for WooCommerce import",
+        "woocommerce_compatibility": "WooCommerce Product CSV Import Suite",
+        "encoding": "UTF-8",
+        "delimiter": ",",
+        "image_separator": " | "
+      }
+    },
+  
+    "csv_field_mappings": {
+      "parent_products": {
+        "post_title": {
+          "source": "product.title",
+          "description": "Product title (Hebrew/English)",
+          "example": "פופ סט למטבח 3 חלקים – אפור",
+          "required": true
+        },
+        "post_name": {
+          "source": "product.postName", 
+          "description": "URL slug (Hebrew transliterated)",
+          "example": "pvp-st-lmtbch-3-chlqy-apvr",
+          "required": true,
+          "generation": "Auto-generated from title with Hebrew transliteration"
+        },
+        "post_status": {
+          "source": "static",
+          "value": "publish",
+          "description": "Product publication status",
+          "required": true
+        },
+        "sku": {
+          "source": "product.sku",
+          "description": "Stock Keeping Unit (מק\"ט)",
+          "example": "36121",
+          "required": true,
+          "fallbacks": [
+            "data-sku attribute",
+            "add-to-cart button value", 
+            "body class post-{id}",
+            "GTM product data",
+            "URL product ID",
+            "Generated timestamp-based ID"
+          ]
+        },
+        "stock_status": {
+          "source": "product.stock_status",
+          "description": "Product availability",
+          "values": ["instock", "outofstock"],
+          "default": "instock",
+          "required": true
+        },
+        "images": {
+          "source": "product.images",
+          "description": "Product image URLs",
+          "format": "URL1 | URL2 | URL3",
+          "example": "https://ashram.style/wp-content/uploads/2024/04/-אפור-סינר-1-scaled-e1714640096373.jpg | https://ashram.style/wp-content/uploads/2024/04/-אפור-כפפה-2-scaled-e1714640124767.jpg",
+          "required": false
+        },
+        "tax:product_type": {
+          "source": "auto-detected",
+          "description": "Product type classification",
+          "values": ["simple", "variable"],
+          "detection_logic": "Has real variations with different SKUs = 'variable', otherwise 'simple'",
+          "required": true
+        },
+        "tax:product_cat": {
+          "source": "product.category",
+          "description": "Product category",
+          "example": "סינרים",
+          "extraction_methods": [
+            "body class product_cat-{id} mapping",
+            "breadcrumb navigation",
+            "URL category path",
+            "Meta tags"
+          ],
+          "required": false,
+          "default": "Uncategorized"
+        },
+        "description": {
+          "source": "product.description",
+          "description": "Full product description",
+          "example": "ברוכים הבאים למשפחה ❤️ באשרם אנחנו דואגים לכם עד הפרטים הקטנים ביותר שפרו את רמת הנוחיות שלכם במטבח עם סט המטבח המושלם שלנו 🥰 ��סט שלושה חלקים: סינר, כפפה ומחזיק סיר 🧺 הוראות כביסה – לכבס בכביסה קרה, אין להלבין ———————————————– חומר: 100% כותנה",
+          "extraction_selectors": [
+            ".woocommerce-product-content p",
+            ".elementor-widget-woocommerce-product-content p",
+            ".product-content p"
+          ],
+          "required": false
+        },
+        "short_description": {
+          "source": "product.shortDescription",
+          "description": "Brief product summary",
+          "example": "ברוכים הבאים למשפחה ❤️",
+          "extraction_selectors": [
+            ".woocommerce-product-details__short-description",
+            ".product-short-description",
+            "First paragraph of product content"
+          ],
+          "required": false
+        },
+        "regular_price": {
+          "source": "product.regularPrice",
+          "description": "Standard product price",
+          "example": "85",
+          "extraction_selectors": [
+            ".woocommerce-Price-amount .amount",
+            ".price .amount",
+            "[data-regular-price]"
+          ],
+          "cleaning": "Remove currency symbols, extract first reasonable number",
+          "required": false
+        },
+        "sale_price": {
+          "source": "product.salePrice",
+          "description": "Discounted price (if applicable)",
+          "example": "",
+          "extraction_selectors": [
+            ".sale-price .amount",
+            ".price .price-sale",
+            "[data-sale-price]"
+          ],
+          "required": false
+        },
+        "manage_stock": {
+          "source": "static",
+          "value": "no",
+          "description": "Stock management setting",
+          "required": true
+        },
+        "stock": {
+          "source": "static",
+          "value": "",
+          "description": "Stock quantity (not managed)",
+          "required": false
+        },
+        "weight": {
+          "source": "static",
+          "value": "",
+          "description": "Product weight (not extracted)",
+          "required": false
+        },
+        "length": {
+          "source": "static", 
+          "value": "",
+          "description": "Product length (not extracted)",
+          "required": false
+        },
+        "width": {
+          "source": "static",
+          "value": "",
+          "description": "Product width (not extracted)", 
+          "required": false
+        },
+        "height": {
+          "source": "static",
+          "value": "",
+          "description": "Product height (not extracted)",
+          "required": false
+        }
+      },
+      "variation_products": {
+        "parent_sku": {
+          "source": "product.sku",
+          "description": "Reference to parent product SKU",
+          "required": true
+        },
+        "sku": {
+          "source": "variation.sku", 
+          "description": "Unique variation identifier",
+          "required": true
+        },
+        "stock_status": {
+          "source": "variation.stock_status",
+          "description": "Variation availability",
+          "required": true
+        },
+        "regular_price": {
+          "source": "variation.regular_price",
+          "description": "Variation price",
+          "required": false
+        },
+        "tax_class": {
+          "source": "variation.tax_class",
+          "description": "Tax classification",
+          "required": false
+        },
+        "images": {
+          "source": "variation.images",
+          "description": "Variation-specific images",
+          "format": "URL1 | URL2 | URL3",
+          "required": false
+        },
+        "meta:attribute_Color": {
+          "source": "variation.meta.attribute_Color",
+          "description": "Color attribute value",
+          "required": false
+        },
+        "meta:attribute_Size": {
+          "source": "variation.meta.attribute_Size", 
+          "description": "Size attribute value",
+          "required": false
+        }
+      }
+    },
+  
+    "data_extraction_features": {
+      "hebrew_support": {
+        "title_extraction": "Full Hebrew text support",
+        "slug_generation": "Hebrew transliteration to Latin characters",
+        "description_extraction": "Hebrew content preservation",
+        "category_extraction": "Hebrew category names"
+      },
+      "image_handling": {
+        "multiple_images": "Extracts all product images",
+        "image_formats": ["jpg", "png", "webp", "gif"],
+        "image_sizes": ["full-size", "thumbnail", "medium"],
+        "fallback_images": "Uses multiple selectors for comprehensive coverage"
+      },
+      "price_extraction": {
+        "currency_support": ["₪", "$", "€", "£"],
+        "price_cleaning": "Removes currency symbols and extra text",
+        "validation": "Ensures reasonable price ranges (0.01 - 1,000,000)",
+        "multiple_formats": "Handles various price display structures"
+      },
+      "attribute_extraction": {
+        "color_attributes": "Extracts color options and variations",
+        "size_attributes": "Extracts size options and variations", 
+        "custom_attributes": "Extensible for other attribute types",
+        "variation_detection": "Automatically detects simple vs variable products"
+      }
+    },
+  
+    "scraping_selectors": {
+      "title": [
+        "h1.product_title",
+        "h1.entry-title", 
+        "h1.product-name",
+        ".product-title h1",
+        "h1[class*='title']"
+      ],
+      "description": [
+        ".woocommerce-product-content p",
+        ".elementor-widget-woocommerce-product-content p",
+        ".product-content p",
+        ".product-details p"
+      ],
+      "category": [
+        "body[class*='product_cat-']",
+        ".woocommerce-breadcrumb a:last-child",
+        ".breadcrumb a:last-child",
+        ".product-category"
+      ],
+      "price": [
+        ".woocommerce-Price-amount .amount",
+        ".price .amount",
+        "[data-regular-price]",
+        "[data-price]"
+      ],
+      "images": [
+        ".woocommerce-product-gallery__image img",
+        ".product-gallery img",
+        ".product-images img",
+        "img[data-product-image]"
+      ],
+      "sku": [
+        "[data-sku]",
+        ".sku",
+        ".product-sku",
+        "button[name='add-to-cart']",
+        "body[class*='post-']"
+      ]
+    },
+  
+    "example_output": {
+      "sample_product": {
+        "post_title": "פופ סט למטבח 3 חלקים – אפור",
+        "post_name": "pvp-st-lmtbch-3-chlqy-apvr", 
+        "post_status": "publish",
+        "sku": "36121",
+        "stock_status": "instock",
+        "images": "https://ashram.style/wp-content/uploads/2024/04/-אפור-סינר-1-scaled-e1714640096373.jpg | https://ashram.style/wp-content/uploads/2024/04/-אפור-כפפה-2-scaled-e1714640124767.jpg | https://ashram.style/wp-content/uploads/2024/04/-אפור-תחתית-1-scaled-e1714640151226.jpg",
+        "tax:product_type": "simple",
+        "tax:product_cat": "סינרים",
+        "description": "ברוכים הבאים למשפחה ❤️ באשרם אנחנו דואגים לכם עד הפרטים הקטנים ביותר שפרו את רמת הנוחיות שלכם במטבח עם סט המטבח המושלם שלנו 🥰 ��סט שלושה חלקים: סינר, כפפה ומחזיק סיר 🧺 הוראות כביסה – לכבס בכביסה קרה, אין להלבין ———————————————– חומר: 100% כותנה",
+        "short_description": "ברוכים הבאים למשפחה ❤️",
+        "regular_price": "85",
+        "sale_price": "",
+        "manage_stock": "no",
+        "stock": "",
+        "weight": "",
+        "length": "",
+        "width": "",
+        "height": ""
+      }
+    },
+  
+    "woocommerce_import_notes": {
+      "csv_format": "WooCommerce Product CSV Import Suite compatible",
+      "required_fields": ["post_title", "post_name", "post_status", "sku"],
+      "optional_fields": "All other fields are optional and will use defaults if empty",
+      "image_import": "Images will be imported if URLs are accessible",
+      "category_import": "Categories will be created if they don't exist",
+      "variation_import": "Variations will be linked to parent products via parent_sku"
+    }
+  }
