@@ -1,48 +1,36 @@
-import { writeToBuffer } from 'fast-csv';
 import { Product, Variation } from '@/types';
 
 export class CSVGenerator {
   /**
-   * Encode Hebrew text for CSV output
-   * Converts Hebrew characters to URL-encoded format for better CSV compatibility
+   * Generate CSV string from data array
    */
-  private static encodeHebrewText(text: string): string {
-    if (!text || typeof text !== 'string') return text;
+  private static generateCSVString(csvData: Record<string, string>[]): string {
+    if (csvData.length === 0) return '';
     
-    // Check if text contains Hebrew characters (Unicode range U+0590 to U+05FF)
-    const hebrewRegex = /[\u0590-\u05FF]/;
-    if (!hebrewRegex.test(text)) {
-      return text; // No Hebrew characters, return as-is
-    }
+    const headers = Object.keys(csvData[0]);
+    const csvRows = [headers.join(',')];
     
-    try {
-      // Encode Hebrew text using encodeURIComponent for CSV compatibility
-      // This ensures Hebrew characters are properly handled in CSV files
-      return encodeURIComponent(text);
-    } catch (error) {
-      console.warn(`Failed to encode Hebrew text: "${text}"`, error);
-      return text; // Fallback to original text if encoding fails
-    }
+    csvData.forEach(row => {
+      const values = headers.map(header => {
+        const value = row[header] || '';
+        // Escape quotes and wrap in quotes if contains comma, newline, quotes, or pipes
+        const escaped = value.toString().replace(/"/g, '""');
+        if (escaped.includes(',') || escaped.includes('\n') || escaped.includes('"') || escaped.includes('|')) {
+          return `"${escaped}"`;
+        }
+        return escaped;
+      });
+      csvRows.push(values.join(','));
+    });
+    
+    return csvRows.join('\n');
   }
 
   /**
-   * Encode all text fields in a product row for CSV output
+   * Convert CSV string to Buffer
    */
-  private static encodeProductRow(row: Record<string, string>): Record<string, string> {
-    const encodedRow: Record<string, string> = {};
-    
-    Object.keys(row).forEach(key => {
-      const value = row[key];
-      if (key === 'images' || key.includes('attribute_data')) {
-        // Don't encode image URLs or attribute data flags
-        encodedRow[key] = value;
-      } else {
-        // Encode text fields that may contain Hebrew
-        encodedRow[key] = this.encodeHebrewText(value);
-      }
-    });
-    
-    return encodedRow;
+  private static stringToBuffer(csvString: string): Buffer {
+    return Buffer.from(csvString, 'utf8');
   }
 
   /**
@@ -88,11 +76,11 @@ export class CSVGenerator {
         }
       });
 
-      // Encode Hebrew text in the row
-      return this.encodeProductRow(row);
+      return row;
     });
 
-    return writeToBuffer(csvData, { headers: true });
+    const csvString = this.generateCSVString(csvData);
+    return this.stringToBuffer(csvString);
   }
 
   /**
@@ -129,12 +117,13 @@ export class CSVGenerator {
             });
           }
 
-          variations.push(this.encodeProductRow(row));
+          variations.push(row);
         });
       }
     });
 
-    return writeToBuffer(variations, { headers: true });
+    const csvString = this.generateCSVString(variations);
+    return this.stringToBuffer(csvString);
   }
 
   /**
@@ -202,10 +191,9 @@ export class CSVGenerator {
         }
       });
 
-      // Encode Hebrew text in the row
-      return this.encodeProductRow(row);
+      return row;
     });
 
-    return writeToBuffer(csvData, { headers: true });
+    return this.stringToBuffer(this.generateCSVString(csvData));
   }
 }

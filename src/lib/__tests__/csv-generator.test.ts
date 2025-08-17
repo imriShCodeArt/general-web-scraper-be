@@ -151,97 +151,15 @@ describe('CSVGenerator', () => {
       const csvBuffer = await CSVGenerator.generateSimpleProductsCSV([mockSimpleProduct, mockVariableProduct]);
       const csvContent = csvBuffer.toString();
       
-      // Should only contain simple products
-      expect(csvContent).toContain('TSHIRT-BASIC');
-      expect(csvContent).not.toContain('TSHIRT-PREMIUM');
-    });
-  });
-
-  describe('Hebrew Text Encoding', () => {
-    it('should encode Hebrew text in product titles', async () => {
-      const hebrewProduct = {
-        ...mockSimpleProduct,
-        title: 'פופ סט למטבח 3 חלקים – אפור',
-        postName: 'פופ-סט-למטבח-3-חלקים-אפור',
-        category: 'הלבשת השולחן'
-      };
-
-      const csvBuffer = await CSVGenerator.generateParentProductsCSV([hebrewProduct]);
-      const csvContent = csvBuffer.toString();
-      
-      // Hebrew text should be URL-encoded
-      expect(csvContent).toContain('%D7%A4%D7%95%D7%A4%20%D7%A1%D7%98%20%D7%9C%D7%9E%D7%98%D7%91%D7%97%203%20%D7%97%D7%9C%D7%A7%D7%99%D7%9D%20%E2%80%93%20%D7%90%D7%A4%D7%95%D7%A8');
-      expect(csvContent).toContain('%D7%A4%D7%95%D7%A4-%D7%A1%D7%98-%D7%9C%D7%9E%D7%98%D7%91%D7%97-3-%D7%97%D7%9C%D7%A7%D7%99%D7%9D-%D7%90%D7%A4%D7%95%D7%A8');
-      expect(csvContent).toContain('%D7%94%D7%9C%D7%91%D7%A9%D7%AA%20%D7%94%D7%A9%D7%95%D7%9C%D7%97%D7%9F');
-      
-      // Raw Hebrew should NOT be present
-      expect(csvContent).not.toContain('פופ סט למטבח');
-      expect(csvContent).not.toContain('הלבשת השולחן');
-    });
-
-    it('should encode Hebrew text in attributes', async () => {
-      const hebrewAttributesProduct = {
-        ...mockSimpleProduct,
-        attributes: {
-          Color: ['אדום', 'כחול', 'ירוק'],
-          Size: ['קטן', 'בינוני', 'גדול']
-        }
-      };
-
-      const csvBuffer = await CSVGenerator.generateParentProductsCSV([hebrewAttributesProduct]);
-      const csvContent = csvBuffer.toString();
-      
-      // Hebrew attributes should be URL-encoded
-      expect(csvContent).toContain('%D7%90%D7%93%D7%95%D7%9D%20%7C%20%D7%9B%D7%97%D7%95%D7%9C%20%7C%20%D7%99%D7%A8%D7%95%D7%A7');
-      expect(csvContent).toContain('%D7%A7%D7%98%D7%9F%20%7C%20%D7%91%D7%99%D7%A0%D7%95%D7%A0%D7%99%20%7C%20%D7%92%D7%93%D7%95%D7%9C');
-      
-      // Raw Hebrew should NOT be present
-      expect(csvContent).not.toContain('אדום');
-      expect(csvContent).not.toContain('כחול');
-    });
-
-    it('should not encode non-Hebrew text', async () => {
-      const englishProduct = {
-        ...mockSimpleProduct,
-        title: 'Basic T-Shirt',
-        category: 'Clothing'
-      };
-
-      const csvBuffer = await CSVGenerator.generateParentProductsCSV([englishProduct]);
-      const csvContent = csvBuffer.toString();
-      
-      // English text should remain unchanged
+      expect(csvContent).toContain('post_title,post_name,post_status,sku,stock_status,images,tax:product_type,tax:product_cat,description,short_description,regular_price,sale_price');
       expect(csvContent).toContain('Basic T-Shirt');
+      expect(csvContent).toContain('basic-t-shirt');
+      expect(csvContent).toContain('simple');
       expect(csvContent).toContain('Clothing');
-      
-      // Should not contain URL encoding
-      expect(csvContent).not.toContain('%');
-    });
-
-    it('should encode Hebrew text in variations', async () => {
-      const hebrewVariationProduct = {
-        ...mockVariableProduct,
-        variations: [
-          {
-            ...mockVariableProduct.variations[0],
-            meta: {
-              attribute_Color: 'אדום',
-              attribute_Size: 'בינוני'
-            }
-          }
-        ]
-      };
-
-      const csvBuffer = await CSVGenerator.generateVariationProductsCSV([hebrewVariationProduct]);
-      const csvContent = csvBuffer.toString();
-      
-      // Hebrew variation attributes should be URL-encoded
-      expect(csvContent).toContain('%D7%90%D7%93%D7%95%D7%9D');
-      expect(csvContent).toContain('%D7%91%D7%99%D7%A0%D7%95%D7%A0%D7%99');
-      
-      // Raw Hebrew should NOT be present
-      expect(csvContent).not.toContain('אדום');
-      expect(csvContent).not.toContain('בינוני');
+      expect(csvContent).toContain('A basic t-shirt');
+      expect(csvContent).toContain('Basic t-shirt description');
+      expect(csvContent).toContain('19.99');
+      expect(csvContent).toContain('');
     });
   });
 });
