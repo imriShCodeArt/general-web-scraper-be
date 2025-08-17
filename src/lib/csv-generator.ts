@@ -3,6 +3,49 @@ import { Product, Variation } from '@/types';
 
 export class CSVGenerator {
   /**
+   * Encode Hebrew text for CSV output
+   * Converts Hebrew characters to URL-encoded format for better CSV compatibility
+   */
+  private static encodeHebrewText(text: string): string {
+    if (!text || typeof text !== 'string') return text;
+    
+    // Check if text contains Hebrew characters (Unicode range U+0590 to U+05FF)
+    const hebrewRegex = /[\u0590-\u05FF]/;
+    if (!hebrewRegex.test(text)) {
+      return text; // No Hebrew characters, return as-is
+    }
+    
+    try {
+      // Encode Hebrew text using encodeURIComponent for CSV compatibility
+      // This ensures Hebrew characters are properly handled in CSV files
+      return encodeURIComponent(text);
+    } catch (error) {
+      console.warn(`Failed to encode Hebrew text: "${text}"`, error);
+      return text; // Fallback to original text if encoding fails
+    }
+  }
+
+  /**
+   * Encode all text fields in a product row for CSV output
+   */
+  private static encodeProductRow(row: Record<string, string>): Record<string, string> {
+    const encodedRow: Record<string, string> = {};
+    
+    Object.keys(row).forEach(key => {
+      const value = row[key];
+      if (key === 'images' || key.includes('attribute_data')) {
+        // Don't encode image URLs or attribute data flags
+        encodedRow[key] = value;
+      } else {
+        // Encode text fields that may contain Hebrew
+        encodedRow[key] = this.encodeHebrewText(value);
+      }
+    });
+    
+    return encodedRow;
+  }
+
+  /**
    * Generate parent products CSV for WooCommerce import
    * Format matches: post_title,post_name,post_status,sku,stock_status,images,tax:product_type,tax:product_cat,attribute:Color,attribute_data:Color,attribute:Size,attribute_data:Size
    */
@@ -45,7 +88,8 @@ export class CSVGenerator {
         }
       });
 
-      return row;
+      // Encode Hebrew text in the row
+      return this.encodeProductRow(row);
     });
 
     return writeToBuffer(csvData, { headers: true });
@@ -85,7 +129,7 @@ export class CSVGenerator {
             });
           }
 
-          variations.push(row);
+          variations.push(this.encodeProductRow(row));
         });
       }
     });
@@ -158,7 +202,8 @@ export class CSVGenerator {
         }
       });
 
-      return row;
+      // Encode Hebrew text in the row
+      return this.encodeProductRow(row);
     });
 
     return writeToBuffer(csvData, { headers: true });
