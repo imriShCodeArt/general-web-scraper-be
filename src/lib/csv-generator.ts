@@ -2,6 +2,29 @@ import { Product, Variation } from '@/types';
 
 export class CSVGenerator {
   /**
+   * Normalize attribute names for CSV headers:
+   * - strip known prefixes
+   * - decode URL-encoded sequences
+   * - preserve Hebrew, capitalize Latin
+   */
+  private static normalizeAttributeName(raw: string): string {
+    if (!raw) return '';
+    let key = raw.replace(/^attribute_/, '').replace(/^pa_/, '');
+    if (/%[0-9A-Fa-f]{2}/.test(key)) {
+      try { key = decodeURIComponent(key); } catch { /* noop */ }
+    }
+    if (/[\u0590-\u05FF]/.test(key)) return key;
+    return key.length > 0 ? key.charAt(0).toUpperCase() + key.slice(1) : key;
+  }
+
+  private static decodeIfEncoded(value: string): string {
+    if (!value) return value;
+    if (/%[0-9A-Fa-f]{2}/.test(value)) {
+      try { return decodeURIComponent(value); } catch { return value; }
+    }
+    return value;
+  }
+  /**
    * Generate CSV string from data array
    */
   private static generateCSVString(csvData: Record<string, string>[]): string {
@@ -55,24 +78,27 @@ export class CSVGenerator {
         description: product.description || ''
       };
 
-      // Add attributes if they exist
+      // Add attributes if they exist (special-case common ones, decoding values)
       if (product.attributes.Color && product.attributes.Color.length > 0) {
-        row['attribute:Color'] = product.attributes.Color.join(' | ');
-        row['attribute_data:Color'] = '1'.repeat(product.attributes.Color.length).split('').join(' | ');
+        const values = product.attributes.Color.map(v => this.decodeIfEncoded(v));
+        row['attribute:Color'] = values.join(' | ');
+        row['attribute_data:Color'] = '1'.repeat(values.length).split('').join(' | ');
       }
 
       if (product.attributes.Size && product.attributes.Size.length > 0) {
-        row['attribute:Size'] = product.attributes.Size.join(' | ');
-        row['attribute_data:Size'] = '1'.repeat(product.attributes.Size.length).split('').join(' | ');
+        const values = product.attributes.Size.map(v => this.decodeIfEncoded(v));
+        row['attribute:Size'] = values.join(' | ');
+        row['attribute_data:Size'] = '1'.repeat(values.length).split('').join(' | ');
       }
 
       // Add other attributes dynamically
       Object.keys(product.attributes).forEach(attrName => {
         if (attrName !== 'Color' && attrName !== 'Size' && product.attributes[attrName]) {
-          const attrValues = product.attributes[attrName]!;
+          const normalized = this.normalizeAttributeName(attrName);
+          const attrValues = product.attributes[attrName]!.map(v => this.decodeIfEncoded(v));
           if (attrValues.length > 0) {
-            row[`attribute:${attrName}`] = attrValues.join(' | ');
-            row[`attribute_data:${attrName}`] = '1'.repeat(attrValues.length).split('').join(' | ');
+            row[`attribute:${normalized}`] = attrValues.join(' | ');
+            row[`attribute_data:${normalized}`] = '1'.repeat(attrValues.length).split('').join(' | ');
           }
         }
       });
