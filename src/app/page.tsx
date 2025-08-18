@@ -8,6 +8,7 @@ import { ScrapingJob } from '@/types';
 export default function Home() {
   const [isProcessing, setIsProcessing] = useState(false);
   const [currentJob, setCurrentJob] = useState<ScrapingJob | null>(null);
+  const [showHowTo, setShowHowTo] = useState<boolean>(false);
 
   const handleScrapingStart = () => {
     setIsProcessing(true);
@@ -32,61 +33,77 @@ export default function Home() {
           </p>
         </div>
 
-        <div className="bg-white rounded-lg shadow-md p-6 mb-8">
-          <h2 className="text-xl font-semibold text-gray-900 mb-4">How It Works</h2>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-            <div className="text-center">
-              <div className="bg-primary-100 rounded-full w-12 h-12 flex items-center justify-center mx-auto mb-3">
-                <span className="text-primary-600 font-bold text-lg">1</span>
+        {/* How-To (Collapsible) */}
+        <div className="bg-white rounded-lg shadow-md mb-8 overflow-hidden">
+          <button
+            type="button"
+            onClick={() => setShowHowTo(!showHowTo)}
+            className="w-full flex items-center justify-between px-6 py-4 hover:bg-gray-50"
+          >
+            <div className="flex items-center gap-3">
+              <svg
+                className={`w-4 h-4 text-gray-600 transform transition-transform ${showHowTo ? 'rotate-90' : ''}`}
+                viewBox="0 0 20 20" fill="currentColor"
+              >
+                <path fillRule="evenodd" d="M6 6L14 10L6 14V6Z" clipRule="evenodd" />
+              </svg>
+              <h2 className="text-xl font-semibold text-gray-900">How to use</h2>
+            </div>
+            <span className="text-sm text-gray-500">{showHowTo ? 'Hide' : 'Show'}</span>
+          </button>
+          {showHowTo && (
+            <div className="px-6 pb-6">
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
+                <div className="text-center">
+                  <div className="bg-primary-100 rounded-full w-12 h-12 flex items-center justify-center mx-auto mb-3">
+                    <span className="text-primary-600 font-bold text-lg">1</span>
+                  </div>
+                  <h3 className="font-medium text-gray-900 mb-2">Enter Archive URLs</h3>
+                  <p className="text-sm text-gray-600">
+                    Provide URLs of product archive pages, category pages, or shop listings
+                  </p>
+                </div>
+                <div className="text-center">
+                  <div className="bg-primary-100 rounded-full w-12 h-12 flex items-center justify-center mx-auto mb-3">
+                    <span className="text-primary-600 font-bold text-lg">2</span>
+                  </div>
+                  <h3 className="font-medium text-gray-900 mb-2">Automatic Scraping</h3>
+                  <p className="text-sm text-gray-600">
+                    The scraper detects pagination and extracts all products from each archive
+                  </p>
+                </div>
+                <div className="text-center">
+                  <div className="bg-primary-100 rounded-full w-12 h-12 flex items-center justify-center mx-auto mb-3">
+                    <span className="text-primary-600 font-bold text-lg">3</span>
+                  </div>
+                  <h3 className="font-medium text-gray-900 mb-2">Download CSVs</h3>
+                  <p className="text-sm text-gray-600">
+                    Get WooCommerce-compatible CSV files ready for import
+                  </p>
+                </div>
               </div>
-              <h3 className="font-medium text-gray-900 mb-2">Enter Archive URLs</h3>
-              <p className="text-sm text-gray-600">
-                Provide URLs of product archive pages, category pages, or shop listings
-              </p>
-            </div>
-            <div className="text-center">
-              <div className="bg-primary-100 rounded-full w-12 h-12 flex items-center justify-center mx-auto mb-3">
-                <span className="text-primary-600 font-bold text-lg">2</span>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="bg-gray-50 p-4 rounded-lg">
+                  <h3 className="font-medium text-gray-900 mb-2">WooCommerce</h3>
+                  <ul className="text-sm text-gray-600 space-y-1">
+                    <li>• Category pages</li>
+                    <li>• Shop pages</li>
+                    <li>• Product archives</li>
+                    <li>• Custom taxonomies</li>
+                  </ul>
+                </div>
+                <div className="bg-gray-50 p-4 rounded-lg">
+                  <h3 className="font-medium text-gray-900 mb-2">Other E-commerce</h3>
+                  <ul className="text-sm text-gray-600 space-y-1">
+                    <li>• Generic product listings</li>
+                    <li>• Archive pages</li>
+                    <li>• Category pages</li>
+                    <li>• Shop directories</li>
+                  </ul>
+                </div>
               </div>
-              <h3 className="font-medium text-gray-900 mb-2">Automatic Scraping</h3>
-              <p className="text-sm text-gray-600">
-                The scraper detects pagination and extracts all products from each archive
-              </p>
             </div>
-            <div className="text-center">
-              <div className="bg-primary-100 rounded-full w-12 h-12 flex items-center justify-center mx-auto mb-3">
-                <span className="text-primary-600 font-bold text-lg">3</span>
-              </div>
-              <h3 className="font-medium text-gray-900 mb-2">Download CSVs</h3>
-              <p className="text-sm text-gray-600">
-                Get WooCommerce-compatible CSV files ready for import
-              </p>
-            </div>
-          </div>
-        </div>
-
-        <div className="bg-white rounded-lg shadow-md p-6 mb-8">
-          <h2 className="text-xl font-semibold text-gray-900 mb-4">Supported Platforms</h2>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div className="bg-gray-50 p-4 rounded-lg">
-              <h3 className="font-medium text-gray-900 mb-2">WooCommerce</h3>
-              <ul className="text-sm text-gray-600 space-y-1">
-                <li>• Category pages</li>
-                <li>• Shop pages</li>
-                <li>• Product archives</li>
-                <li>• Custom taxonomies</li>
-              </ul>
-            </div>
-            <div className="bg-gray-50 p-4 rounded-lg">
-              <h3 className="font-medium text-gray-900 mb-2">Other E-commerce</h3>
-              <ul className="text-sm text-gray-600 space-y-1">
-                <li>• Generic product listings</li>
-                <li>• Archive pages</li>
-                <li>• Category pages</li>
-                <li>• Shop directories</li>
-              </ul>
-            </div>
-          </div>
+          )}
         </div>
 
         <ScrapingForm
