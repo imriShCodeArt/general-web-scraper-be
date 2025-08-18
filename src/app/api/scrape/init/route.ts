@@ -3,6 +3,7 @@ import { ScrapingService } from '@/lib/scraping-service';
 import { csvStorage } from '@/lib/csv-storage';
 import { z } from 'zod';
 import pino from 'pino';
+import { jobLogger } from '@/lib/job-logger';
 
 const logger = pino({ name: 'scrape-init-api' });
 
@@ -11,15 +12,17 @@ const ScrapeRequestSchema = z.object({
   archiveUrls: z.array(z.string().url()).min(1, 'At least one archive URL is required'),
   // 0 means unlimited, any non-negative integer is accepted, no upper cap
   maxProductsPerArchive: z.number().int().min(0).default(0),
+  requestId: z.string().uuid().optional()
 });
 
 export async function POST(request: NextRequest) {
-  const requestId = crypto.randomUUID();
-  logger.info({ requestId }, 'Starting archive scraping job');
+  const provisionalRequestId = crypto.randomUUID();
+  logger.info({ provisionalRequestId }, 'Starting archive scraping job');
 
   try {
     const body = await request.json();
-    const { archiveUrls, maxProductsPerArchive } = ScrapeRequestSchema.parse(body);
+    const { archiveUrls, maxProductsPerArchive, requestId: clientRequestId } = ScrapeRequestSchema.parse(body);
+    const requestId = clientRequestId || provisionalRequestId;
 
     logger.info({ requestId, archiveUrls, maxProductsPerArchive }, 'Validated request');
 
@@ -81,11 +84,12 @@ export async function POST(request: NextRequest) {
           parent: `/api/scrape/download/${requestId}/parent`,
           variation: `/api/scrape/download/${requestId}/variation`,
         }
-      }
+      },
+      logs: jobLogger.getBuffer(requestId)
     });
 
   } catch (error) {
-    logger.error({ requestId, error }, 'API error');
+    logger.error({ error }, 'API error');
     
     if (error instanceof z.ZodError) {
       return NextResponse.json(
@@ -93,7 +97,7 @@ export async function POST(request: NextRequest) {
           success: false, 
           error: 'Invalid request format', 
           details: error.errors,
-          requestId 
+          requestId: undefined
         },
         { status: 400 }
       );
@@ -103,7 +107,7 @@ export async function POST(request: NextRequest) {
       { 
         success: false, 
         error: 'Internal server error',
-        requestId 
+        requestId: undefined
       },
       { status: 500 }
     );

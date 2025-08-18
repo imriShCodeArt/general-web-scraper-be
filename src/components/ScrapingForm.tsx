@@ -79,6 +79,8 @@ export function ScrapingForm({ onScrapingStart, onScrapingComplete, isProcessing
     onScrapingStart();
 
     try {
+      // pre-generate request id so client can subscribe early
+      const rid = crypto.randomUUID();
       const response = await fetch('/api/scrape/init', {
         method: 'POST',
         headers: {
@@ -86,7 +88,8 @@ export function ScrapingForm({ onScrapingStart, onScrapingComplete, isProcessing
         },
         body: JSON.stringify({ 
           archiveUrls: validArchiveUrls,
-          maxProductsPerArchive: maxProductsPerArchive
+          maxProductsPerArchive: maxProductsPerArchive,
+          requestId: rid
         }),
       });
 
@@ -94,9 +97,10 @@ export function ScrapingForm({ onScrapingStart, onScrapingComplete, isProcessing
 
       if (result.success) {
         // attach live logs via SSE
-        if (result.requestId) {
+        const effectiveId = result.requestId || rid;
+        if (effectiveId) {
           setShowLogs(true);
-          const es = new EventSource(`/api/logs/${result.requestId}`);
+          const es = new EventSource(`/api/logs/${effectiveId}`);
           es.onmessage = (ev) => {
             try {
               const data = JSON.parse(ev.data);
