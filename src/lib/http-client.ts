@@ -1,22 +1,11 @@
 import axios, { AxiosResponse } from 'axios';
 
-// Playwright is optional and only available in development
-let playwright: any = null;
-try {
-  playwright = require('playwright');
-} catch (error) {
-  console.log('Playwright not available in production, using Cheerio only');
-}
-
 export class HTTPClient {
-  private static browser: any = null;
-
   /**
-   * Fetch HTML content from URL with fallback to Playwright
+   * Fetch HTML content from URL using axios
    */
   static async fetchHTML(url: string): Promise<string> {
     try {
-      // First try with axios (faster for static HTML)
       const response: AxiosResponse = await axios.get(url, {
         timeout: 30000,
         headers: {
@@ -32,63 +21,8 @@ export class HTTPClient {
 
       return response.data;
     } catch (error) {
-      console.log(`Axios failed for ${url}, trying Playwright...`);
-      
-      // Fallback to Playwright for JS-rendered pages
-      return this.fetchWithPlaywright(url);
-    }
-  }
-
-  /**
-   * Fetch HTML using Playwright (for JS-rendered pages)
-   */
-  private static async fetchWithPlaywright(url: string): Promise<string> {
-    // If Playwright is not available, throw an error
-    if (!playwright) {
-      throw new Error('Playwright not available in production environment');
-    }
-
-    try {
-      if (!this.browser) {
-        this.browser = await playwright.chromium.launch({
-          headless: true,
-          args: ['--no-sandbox', '--disable-setuid-sandbox']
-        });
-      }
-
-      const page = await this.browser.newPage();
-      
-      // Set viewport
-      await page.setViewportSize({ width: 1920, height: 1080 });
-
-      // Navigate to the page
-      await page.goto(url, { 
-        waitUntil: 'networkidle',
-        timeout: 30000 
-      });
-
-      // Wait a bit for any dynamic content
-      await page.waitForTimeout(2000);
-
-      // Get the HTML content
-      const html = await page.content();
-      
-      await page.close();
-      
-      return html;
-    } catch (error) {
-      console.error(`Playwright failed for ${url}:`, error);
+      console.error(`Failed to fetch ${url}:`, error);
       throw new Error(`Failed to fetch ${url}: ${error}`);
-    }
-  }
-
-  /**
-   * Clean up browser resources
-   */
-  static async cleanup(): Promise<void> {
-    if (this.browser) {
-      await this.browser.close();
-      this.browser = null;
     }
   }
 
@@ -105,14 +39,14 @@ export class HTTPClient {
   }
 
   /**
-   * Extract base URL from a URL
+   * Check if URL is accessible
    */
-  static getBaseURL(url: string): string {
+  static async isAccessible(url: string): Promise<boolean> {
     try {
-      const urlObj = new URL(url);
-      return `${urlObj.protocol}//${urlObj.host}`;
+      await axios.head(url, { timeout: 10000 });
+      return true;
     } catch {
-      return '';
+      return false;
     }
   }
 }

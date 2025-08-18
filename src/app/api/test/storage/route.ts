@@ -1,22 +1,28 @@
 import { NextResponse } from 'next/server';
 import { csvStorage } from '@/lib/csv-storage';
+import { Product } from '@/types';
+import { CSVGenerator } from '@/lib/csv-generator';
 
 export async function POST() {
   try {
-    // Test data
-    const testProducts = [
-             {
-         url: 'https://test.com/product1',
-         title: 'Test Product 1',
-         slug: 'test-product-1',
-         sku: 'TEST-001',
-         stock_status: 'instock' as const,
-         images: ['https://test.com/image1.jpg'],
-         description: 'This is a test product',
-         category: 'Test Category',
-         attributes: {},
-         variations: []
-       }
+    // Test products
+    const testProducts: Product[] = [
+      {
+        url: 'https://example.com/product1',
+        title: 'Test Product 1',
+        slug: 'test-product-1',
+        sku: 'TEST001',
+        stock_status: 'instock',
+        images: ['https://example.com/image1.jpg'],
+        description: 'This is a test product description',
+        shortDescription: 'Test product short description',
+        category: 'Test Category',
+        attributes: {},
+        variations: [],
+        postName: 'test-product-1',
+        regularPrice: '29.99',
+        salePrice: '',
+      }
     ];
 
     const testJobId = `test-${Date.now()}`;
@@ -24,7 +30,8 @@ export async function POST() {
     console.log(`[TestStorage] Testing storage with job ID: ${testJobId}`);
     
     // Test storing
-    await csvStorage.storeCSVData(testJobId, testProducts);
+    const testCSVs = await CSVGenerator.generateWooCommerceCSVs(testProducts);
+    await csvStorage.storeCSVData(testJobId, testProducts, testCSVs.parentProducts, testCSVs.variationProducts);
     console.log(`[TestStorage] Stored test data`);
     
     // Test retrieving

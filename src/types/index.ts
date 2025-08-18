@@ -6,6 +6,7 @@ export type Product = {
   stock_status: "instock" | "outofstock";
   images: string[];
   description: string;
+  shortDescription: string;
   category: string;
   attributes: {
     Color?: string[];
@@ -13,6 +14,15 @@ export type Product = {
     [key: string]: string[] | undefined;
   };
   variations: Variation[];
+  postName: string;
+  regularPrice: string;
+  salePrice: string;
+  meta?: {
+    product_type?: string;
+    is_variable?: boolean;
+    variation_count?: number;
+    [key: string]: any;
+  };
 };
 
 export type Variation = {
@@ -32,8 +42,8 @@ export type Variation = {
 export type ScrapingJob = {
   id: string;
   status: "pending" | "processing" | "completed" | "failed";
-  urls: string[];
-  max_products_per_url: number;
+  archive_urls: string[];
+  max_products_per_archive: number;
   total_products: number;
   processed_products: number;
   created_at: Date;
@@ -45,23 +55,25 @@ export type ScrapingJob = {
   };
 };
 
-export type TableRow = {
+export type ArchivePage = {
   url: string;
-  images?: string;
-  lastModified?: string;
+  page_number: number;
+  product_urls: string[];
+  has_next_page: boolean;
+  next_page_url?: string;
 };
 
 export type ScrapingResult = {
   success: boolean;
   data?: {
     total_products: number;
-    processed_urls: number;
+    processed_archives: number;
     download_links: {
       parent: string;
       variation: string;
     };
   } | Product[];
   error?: string;
-  total_urls: number;
-  processed_urls: number;
+  total_archives: number;
+  processed_archives: number;
 };

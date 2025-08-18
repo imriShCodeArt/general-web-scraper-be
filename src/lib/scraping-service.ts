@@ -1,9 +1,9 @@
 import { HTTPClient } from './http-client';
-import { TableScraper } from './scraper';
+import { ArchiveScraper } from './archive-scraper';
 import { ProductScraper } from './scraper';
 import { CSVGenerator } from './csv-generator';
 import { csvStorage } from './csv-storage';
-import { Product, ScrapingResult, TableRow } from '@/types';
+import { Product, ScrapingResult } from '@/types';
 import pino from 'pino';
 
 export class ScrapingService {
@@ -18,22 +18,22 @@ export class ScrapingService {
   }
 
   /**
-   * Main scraping pipeline
+   * Main scraping pipeline for archive pages
    */
-  async scrapeFromTableUrls(urls: string[], maxProductsPerUrl: number = 100, requestId?: string): Promise<ScrapingResult> {
-    this.logger.info({ urls, maxProductsPerUrl, requestId }, 'Starting scraping pipeline');
+  async scrapeFromArchiveUrls(archiveUrls: string[], maxProductsPerArchive: number = 100, requestId?: string): Promise<ScrapingResult> {
+    this.logger.info({ archiveUrls, maxProductsPerArchive, requestId }, 'Starting archive scraping pipeline');
 
     try {
-      // Step 1: Parse table pages to extract product URLs
-      const productUrls = await this.extractProductUrls(urls, maxProductsPerUrl);
-      this.logger.info({ count: productUrls.length, maxProductsPerUrl }, 'Extracted product URLs');
+      // Step 1: Parse archive pages to extract product URLs (with pagination)
+      const productUrls = await this.extractProductUrlsFromArchives(archiveUrls, maxProductsPerArchive);
+      this.logger.info({ count: productUrls.length, maxProductsPerArchive }, 'Extracted product URLs from archives');
 
       if (productUrls.length === 0) {
         return {
           success: false,
-          error: 'No product URLs found in the provided table pages',
-          total_urls: urls.length,
-          processed_urls: 0,
+          error: 'No product URLs found in the provided archive pages',
+          total_archives: archiveUrls.length,
+          processed_archives: 0,
         };
       }
 
@@ -45,91 +45,86 @@ export class ScrapingService {
       const csvs = await CSVGenerator.generateWooCommerceCSVs(products);
       this.logger.info('Generated CSV files');
       
-             // Store CSV data for download if we have a requestId
-       if (requestId) {
-         this.logger.info({ requestId, productCount: products.length }, 'About to store CSV data for download');
-         
-         // Check storage before storing
-         const beforeStorage = csvStorage.getJobInfo(requestId);
-         this.logger.info({ requestId, beforeStorage }, 'Storage state before storing');
-         
-         await csvStorage.storeCSVData(requestId, products);
-         this.logger.info({ requestId }, 'CSV data stored successfully');
-         
-         // Verify storage immediately
-         const storedJobInfo = csvStorage.getJobInfo(requestId);
-         this.logger.info({ requestId, storedJobInfo }, 'Verification: CSV storage lookup after storing');
-         
-         // Also check all jobs in storage
-         const allJobs = csvStorage.listAllJobs();
-         this.logger.info({ requestId, allJobsCount: allJobs.length, allJobIds: allJobs.map(j => j.jobId) }, 'All jobs in storage after storing');
-         
-         if (!storedJobInfo) {
-           this.logger.error({ requestId }, 'CSV data was not stored successfully!');
-         }
-       } else {
-         this.logger.warn('No requestId provided, CSV data will not be stored for download');
-       }
+      // Store CSV data for download if we have a requestId
+      if (requestId) {
+        this.logger.info({ requestId, productCount: products.length }, 'About to store CSV data for download');
+        
+        // Check storage before storing
+        const beforeStorage = csvStorage.getJobInfo(requestId);
+        this.logger.info({ requestId, beforeStorage }, 'Storage state before storing');
+        
+        await csvStorage.storeCSVData(requestId, products, csvs.parentProducts, csvs.variationProducts);
+        this.logger.info({ requestId }, 'CSV data stored successfully');
+        
+        // Verify storage immediately
+        const storedJobInfo = csvStorage.getJobInfo(requestId);
+        this.logger.info({ requestId, storedJobInfo }, 'Verification: CSV storage lookup after storing');
+        
+        // Also check all jobs in storage
+        const allJobs = csvStorage.listAllJobs();
+        this.logger.info({ requestId, allJobsCount: allJobs.length, allJobIds: allJobs.map(j => j.jobId) }, 'All jobs in storage after storing');
+        
+        if (!storedJobInfo) {
+          this.logger.error({ requestId }, 'CSV data was not stored successfully!');
+        }
+      } else {
+        this.logger.warn('No requestId provided, CSV data will not be stored for download');
+      }
 
       return {
         success: true,
         data: requestId ? {
           total_products: products.length,
-          processed_urls: productUrls.length,
+          processed_archives: archiveUrls.length,
           download_links: {
             parent: `/api/scrape/download/${requestId}/parent`,
             variation: `/api/scrape/download/${requestId}/variation`
           }
         } : products,
-        total_urls: urls.length,
-        processed_urls: productUrls.length,
+        total_archives: archiveUrls.length,
+        processed_archives: archiveUrls.length,
       };
     } catch (error) {
-      this.logger.error({ error }, 'Scraping pipeline failed');
+      this.logger.error({ error }, 'Archive scraping pipeline failed');
       return {
         success: false,
         error: error instanceof Error ? error.message : 'Unknown error occurred',
-        total_urls: urls.length,
-        processed_urls: 0,
+        total_archives: archiveUrls.length,
+        processed_archives: 0,
       };
     } finally {
       // Clean up resources
-      await HTTPClient.cleanup();
+      // HTTPClient.cleanup() removed - no longer needed
     }
   }
 
   /**
-   * Extract product URLs from table pages
+   * Extract product URLs from archive pages (with pagination support)
    */
-  private async extractProductUrls(tableUrls: string[], maxProductsPerUrl: number): Promise<string[]> {
+  private async extractProductUrlsFromArchives(archiveUrls: string[], maxProductsPerArchive: number): Promise<string[]> {
     const allProductUrls: string[] = [];
 
-    for (const tableUrl of tableUrls) {
+    for (const archiveUrl of archiveUrls) {
       try {
-        this.logger.info({ tableUrl }, 'Processing table page');
+        this.logger.info({ archiveUrl }, 'Processing archive page');
         
-        const html = await HTTPClient.fetchHTML(tableUrl);
-        const baseUrl = HTTPClient.getBaseURL(tableUrl);
+        console.log('Processing archive:', archiveUrl);
+        console.log('Max products per archive:', maxProductsPerArchive);
         
-        console.log('Fetched HTML length:', html.length);
-        console.log('Base URL:', baseUrl);
-        console.log('HTML preview:', html.substring(0, 500));
+        // Use the new ArchiveScraper to handle pagination
+        const productUrls = await ArchiveScraper.scrapeAllArchivePages(archiveUrl, maxProductsPerArchive);
         
-        const productUrls = TableScraper.parseTablePage(html, baseUrl);
-        
-        // Limit the number of URLs per table
-        const limitedUrls = productUrls.slice(0, maxProductsPerUrl);
-        allProductUrls.push(...limitedUrls);
+        // Add the found product URLs
+        allProductUrls.push(...productUrls);
         
         this.logger.info({ 
-          tableUrl, 
-          totalFound: productUrls.length, 
-          limitedTo: limitedUrls.length,
-          maxLimit: maxProductsPerUrl 
-        }, 'Extracted URLs from table');
+          archiveUrl, 
+          totalFound: productUrls.length,
+          maxLimit: maxProductsPerArchive 
+        }, 'Extracted URLs from archive');
       } catch (error) {
-        this.logger.error({ tableUrl, error }, 'Failed to process table page');
-        // Continue with other URLs
+        this.logger.error({ archiveUrl, error }, 'Failed to process archive page');
+        // Continue with other archives
       }
     }
 
@@ -184,7 +179,7 @@ export class ScrapingService {
       return null;
     }
 
-    // Set defaults for missing fields
+    // Set defaults for missing fields, but prioritize extracted data
     const product: Product = {
       url: productData.url,
       title: productData.title,
@@ -193,9 +188,14 @@ export class ScrapingService {
       stock_status: productData.stock_status || 'instock',
       images: productData.images || [],
       description: productData.description || '',
+      shortDescription: productData.shortDescription || '',
       category: productData.category || 'Uncategorized',
       attributes: productData.attributes || {},
       variations: productData.variations || [],
+      // Use the extracted postName from ProductScraper, don't override it
+      postName: productData.postName || this.generateSlug(productData.title),
+      regularPrice: productData.regularPrice || '',
+      salePrice: productData.salePrice || '',
     };
 
     // Only create variations if the product actually has variation data

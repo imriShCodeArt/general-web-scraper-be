@@ -86,11 +86,20 @@ describe('ProductScraper', () => {
             <meta name="description" content="Test product description" />
           </head>
           <body>
-            <h1>Test Product Title</h1>
-            <div class="product-description">Detailed product description</div>
-            <div class="sku">SKU123</div>
-            <img src="product1.jpg" alt="Product Image" />
-            <img src="product2.jpg" alt="Product Image 2" />
+            <h1 class="product_title entry-title">Test Product Title</h1>
+            <div class="elementor-widget-woocommerce-product-content">
+              <p>Detailed product description</p>
+              <p>More product details</p>
+            </div>
+            <input name="gtmkit_product_data" value="{&quot;id&quot;:&quot;12345&quot;,&quot;item_name&quot;:&quot;Test Product&quot;,&quot;currency&quot;:&quot;ILS&quot;,&quot;price&quot;:99,&quot;item_category&quot;:&quot;Test Category&quot;}" />
+            <div class="jet-woo-product-gallery">
+              <div class="jet-woo-product-gallery__image">
+                <img src="product1.jpg" alt="Product Image" class="wp-post-gallery" />
+              </div>
+              <div class="jet-woo-product-gallery__image">
+                <img src="product2.jpg" alt="Product Image 2" class="wp-post-gallery" />
+              </div>
+            </div>
           </body>
         </html>
       `;
@@ -99,8 +108,10 @@ describe('ProductScraper', () => {
       const product = await ProductScraper.scrapeProductPage(url, html);
       
       expect(product.title).toBe('Test Product Title');
-      expect(product.sku).toBe('SKU123');
-      expect(product.description).toBe('Detailed product description');
+      expect(product.sku).toBe('12345');
+      expect(product.description).toBe('Detailed product description\n\nMore product details');
+      expect(product.regularPrice).toBe('99');
+      expect(product.category).toBe('Test Category');
       expect(product.images).toContain('product1.jpg');
       expect(product.images).toContain('product2.jpg');
     });
@@ -110,7 +121,10 @@ describe('ProductScraper', () => {
         <html>
           <head><title>New Product</title></head>
           <body>
-            <h1>New Product</h1>
+            <h1 class="product_title">New Product</h1>
+            <div class="elementor-widget-woocommerce-product-content">
+              <p>New product description</p>
+            </div>
           </body>
         </html>
       `;
@@ -118,8 +132,8 @@ describe('ProductScraper', () => {
       const url = 'https://example.com/new-product';
       const product = await ProductScraper.scrapeProductPage(url, html);
       
-      expect(product.sku).toMatch(/^NEW-\d{6}$/);
-      expect(product.slug).toBe('new-product');
+      expect(product.sku).toMatch(/^post_\d+_[a-z0-9]+$/);
+      expect(product.postName).toBe('new-product');
     });
 
     it('should extract category from breadcrumbs', async () => {

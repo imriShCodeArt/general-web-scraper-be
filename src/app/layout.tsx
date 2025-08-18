@@ -5,8 +5,8 @@ import './globals.css';
 const inter = Inter({ subsets: ['latin'] });
 
 export const metadata: Metadata = {
-  title: 'Product Table Scraper - WooCommerce CSV Generator',
-  description: 'Extract product data from HTML tables and generate WooCommerce-compatible CSV files for easy import.',
+  title: 'Product Archive Scraper - WooCommerce CSV Generator',
+  description: 'Extract product data from e-commerce archive pages with pagination support and generate WooCommerce-compatible CSV files for easy import.',
 };
 
 export default function RootLayout({

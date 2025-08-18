@@ -1,5 +1,4 @@
 import { Product } from '@/types';
-import { CSVGenerator } from './csv-generator';
 import { writeFileSync, readFileSync, existsSync, unlinkSync } from 'fs';
 import { join } from 'path';
 import { tmpdir } from 'os';
@@ -41,20 +40,19 @@ class CSVStorage {
   /**
    * Store CSV data for a scraping job
    */
-  async storeCSVData(jobId: string, products: Product[]): Promise<void> {
+  async storeCSVData(jobId: string, products: Product[], parentCSV: Buffer, variationCSV: Buffer): Promise<void> {
     console.log(`[CSVStorage] Storing data for job ${jobId} with ${products.length} products`);
     console.log(`[CSVStorage] Current storage size before: ${this.storage.size}`);
     console.log(`[CSVStorage] All job IDs in storage before:`, Array.from(this.storage.keys()));
     
     try {
-      const csvs = await CSVGenerator.generateWooCommerceCSVs(products);
-      console.log(`[CSVStorage] Generated CSV buffers - parent: ${csvs.parentProducts.length} bytes, variation: ${csvs.variationProducts.length} bytes`);
+      console.log(`[CSVStorage] Received CSV buffers - parent: ${parentCSV.length} bytes, variation: ${variationCSV.length} bytes`);
       
       // Store in memory
       this.storage.set(jobId, {
         jobId,
-        parentProducts: csvs.parentProducts,
-        variationProducts: csvs.variationProducts,
+        parentProducts: parentCSV,
+        variationProducts: variationCSV,
         timestamp: new Date(),
         productCount: products.length
       });
@@ -64,8 +62,8 @@ class CSVStorage {
         const filePath = join(this.storageDir, `${jobId}.json`);
         const fileData = {
           jobId,
-          parentProducts: csvs.parentProducts.toString('base64'),
-          variationProducts: csvs.variationProducts.toString('base64'),
+          parentProducts: parentCSV.toString('base64'),
+          variationProducts: variationCSV.toString('base64'),
           timestamp: new Date().toISOString(),
           productCount: products.length
         };
