@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { ScrapingJob } from '@/types';
 
 interface ScrapingFormProps {
@@ -13,6 +13,21 @@ export function ScrapingForm({ onScrapingStart, onScrapingComplete, isProcessing
   const [archiveUrls, setArchiveUrls] = useState<string[]>(['']);
   const [maxProductsPerArchive, setMaxProductsPerArchive] = useState<number>(0);
   const [errors, setErrors] = useState<string[]>([]);
+  const [showLogs, setShowLogs] = useState<boolean>(false);
+  const [logs, setLogs] = useState<Array<{ ts: number; level?: string; msg: string }>>([]);
+  const [progress, setProgress] = useState<number>(0);
+  const esRef = useRef<EventSource | null>(null);
+  const logContainerRef = useRef<HTMLDivElement | null>(null);
+  const [autoScroll, setAutoScroll] = useState<boolean>(true);
+
+  // Auto-scroll logs when new entries arrive
+  useEffect(() => {
+    if (!showLogs || !autoScroll) return;
+    const el = logContainerRef.current;
+    if (el) {
+      el.scrollTop = el.scrollHeight;
+    }
+  }, [logs, showLogs, autoScroll]);
 
   const addArchiveUrlField = () => {
     setArchiveUrls([...archiveUrls, '']);
@@ -76,6 +91,33 @@ export function ScrapingForm({ onScrapingStart, onScrapingComplete, isProcessing
     onScrapingStart();
 
     try {
+      // pre-generate request id and subscribe BEFORE starting the scrape
+      const rid = crypto.randomUUID();
+      // reset UI state
+      setLogs([]);
+      setProgress(0);
+      setShowLogs(true);
+      // open SSE early
+      if (esRef.current) {
+        try { esRef.current.close(); } catch {}
+        esRef.current = null;
+      }
+      const es = new EventSource(`/api/logs/${rid}`);
+      esRef.current = es;
+      es.onmessage = (ev) => {
+        try {
+          const data = JSON.parse(ev.data);
+          if (data.type === 'log') {
+            setLogs((prev) => [...prev, { ts: data.timestamp, level: data.level, msg: data.message }]);
+          } else if (data.type === 'progress') {
+            if (typeof data.percent === 'number') setProgress(data.percent);
+            if (data.message) setLogs((prev) => [...prev, { ts: data.timestamp, msg: data.message }]);
+          }
+        } catch {}
+      };
+      es.onerror = () => {
+        try { es.close(); } catch {}
+      };
       const response = await fetch('/api/scrape/init', {
         method: 'POST',
         headers: {
@@ -83,13 +125,28 @@ export function ScrapingForm({ onScrapingStart, onScrapingComplete, isProcessing
         },
         body: JSON.stringify({ 
           archiveUrls: validArchiveUrls,
-          maxProductsPerArchive: maxProductsPerArchive
+          maxProductsPerArchive: maxProductsPerArchive,
+          requestId: rid
         }),
       });
 
       const result = await response.json();
 
       if (result.success) {
+        // backfill any logs returned in response (in case scrape finished quickly)
+        if (Array.isArray(result.logs)) {
+          setLogs((prev) => {
+            const merged = [...prev];
+            for (const e of result.logs) {
+              if (e?.type === 'log') merged.push({ ts: e.timestamp, level: e.level, msg: e.message });
+              if (e?.type === 'progress') {
+                if (typeof e.percent === 'number') setProgress(e.percent);
+                if (e.message) merged.push({ ts: e.timestamp, msg: e.message });
+              }
+            }
+            return merged;
+          });
+        }
         // Create a ScrapingJob object from the response
         const job: ScrapingJob = {
           id: result.requestId,
@@ -204,6 +261,62 @@ export function ScrapingForm({ onScrapingStart, onScrapingComplete, isProcessing
       >
         {isProcessing ? 'Scraping Archives...' : 'Start Scraping Archives'}
       </button>
+
+      {/* Always-visible Progress Bar */}
+      <div className="mt-4 bg-white border rounded-md p-3">
+        <div className="flex items-center justify-between mb-2">
+          <span className="text-sm font-medium text-gray-700">Progress</span>
+          <span className="text-xs text-gray-500">{progress}%</span>
+        </div>
+        <div className="w-full h-3 bg-gray-200 rounded overflow-hidden">
+          <div
+            className="h-3 bg-green-500 transition-all duration-300"
+            style={{ width: `${Math.max(0, Math.min(100, progress))}%` }}
+          />
+        </div>
+      </div>
+
+      {/* Logs Panel (collapsible body only) */}
+      <div className="mt-4 border rounded-md bg-white">
+        <div
+          className="flex items-center justify-between px-3 py-2 cursor-pointer select-none"
+          onClick={() => setShowLogs(!showLogs)}
+        >
+          <div className="flex items-center gap-2">
+            <svg className={`w-4 h-4 text-gray-600 transform transition-transform ${showLogs ? 'rotate-90' : ''}`} viewBox="0 0 20 20" fill="currentColor"><path fillRule="evenodd" d="M6 6L14 10L6 14V6Z" clipRule="evenodd"/></svg>
+            <span className="text-sm font-medium text-gray-800">Logs</span>
+            <span className="text-xs text-gray-500">({logs.length})</span>
+          </div>
+          <div className="flex items-center gap-2">
+            <label className="flex items-center gap-1 text-xs text-gray-500">
+              <input type="checkbox" className="rounded" checked={autoScroll} onChange={(e) => setAutoScroll(e.target.checked)} />
+              Auto-scroll
+            </label>
+            <button
+              type="button"
+              onClick={(e) => { e.stopPropagation(); setLogs([]); }}
+              className="text-xs text-gray-600 hover:text-gray-800"
+            >
+              Clear
+            </button>
+          </div>
+        </div>
+        {showLogs && (
+          <div className="px-3 pb-3">
+            <div ref={logContainerRef} className="mt-2 max-h-56 overflow-auto text-xs font-mono space-y-1 bg-gray-50 border rounded p-2">
+              {logs.map((l, i) => (
+                <div key={i} className="whitespace-pre-wrap">
+                  <span className="text-gray-400">[{new Date(l.ts).toLocaleTimeString()}]</span>
+                  {l.level ? ` (${l.level})` : ''} {l.msg}
+                </div>
+              ))}
+              {logs.length === 0 && (
+                <div className="text-gray-400">No logs yet…</div>
+              )}
+            </div>
+          </div>
+        )}
+      </div>
       
       {!hasValidArchiveUrls() && (
         <p className="text-sm text-gray-500 text-center">
