@@ -23,13 +23,19 @@ export class ScrapingService {
    */
   async scrapeFromArchiveUrls(archiveUrls: string[], maxProductsPerArchive: number = 100, requestId?: string): Promise<ScrapingResult> {
     this.logger.info({ archiveUrls, maxProductsPerArchive, requestId }, 'Starting archive scraping pipeline');
-    if (requestId) jobLogger.log(requestId, 'info', 'Starting archive scraping');
+    if (requestId) {
+      jobLogger.log(requestId, 'info', 'Starting archive scraping');
+      jobLogger.progress(requestId, 1, 'Initializing');
+    }
 
     try {
       // Step 1: Parse archive pages to extract product URLs (with pagination)
       const productUrls = await this.extractProductUrlsFromArchives(archiveUrls, maxProductsPerArchive);
       this.logger.info({ count: productUrls.length, maxProductsPerArchive }, 'Extracted product URLs from archives');
-      if (requestId) jobLogger.log(requestId, 'info', `Found ${productUrls.length} product URLs`);
+      if (requestId) {
+        jobLogger.log(requestId, 'info', `Found ${productUrls.length} product URLs`);
+        jobLogger.progress(requestId, 10, 'Fetched archive URLs');
+      }
 
       if (productUrls.length === 0) {
         return {
