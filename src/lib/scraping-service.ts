@@ -4,6 +4,7 @@ import { ProductScraper } from './scraper';
 import { CSVGenerator } from './csv-generator';
 import { csvStorage } from './csv-storage';
 import { Product, ScrapingResult } from '@/types';
+import { jobLogger } from '@/lib/job-logger';
 import pino from 'pino';
 
 export class ScrapingService {
@@ -22,11 +23,13 @@ export class ScrapingService {
    */
   async scrapeFromArchiveUrls(archiveUrls: string[], maxProductsPerArchive: number = 100, requestId?: string): Promise<ScrapingResult> {
     this.logger.info({ archiveUrls, maxProductsPerArchive, requestId }, 'Starting archive scraping pipeline');
+    if (requestId) jobLogger.log(requestId, 'info', 'Starting archive scraping');
 
     try {
       // Step 1: Parse archive pages to extract product URLs (with pagination)
       const productUrls = await this.extractProductUrlsFromArchives(archiveUrls, maxProductsPerArchive);
       this.logger.info({ count: productUrls.length, maxProductsPerArchive }, 'Extracted product URLs from archives');
+      if (requestId) jobLogger.log(requestId, 'info', `Found ${productUrls.length} product URLs`);
 
       if (productUrls.length === 0) {
         return {
@@ -38,12 +41,16 @@ export class ScrapingService {
       }
 
       // Step 2: Scrape each product page
-      const products = await this.scrapeProductPages(productUrls);
+      if (requestId && productUrls.length > 0) jobLogger.progress(requestId, 5, 'Starting product pages scrape');
+      const products = await this.scrapeProductPages(productUrls, requestId);
       this.logger.info({ count: products.length }, 'Scraped product pages');
+      if (requestId) jobLogger.log(requestId, 'info', `Scraped ${products.length} products`);
 
       // Step 3: Generate CSV files and store them if requestId is provided
+      if (requestId) jobLogger.progress(requestId, 90, 'Generating CSV files');
       const csvs = await CSVGenerator.generateWooCommerceCSVs(products);
       this.logger.info('Generated CSV files');
+      if (requestId) jobLogger.log(requestId, 'info', 'CSV files generated');
       
       // Store CSV data for download if we have a requestId
       if (requestId) {
@@ -55,6 +62,7 @@ export class ScrapingService {
         
         await csvStorage.storeCSVData(requestId, products, csvs.parentProducts, csvs.variationProducts);
         this.logger.info({ requestId }, 'CSV data stored successfully');
+        jobLogger.progress(requestId, 100, 'Done');
         
         // Verify storage immediately
         const storedJobInfo = csvStorage.getJobInfo(requestId);
@@ -86,6 +94,7 @@ export class ScrapingService {
       };
     } catch (error) {
       this.logger.error({ error }, 'Archive scraping pipeline failed');
+      if (requestId) jobLogger.log(requestId, 'error', 'Scraping failed', { error: error instanceof Error ? error.message : String(error) });
       return {
         success: false,
         error: error instanceof Error ? error.message : 'Unknown error occurred',
@@ -135,13 +144,14 @@ export class ScrapingService {
   /**
    * Scrape individual product pages
    */
-  private async scrapeProductPages(productUrls: string[]): Promise<Product[]> {
+  private async scrapeProductPages(productUrls: string[], requestId?: string): Promise<Product[]> {
     const products: Product[] = [];
     const batchSize = 5; // Process in batches to avoid overwhelming servers
 
     for (let i = 0; i < productUrls.length; i += batchSize) {
       const batch = productUrls.slice(i, i + batchSize);
       this.logger.info({ batch: i / batchSize + 1, total: Math.ceil(productUrls.length / batchSize) }, 'Processing batch');
+      if (requestId) jobLogger.progress(requestId, Math.min(85, Math.round(((i + batch.length) / productUrls.length) * 80) + 5), `Processing batch ${i / batchSize + 1}`);
 
       const batchPromises = batch.map(async (url) => {
         try {
@@ -153,9 +163,11 @@ export class ScrapingService {
           if (completeProduct) {
             products.push(completeProduct);
             this.logger.info({ url, title: completeProduct.title }, 'Successfully scraped product');
+            if (requestId) jobLogger.log(requestId, 'info', `Scraped product: ${completeProduct.title}`);
           }
         } catch (error) {
           this.logger.error({ url, error }, 'Failed to scrape product page');
+          if (requestId) jobLogger.log(requestId, 'error', 'Failed to scrape product page', { url, error: error instanceof Error ? error.message : String(error) });
         }
       });
 

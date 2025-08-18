@@ -13,6 +13,9 @@ export function ScrapingForm({ onScrapingStart, onScrapingComplete, isProcessing
   const [archiveUrls, setArchiveUrls] = useState<string[]>(['']);
   const [maxProductsPerArchive, setMaxProductsPerArchive] = useState<number>(0);
   const [errors, setErrors] = useState<string[]>([]);
+  const [showLogs, setShowLogs] = useState<boolean>(false);
+  const [logs, setLogs] = useState<Array<{ ts: number; level?: string; msg: string }>>([]);
+  const [progress, setProgress] = useState<number>(0);
 
   const addArchiveUrlField = () => {
     setArchiveUrls([...archiveUrls, '']);
@@ -90,6 +93,25 @@ export function ScrapingForm({ onScrapingStart, onScrapingComplete, isProcessing
       const result = await response.json();
 
       if (result.success) {
+        // attach live logs via SSE
+        if (result.requestId) {
+          setShowLogs(true);
+          const es = new EventSource(`/api/logs/${result.requestId}`);
+          es.onmessage = (ev) => {
+            try {
+              const data = JSON.parse(ev.data);
+              if (data.type === 'log') {
+                setLogs((prev) => [...prev, { ts: data.timestamp, level: data.level, msg: data.message }]);
+              } else if (data.type === 'progress') {
+                if (typeof data.percent === 'number') setProgress(data.percent);
+                if (data.message) setLogs((prev) => [...prev, { ts: data.timestamp, msg: data.message }]);
+              }
+            } catch {}
+          };
+          es.onerror = () => {
+            es.close();
+          };
+        }
         // Create a ScrapingJob object from the response
         const job: ScrapingJob = {
           id: result.requestId,
@@ -204,6 +226,40 @@ export function ScrapingForm({ onScrapingStart, onScrapingComplete, isProcessing
       >
         {isProcessing ? 'Scraping Archives...' : 'Start Scraping Archives'}
       </button>
+
+      {/* Progress + Logs Panel */}
+      <div className="mt-4">
+        <button
+          type="button"
+          onClick={() => setShowLogs(!showLogs)}
+          className="text-sm text-gray-600 hover:text-gray-800"
+        >
+          {showLogs ? 'Hide' : 'Show'} progress & logs
+        </button>
+
+        {showLogs && (
+          <div className="mt-2 border rounded-md p-3 bg-gray-50">
+            <div className="w-full h-2 bg-gray-200 rounded">
+              <div
+                className="h-2 bg-green-500 rounded"
+                style={{ width: `${progress}%` }}
+              />
+            </div>
+            <p className="text-xs text-gray-500 mt-1">Progress: {progress}%</p>
+            <div className="mt-3 max-h-48 overflow-auto text-xs font-mono space-y-1">
+              {logs.map((l, i) => (
+                <div key={i} className="whitespace-pre-wrap">
+                  <span className="text-gray-400">[{new Date(l.ts).toLocaleTimeString()}]</span>
+                  {l.level ? ` (${l.level})` : ''} {l.msg}
+                </div>
+              ))}
+              {logs.length === 0 && (
+                <div className="text-gray-400">No logs yet…</div>
+              )}
+            </div>
+          </div>
+        )}
+      </div>
       
       {!hasValidArchiveUrls() && (
         <p className="text-sm text-gray-500 text-center">
