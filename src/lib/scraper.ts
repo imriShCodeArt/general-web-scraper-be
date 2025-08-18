@@ -878,9 +878,7 @@ export class ProductScraper {
                 Object.keys(variation.attributes).forEach(attrKey => {
                   const attrValue = variation.attributes[attrKey];
                   if (attrValue) {
-                    // Convert attribute key to readable format (e.g., "attribute_pa_color" -> "Color")
-                    const cleanKey = attrKey.replace(/^attribute_/, '').replace(/^pa_/, '');
-                    const readableKey = cleanKey.charAt(0).toUpperCase() + cleanKey.slice(1);
+                    const readableKey = this.normalizeAttributeName(attrKey);
                     variationObj.meta[`attribute_${readableKey}`] = attrValue;
                   }
                 });
@@ -916,8 +914,7 @@ export class ProductScraper {
         variationSelects.each((_, select) => {
           const $select = $(select);
           const attrName = $select.attr('name') || '';
-          const cleanAttrName = attrName.replace(/^attribute_/, '').replace(/^pa_/, '');
-          const readableAttrName = cleanAttrName.charAt(0).toUpperCase() + cleanAttrName.slice(1);
+          const readableAttrName = this.normalizeAttributeName(attrName);
           
           const options: string[] = [];
           $select.find('option').each((_, option) => {
@@ -952,7 +949,7 @@ export class ProductScraper {
               
               // Add attributes to meta
               Object.keys(current).forEach(attrKey => {
-                variationObj.meta[`attribute_${attrKey}`] = current[attrKey];
+                variationObj.meta[`attribute_${this.normalizeAttributeName(attrKey)}`] = current[attrKey];
               });
               
               variations.push(variationObj);
@@ -1001,8 +998,7 @@ export class ProductScraper {
           const attrValue = $attr.attr('data-value') || $attr.find('.attr-value').text().trim();
           
           if (attrName && attrValue) {
-            const cleanAttrName = attrName.replace(/^attribute_/, '').replace(/^pa_/, '');
-            const readableAttrName = cleanAttrName.charAt(0).toUpperCase() + cleanAttrName.slice(1);
+            const readableAttrName = this.normalizeAttributeName(attrName);
             meta[`attribute_${readableAttrName}`] = attrValue;
           }
         });
@@ -1398,6 +1394,33 @@ export class ProductScraper {
     }
     
     return cleanPrice;
+  }
+
+  /**
+   * Normalize attribute names coming from WooCommerce sources.
+   * - Strips common prefixes (attribute_, pa_)
+   * - Decodes URL-encoded names (e.g., %D7%92%D7%95%D7%93%D7%9C -> גודל)
+   * - For non-Hebrew names, capitalizes first letter
+   */
+  private static normalizeAttributeName(rawKey: string): string {
+    if (!rawKey) return '';
+    // Remove prefixes
+    let key = rawKey.replace(/^attribute_/, '').replace(/^pa_/, '');
+    // Decode URL-encoded if present
+    if (/%[0-9A-Fa-f]{2}/.test(key)) {
+      try {
+        key = decodeURIComponent(key);
+      } catch {
+        // keep as-is if decode fails
+      }
+    }
+    // If Hebrew, keep as-is
+    if (/[\u0590-\u05FF]/.test(key)) {
+      return key;
+    }
+    // Basic normalization for latin keys
+    if (key.length === 0) return key;
+    return key.charAt(0).toUpperCase() + key.slice(1);
   }
   
   /**
