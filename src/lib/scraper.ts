@@ -678,7 +678,7 @@ export class ProductScraper {
     console.log('Product appears to be simple (no variation elements found)');
     return false;
   }
-
+  
   /**
    * Extract product attributes
    */
@@ -757,40 +757,40 @@ export class ProductScraper {
     if (Object.keys(attributes).length === 0) {
       console.log('Trying fallback attribute extraction...');
       
-      const attributeSelectors = [
-        '.product-attributes',
-        '.attributes',
-        '.product-variations',
-        '.variations',
-        '[data-attributes]',
+    const attributeSelectors = [
+      '.product-attributes',
+      '.attributes',
+      '.product-variations',
+      '.variations',
+      '[data-attributes]',
         '.product-options',
         '.woocommerce-product-attributes'
-      ];
-      
-      for (const selector of attributeSelectors) {
-        const container = $(selector);
-        if (container.length > 0) {
+    ];
+    
+    for (const selector of attributeSelectors) {
+      const container = $(selector);
+      if (container.length > 0) {
           console.log(`Found attribute container: ${selector}`);
           
-          // Look for color attributes
+        // Look for color attributes
           const colorElements = container.find('[data-attribute="color"], [data-attribute="Color"], .color-option, .color-attribute, .pa_color');
-          if (colorElements.length > 0) {
-            const colors = colorElements.map((_, el) => $(el).text().trim()).get();
-            if (colors.length > 0) {
-              attributes.Color = colors;
-              console.log(`Found color attributes: ${colors.join(', ')}`);
-            }
+        if (colorElements.length > 0) {
+          const colors = colorElements.map((_, el) => $(el).text().trim()).get();
+          if (colors.length > 0) {
+            attributes.Color = colors;
+            console.log(`Found color attributes: ${colors.join(', ')}`);
           }
-          
-          // Look for size attributes
+        }
+        
+        // Look for size attributes
           const sizeElements = container.find('[data-attribute="size"], [data-attribute="Size"], .size-option, .size-attribute, .pa_size');
-          if (sizeElements.length > 0) {
-            const sizes = sizeElements.map((_, el) => $(el).text().trim()).get();
-            if (sizes.length > 0) {
-              attributes.Size = sizes;
-              console.log(`Found size attributes: ${sizes.join(', ')}`);
-            }
+        if (sizeElements.length > 0) {
+          const sizes = sizeElements.map((_, el) => $(el).text().trim()).get();
+          if (sizes.length > 0) {
+            attributes.Size = sizes;
+            console.log(`Found size attributes: ${sizes.join(', ')}`);
           }
+        }
           
           // Look for material attributes
           const materialElements = container.find('[data-attribute="material"], [data-attribute="Material"], .material-option, .material-attribute, .pa_material');
@@ -826,9 +826,9 @@ export class ProductScraper {
               console.log(`Found generic attribute ${attrName}: ${attrValue}`);
             }
           });
-          
-          if (Object.keys(attributes).length > 0) {
-            break;
+        
+        if (Object.keys(attributes).length > 0) {
+          break;
           }
         }
       }
@@ -1025,49 +1025,49 @@ export class ProductScraper {
       console.log('Trying fallback variation detection...');
       
       const fallbackSelectors = [
-        '.product-variations .variation',
-        '.variations .variation',
-        '.product-options .option',
-        '.variation-item',
+      '.product-variations .variation',
+      '.variations .variation',
+      '.product-options .option',
+      '.variation-item',
         '[data-variation]',
         '.woocommerce-variation'
-      ];
-      
+    ];
+    
       for (const selector of fallbackSelectors) {
-        const elements = $(selector);
-        if (elements.length > 0) {
+      const elements = $(selector);
+      if (elements.length > 0) {
           console.log(`Found ${elements.length} variations using fallback selector: ${selector}`);
           
-          elements.each((_, variation) => {
-            const $variation = $(variation);
-            
-            // Extract variation data
-            const sku = $variation.attr('data-sku') || $variation.find('[data-sku]').attr('data-sku') || '';
-            const price = $variation.attr('data-price') || $variation.find('.price').text().trim() || '';
-            const color = $variation.attr('data-color') || $variation.find('.color').text().trim() || '';
-            const size = $variation.attr('data-size') || $variation.find('.size').text().trim() || '';
-            
-            if (sku || price || color || size) {
-              const variationData: Variation = {
-                parent_sku: '', // Will be set later
-                sku: sku || `var-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
-                stock_status: 'instock',
-                regular_price: price || '0',
-                tax_class: '',
-                images: [],
-                meta: {}
-              };
-              
-              if (color) variationData.meta.attribute_Color = color;
-              if (size) variationData.meta.attribute_Size = size;
-              
-              variations.push(variationData);
-              console.log(`Found fallback variation: ${JSON.stringify(variationData)}`);
-            }
-          });
+        elements.each((_, variation) => {
+          const $variation = $(variation);
           
-          if (variations.length > 0) {
-            break;
+          // Extract variation data
+          const sku = $variation.attr('data-sku') || $variation.find('[data-sku]').attr('data-sku') || '';
+          const price = $variation.attr('data-price') || $variation.find('.price').text().trim() || '';
+          const color = $variation.attr('data-color') || $variation.find('.color').text().trim() || '';
+          const size = $variation.attr('data-size') || $variation.find('.size').text().trim() || '';
+          
+          if (sku || price || color || size) {
+            const variationData: Variation = {
+              parent_sku: '', // Will be set later
+              sku: sku || `var-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+              stock_status: 'instock',
+              regular_price: price || '0',
+              tax_class: '',
+              images: [],
+              meta: {}
+            };
+            
+            if (color) variationData.meta.attribute_Color = color;
+            if (size) variationData.meta.attribute_Size = size;
+            
+            variations.push(variationData);
+              console.log(`Found fallback variation: ${JSON.stringify(variationData)}`);
+          }
+        });
+        
+        if (variations.length > 0) {
+          break;
           }
         }
       }
@@ -1156,11 +1156,11 @@ export class ProductScraper {
         } else {
           // Extract from text content
           sku = element.text().trim();
-          if (sku) {
-            console.log(`Found SKU using selector "${selector}": ${sku}`);
-            return sku;
-          }
+        if (sku) {
+          console.log(`Found SKU using selector "${selector}": ${sku}`);
+          return sku;
         }
+      }
       }
     }
     
