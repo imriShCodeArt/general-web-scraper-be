@@ -51,7 +51,8 @@ export class CSVGenerator {
         stock_status: product.stock_status || 'instock',
         images: product.images.length > 0 ? product.images.join(' | ') : '',
         'tax:product_type': productType,
-        'tax:product_cat': product.category || 'Uncategorized'
+        'tax:product_cat': product.category || 'Uncategorized',
+        description: product.description || ''
       };
 
       // Add attributes if they exist
