@@ -201,7 +201,7 @@ export class ArchiveScraper {
   /**
    * Scrape all pages of an archive to get all product URLs
    */
-  static async scrapeAllArchivePages(archiveUrl: string, maxProducts: number = 100): Promise<string[]> {
+  static async scrapeAllArchivePages(archiveUrl: string, maxProducts: number = 0): Promise<string[]> {
     const allProductUrls: string[] = [];
     let currentUrl = archiveUrl;
     let pageNumber = 1;
@@ -209,7 +209,8 @@ export class ArchiveScraper {
     
     console.log(`Starting to scrape archive: ${archiveUrl}`);
     
-    while (currentUrl && pageNumber <= maxPages && allProductUrls.length < maxProducts) {
+    const isUnlimited = !maxProducts || maxProducts <= 0;
+    while (currentUrl && pageNumber <= maxPages && (isUnlimited || allProductUrls.length < maxProducts)) {
       try {
         console.log(`Scraping archive page ${pageNumber}: ${currentUrl}`);
         
@@ -225,7 +226,7 @@ export class ArchiveScraper {
         
         // Add new product URLs (avoid duplicates)
         for (const productUrl of archivePage.product_urls) {
-          if (!allProductUrls.includes(productUrl) && allProductUrls.length < maxProducts) {
+          if (!allProductUrls.includes(productUrl) && (isUnlimited || allProductUrls.length < maxProducts)) {
             allProductUrls.push(productUrl);
           }
         }
@@ -233,8 +234,8 @@ export class ArchiveScraper {
         console.log(`Page ${pageNumber}: Found ${archivePage.product_urls.length} products, total so far: ${allProductUrls.length}`);
         
         // Check if we should continue to the next page
-        if (!archivePage.has_next_page || !archivePage.next_page_url || allProductUrls.length >= maxProducts) {
-          console.log(`Stopping at page ${pageNumber}: has_next_page=${archivePage.has_next_page}, reached max products=${allProductUrls.length >= maxProducts}`);
+        if (!archivePage.has_next_page || !archivePage.next_page_url || (!isUnlimited && allProductUrls.length >= maxProducts)) {
+          console.log(`Stopping at page ${pageNumber}: has_next_page=${archivePage.has_next_page}, reached max products=${!isUnlimited && allProductUrls.length >= maxProducts}`);
           break;
         }
         

@@ -11,7 +11,7 @@ interface ScrapingFormProps {
 
 export function ScrapingForm({ onScrapingStart, onScrapingComplete, isProcessing }: ScrapingFormProps) {
   const [archiveUrls, setArchiveUrls] = useState<string[]>(['']);
-  const [maxProductsPerArchive, setMaxProductsPerArchive] = useState<number>(100);
+  const [maxProductsPerArchive, setMaxProductsPerArchive] = useState<number>(0);
   const [errors, setErrors] = useState<string[]>([]);
 
   const addArchiveUrlField = () => {
@@ -180,20 +180,17 @@ export function ScrapingForm({ onScrapingStart, onScrapingComplete, isProcessing
           Max Products Per Archive
         </label>
         <p className="text-sm text-gray-500 mb-4">
-          Limit the number of products scraped from each archive page. The scraper will automatically handle pagination to reach this limit.
+          0 = no limit. Any positive number limits the number of products scraped per archive. The scraper will auto-paginate to reach the limit.
         </p>
         <input
           type="number"
-          min="1"
-          max="1000"
+          min="0"
           value={maxProductsPerArchive}
-          onChange={(e) => setMaxProductsPerArchive(parseInt(e.target.value) || 100)}
+          onChange={(e) => setMaxProductsPerArchive(Number.isNaN(parseInt(e.target.value)) ? 0 : parseInt(e.target.value))}
           className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
           disabled={isProcessing}
         />
-        <p className="text-xs text-gray-500 mt-1">
-          Range: 1-1000 products per archive
-        </p>
+        <p className="text-xs text-gray-500 mt-1">Enter 0 for unlimited</p>
       </div>
 
       <button

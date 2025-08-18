@@ -9,7 +9,8 @@ const logger = pino({ name: 'scrape-init-api' });
 // Validation schema for request body
 const ScrapeRequestSchema = z.object({
   archiveUrls: z.array(z.string().url()).min(1, 'At least one archive URL is required'),
-  maxProductsPerArchive: z.number().int().min(1).max(1000).default(100),
+  // 0 means unlimited, any non-negative integer is accepted, no upper cap
+  maxProductsPerArchive: z.number().int().min(0).default(0),
 });
 
 export async function POST(request: NextRequest) {
