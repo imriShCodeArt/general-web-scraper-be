@@ -109,7 +109,8 @@ export class ArchiveScraper {
       page_number: pageNumber,
       product_urls: productUrls,
       has_next_page: paginationInfo.has_next_page,
-      next_page_url: paginationInfo.next_page_url
+      next_page_url: paginationInfo.next_page_url,
+      category_title: category || undefined
     };
   }
   

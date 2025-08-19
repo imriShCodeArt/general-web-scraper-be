@@ -1,11 +1,11 @@
 'use client';
 
 import { useEffect, useRef, useState } from 'react';
-import { ScrapingJob } from '@/types';
+import { ScrapingJob, Product } from '@/types';
 
 interface ScrapingFormProps {
   onScrapingStart: () => void;
-  onScrapingComplete: (job: ScrapingJob) => void;
+  onScrapingComplete: (job: ScrapingJob, products: Product[]) => void;
   isProcessing: boolean;
 }
 
@@ -160,7 +160,9 @@ export function ScrapingForm({ onScrapingStart, onScrapingComplete, isProcessing
           csv_downloads: result.data.download_links,
         };
 
-        onScrapingComplete(job);
+        // Extract products from the response for attribute editing
+        const products = result.data.products || [];
+        onScrapingComplete(job, products);
       } else {
         console.error('Archive scraping failed:', result.error);
         // Show error to user with more details

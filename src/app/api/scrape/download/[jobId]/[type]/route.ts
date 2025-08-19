@@ -51,17 +51,22 @@ export async function GET(
       );
     }
 
-    const filename = CSVGenerator.getCSVFilename(
-      type === 'parent' ? 'PARENT_PRODUCTS' : 'VARIATION_PRODUCTS'
-    );
+    // Append categories slug if available
+    const info = csvStorage.getJobInfo(jobId) as any;
+    const base = type === 'parent' ? 'PARENT_PRODUCTS' : 'VARIATION_PRODUCTS';
+    const suffix = info?.archiveTitleSlug ? info.archiveTitleSlug : info?.categoriesSlug || '';
+    const withSuffix = suffix ? `${base}_${suffix}` : base;
+    const filename = CSVGenerator.getCSVFilename(withSuffix);
+    const asciiFilename = filename.replace(/[^\x20-\x7E]/g, '');
+    const encodedUtf8 = encodeURIComponent(filename);
 
     logger.info({ jobId, type, filename, size: csvData.length }, 'Serving CSV download');
 
     // Return the actual CSV file
     return new NextResponse(new Uint8Array(csvData), {
       headers: {
-        'Content-Type': 'text/csv',
-        'Content-Disposition': `attachment; filename="${filename}"`,
+        'Content-Type': 'text/csv; charset=utf-8',
+        'Content-Disposition': `attachment; filename="${asciiFilename}"; filename*=UTF-8''${encodedUtf8}`,
         'Content-Length': csvData.length.toString(),
       },
     });

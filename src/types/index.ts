@@ -61,6 +61,7 @@ export type ArchivePage = {
   product_urls: string[];
   has_next_page: boolean;
   next_page_url?: string;
+  category_title?: string;
 };
 
 export type ScrapingResult = {
@@ -68,6 +69,7 @@ export type ScrapingResult = {
   data?: {
     total_products: number;
     processed_archives: number;
+    products: Product[];
     download_links: {
       parent: string;
       variation: string;

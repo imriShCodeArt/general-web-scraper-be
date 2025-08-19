@@ -2,22 +2,71 @@
 
 import { ScrapingForm } from '@/components/ScrapingForm';
 import { ScrapingResults } from '@/components/ScrapingResults';
+import { AttributeEditorModal } from '@/components/AttributeEditorModal';
 import { useState } from 'react';
-import { ScrapingJob } from '@/types';
+import { ScrapingJob, Product } from '@/types';
+import { AttributeManager } from '@/lib/attribute-manager';
+import { AttributeData } from '@/components/AttributeEditorModal';
 
 export default function Home() {
   const [isProcessing, setIsProcessing] = useState(false);
   const [currentJob, setCurrentJob] = useState<ScrapingJob | null>(null);
   const [showHowTo, setShowHowTo] = useState<boolean>(false);
+  const [scrapedProducts, setScrapedProducts] = useState<Product[]>([]);
+  const [showAttributeEditor, setShowAttributeEditor] = useState(false);
+  const [isAttributeEditing, setIsAttributeEditing] = useState(false);
 
   const handleScrapingStart = () => {
     setIsProcessing(true);
     setCurrentJob(null);
   };
 
-  const handleScrapingComplete = (job: ScrapingJob) => {
+  const handleScrapingComplete = (job: ScrapingJob, products: Product[]) => {
     setIsProcessing(false);
     setCurrentJob(job);
+    setScrapedProducts(products);
+    
+    // Check if we have products with attributes to edit
+    const hasAttributes = products.some(product => 
+      Object.keys(product.attributes).length > 0
+    );
+    
+    if (hasAttributes) {
+      setShowAttributeEditor(true);
+    }
+  };
+
+  const handleAttributeSave = (editedAttributes: AttributeData[]) => {
+    setIsAttributeEditing(true);
+    // Apply edited attributes to products (frontend state)
+    const updatedProducts = AttributeManager.applyEditedAttributes(scrapedProducts, editedAttributes);
+    setScrapedProducts(updatedProducts);
+
+    // Persist changes by regenerating CSVs on the server for the same requestId
+    (async () => {
+      try {
+        if (!currentJob?.id) {
+          console.warn('Missing current job id; cannot persist CSV updates');
+        } else {
+          const res = await fetch('/api/scrape/update', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ requestId: currentJob.id, products: updatedProducts })
+          });
+          const json = await res.json();
+          if (!json?.success) {
+            console.error('Failed to update CSVs', json);
+            alert('Failed to apply attribute edits to CSVs. Please try again.');
+          }
+        }
+      } catch (e) {
+        console.error('Error updating CSVs', e);
+        alert('Network or server error while applying attribute edits.');
+      } finally {
+        setShowAttributeEditor(false);
+        setIsAttributeEditing(false);
+      }
+    })();
   };
 
   return (
@@ -53,7 +102,7 @@ export default function Home() {
           </button>
           {showHowTo && (
             <div className="px-6 pb-6">
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
+              <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-6">
                 <div className="text-center">
                   <div className="bg-primary-100 rounded-full w-12 h-12 flex items-center justify-center mx-auto mb-3">
                     <span className="text-primary-600 font-bold text-lg">1</span>
@@ -75,6 +124,15 @@ export default function Home() {
                 <div className="text-center">
                   <div className="bg-primary-100 rounded-full w-12 h-12 flex items-center justify-center mx-auto mb-3">
                     <span className="text-primary-600 font-bold text-lg">3</span>
+                  </div>
+                  <h3 className="font-medium text-gray-900 mb-2">Edit Attributes</h3>
+                  <p className="text-sm text-gray-600">
+                    Review and edit product attributes before CSV generation
+                  </p>
+                </div>
+                <div className="text-center">
+                  <div className="bg-primary-100 rounded-full w-12 h-12 flex items-center justify-center mx-auto mb-3">
+                    <span className="text-primary-600 font-bold text-lg">4</span>
                   </div>
                   <h3 className="font-medium text-gray-900 mb-2">Download CSVs</h3>
                   <p className="text-sm text-gray-600">
@@ -112,9 +170,23 @@ export default function Home() {
           isProcessing={isProcessing}
         />
 
+        {/* Attribute Editor Modal */}
+        {showAttributeEditor && (
+          <AttributeEditorModal
+            isOpen={showAttributeEditor}
+            onClose={() => setShowAttributeEditor(false)}
+            onSave={handleAttributeSave}
+            initialAttributes={AttributeManager.collectAttributes(scrapedProducts)}
+          />
+        )}
+
         {currentJob && (
           <div className="mt-8">
-            <ScrapingResults job={currentJob} />
+            <ScrapingResults 
+              job={currentJob} 
+              products={scrapedProducts}
+              isAttributeEditing={isAttributeEditing}
+            />
           </div>
         )}
       </div>

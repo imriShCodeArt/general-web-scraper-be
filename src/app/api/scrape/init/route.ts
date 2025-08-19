@@ -4,6 +4,7 @@ import { csvStorage } from '@/lib/csv-storage';
 import { z } from 'zod';
 import pino from 'pino';
 import { jobLogger } from '@/lib/job-logger';
+import { Product } from '@/types';
 
 const logger = pino({ name: 'scrape-init-api' });
 
@@ -48,6 +49,16 @@ export async function POST(request: NextRequest) {
     const productCount = Array.isArray(result.data) ? result.data.length : result.data?.total_products || 0;
     logger.info({ requestId, productCount }, 'Archive scraping completed, CSV data should be stored');
     
+    // Get the scraped products for attribute editing
+    let scrapedProducts: Product[] = [];
+    if (Array.isArray(result.data)) {
+      // Legacy case: result.data is the products array
+      scrapedProducts = result.data as Product[];
+    } else if (result.data && Array.isArray((result.data as any).products)) {
+      // Normal case: data contains products alongside metadata
+      scrapedProducts = (result.data as any).products as Product[];
+    }
+    
     // Verify that CSV data was stored
     const storedJobInfo = csvStorage.getJobInfo(requestId);
     if (storedJobInfo) {
@@ -75,6 +86,7 @@ export async function POST(request: NextRequest) {
       data: {
         total_products: productCount,
         processed_archives: result.processed_archives,
+        products: scrapedProducts, // Add products for attribute editing
         csv_files: {
           parent_products: parentFilename,
           variation_products: variationFilename,
