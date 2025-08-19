@@ -112,16 +112,18 @@ describe('CSVGenerator', () => {
       const csvBuffer = await CSVGenerator.generateVariationProductsCSV([mockVariableProduct]);
       const csvContent = csvBuffer.toString();
       
-      expect(csvContent).toContain('parent_sku,sku,stock_status,regular_price,tax_class,images');
-      expect(csvContent).toContain('TSHIRT-PREMIUM,TSHIRT-PREMIUM-RED-S,instock,19.99,parent');
-      expect(csvContent).toContain('TSHIRT-PREMIUM,TSHIRT-PREMIUM-RED-M,instock,29.99,parent');
+      expect(csvContent).toContain('post_title,parent_sku,sku,stock_status,regular_price,tax_class,images');
+      expect(csvContent).toContain('Premium T-Shirt,TSHIRT-PREMIUM,TSHIRT-PREMIUM-RED-S,instock,19.99,parent');
+      expect(csvContent).toContain('Premium T-Shirt,TSHIRT-PREMIUM,TSHIRT-PREMIUM-RED-M,instock,29.99,parent');
     });
 
     it('should include attribute meta data', async () => {
       const csvBuffer = await CSVGenerator.generateVariationProductsCSV([mockVariableProduct]);
       const csvContent = csvBuffer.toString();
       
-      expect(csvContent).toContain('meta:attribute_Color,meta:attribute_Size');
+      expect(csvContent).toContain('post_title,parent_sku,sku,stock_status,regular_price,tax_class,images,meta:attribute_Color,meta:attribute_Size');
+      expect(csvContent).toContain('Premium T-Shirt,TSHIRT-PREMIUM,TSHIRT-PREMIUM-RED-S,instock,19.99,parent');
+      expect(csvContent).toContain('Premium T-Shirt,TSHIRT-PREMIUM,TSHIRT-PREMIUM-RED-M,instock,29.99,parent');
       expect(csvContent).toContain('Red,S');
       expect(csvContent).toContain('Red,M');
     });
@@ -132,6 +134,10 @@ describe('CSVGenerator', () => {
       
       // Should only contain headers for products without variations
       expect(csvContent.split('\n').length).toBeLessThanOrEqual(2);
+      // When there are no variations, CSV should be empty or just headers
+      if (csvContent.trim()) {
+        expect(csvContent).toContain('post_title,parent_sku,sku,stock_status,regular_price,tax_class,images');
+      }
     });
   });
 

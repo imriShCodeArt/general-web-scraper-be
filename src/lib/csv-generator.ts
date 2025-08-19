@@ -121,15 +121,16 @@ export class CSVGenerator {
       // Only include products with variations
       if (product.variations.length > 0) {
         product.variations.forEach(variation => {
-          // Base variation row
-          const row: Record<string, string> = {
-            parent_sku: product.sku || '',
-            sku: variation.sku || '',
-            stock_status: variation.stock_status || 'instock',
-            regular_price: variation.regular_price || '',
-            tax_class: variation.tax_class || 'parent',
-            images: variation.images.length > 0 ? variation.images.join(' | ') : ''
-          };
+                  // Base variation row
+        const row: Record<string, string> = {
+          post_title: product.title || '', // Add post_title from parent product
+          parent_sku: product.sku || '',
+          sku: variation.sku || '',
+          stock_status: variation.stock_status || 'instock',
+          regular_price: variation.regular_price || '',
+          tax_class: variation.tax_class || 'parent',
+          images: variation.images.length > 0 ? variation.images.join(' | ') : ''
+        };
 
           // Add attribute meta data
           if (variation.meta) {
