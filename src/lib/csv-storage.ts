@@ -9,6 +9,8 @@ interface StoredCSV {
   variationProducts: Buffer;
   timestamp: Date;
   productCount: number;
+  categoriesSlug?: string;
+  archiveTitleSlug?: string;
 }
 
 class CSVStorage {
@@ -40,7 +42,7 @@ class CSVStorage {
   /**
    * Store CSV data for a scraping job
    */
-  async storeCSVData(jobId: string, products: Product[], parentCSV: Buffer, variationCSV: Buffer): Promise<void> {
+  async storeCSVData(jobId: string, products: Product[], parentCSV: Buffer, variationCSV: Buffer, extra?: { archiveTitle?: string }): Promise<void> {
     console.log(`[CSVStorage] Storing data for job ${jobId} with ${products.length} products`);
     console.log(`[CSVStorage] Current storage size before: ${this.storage.size}`);
     console.log(`[CSVStorage] All job IDs in storage before:`, Array.from(this.storage.keys()));
@@ -48,13 +50,34 @@ class CSVStorage {
     try {
       console.log(`[CSVStorage] Received CSV buffers - parent: ${parentCSV.length} bytes, variation: ${variationCSV.length} bytes`);
       
+      // Build categories-based slug (up to 3 unique categories)
+      const categories = Array.from(new Set((products || []).map(p => p.category).filter(Boolean))) as string[];
+      const topCategories = categories.slice(0, 3);
+      const categoriesSlug = topCategories
+        .map(c => c.toString().trim().toLowerCase()
+          .replace(/[^\w\u0590-\u05FF]+/g, '-')
+          .replace(/-+/g, '-')
+          .replace(/^-|-$/g, ''))
+        .filter(Boolean)
+        .join('_');
+
+      // Optional archive page title slug
+      const archiveTitleSlug = extra?.archiveTitle
+        ? extra.archiveTitle.toString().trim().toLowerCase()
+            .replace(/[^\w\u0590-\u05FF]+/g, '-')
+            .replace(/-+/g, '-')
+            .replace(/^-|-$/g, '')
+        : undefined;
+
       // Store in memory
       this.storage.set(jobId, {
         jobId,
         parentProducts: parentCSV,
         variationProducts: variationCSV,
         timestamp: new Date(),
-        productCount: products.length
+        productCount: products.length,
+        categoriesSlug,
+        archiveTitleSlug
       });
       
       // Also store to file system for persistence
@@ -65,7 +88,9 @@ class CSVStorage {
           parentProducts: parentCSV.toString('base64'),
           variationProducts: variationCSV.toString('base64'),
           timestamp: new Date().toISOString(),
-          productCount: products.length
+          productCount: products.length,
+          categoriesSlug,
+          archiveTitleSlug
         };
         writeFileSync(filePath, JSON.stringify(fileData));
         console.log(`[CSVStorage] Also stored to file: ${filePath}`);
@@ -136,7 +161,9 @@ class CSVStorage {
         parentProducts: Buffer.from(fileData.parentProducts, 'base64'),
         variationProducts: Buffer.from(fileData.variationProducts, 'base64'),
         timestamp: new Date(fileData.timestamp),
-        productCount: fileData.productCount
+        productCount: fileData.productCount,
+        categoriesSlug: fileData.categoriesSlug,
+        archiveTitleSlug: fileData.archiveTitleSlug
       };
     } catch (error) {
       console.error(`[CSVStorage] Error loading from file:`, error);
@@ -170,7 +197,9 @@ class CSVStorage {
     return {
       jobId: stored.jobId,
       timestamp: stored.timestamp,
-      productCount: stored.productCount
+      productCount: stored.productCount,
+      categoriesSlug: stored.categoriesSlug,
+      archiveTitleSlug: stored.archiveTitleSlug
     };
   }
 

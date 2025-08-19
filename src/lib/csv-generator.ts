@@ -19,10 +19,49 @@ export class CSVGenerator {
 
   private static decodeIfEncoded(value: string): string {
     if (!value) return value;
-    if (/%[0-9A-Fa-f]{2}/.test(value)) {
-      try { return decodeURIComponent(value); } catch { return value; }
+    let decoded = value;
+    // Replace '+' with space (common in x-www-form-urlencoded)
+    decoded = decoded.replace(/\+/g, ' ');
+    // Try URL decoding up to 3 times if percent-encoded
+    let attempts = 0;
+    while (attempts < 3 && /%[0-9A-Fa-f]{2}/.test(decoded)) {
+      try {
+        const next = decodeURIComponent(decoded);
+        if (next === decoded) break;
+        decoded = next;
+      } catch {
+        break;
+      }
+      attempts++;
     }
-    return value;
+    return decoded;
+  }
+
+  // Decode HTML entities (numeric decimal, numeric hex, and a few named ones)
+  private static decodeHtmlEntities(value: string): string {
+    if (!value) return value;
+    const named: Record<string, string> = {
+      amp: '&', lt: '<', gt: '>', quot: '"', apos: "'"
+    };
+    let result = value.replace(/&(#\d+|#x[0-9A-Fa-f]+|[A-Za-z]+);/g, (match, entity) => {
+      if (entity[0] === '#') {
+        if (entity[1].toLowerCase() === 'x') {
+          const code = parseInt(entity.slice(2), 16);
+          return Number.isFinite(code) ? String.fromCharCode(code) : match;
+        }
+        const code = parseInt(entity.slice(1), 10);
+        return Number.isFinite(code) ? String.fromCharCode(code) : match;
+      } else {
+        return Object.prototype.hasOwnProperty.call(named, entity) ? named[entity] : match;
+      }
+    });
+    return result;
+  }
+
+  // Comprehensive decode: URL (incl. '+'), then HTML entities
+  private static decodeValue(value: string): string {
+    const urlDecoded = this.decodeIfEncoded(value);
+    return this.decodeHtmlEntities(urlDecoded);
   }
   /**
    * Generate CSV string from data array
@@ -67,9 +106,15 @@ export class CSVGenerator {
       
       // Base row with required fields
       const row: Record<string, string> = {
+        ID: '', // Leave empty for WooCommerce to auto-assign
         post_title: product.title || '',
         post_name: product.postName || '',
         post_status: 'publish',
+        post_content: product.description || '',
+        post_excerpt: product.shortDescription || '',
+        post_parent: '0', // Top-level products
+        menu_order: '0', // Top-level products
+        post_type: 'product', // Product post type
         sku: product.sku || '',
         stock_status: product.stock_status || 'instock',
         images: product.images.length > 0 ? product.images.join(' | ') : '',
@@ -80,13 +125,13 @@ export class CSVGenerator {
 
       // Add attributes if they exist (special-case common ones, decoding values)
       if (product.attributes.Color && product.attributes.Color.length > 0) {
-        const values = product.attributes.Color.map(v => this.decodeIfEncoded(v));
+        const values = product.attributes.Color.map(v => this.decodeValue(v));
         row['attribute:Color'] = values.join(' | ');
         row['attribute_data:Color'] = '1'.repeat(values.length).split('').join(' | ');
       }
 
       if (product.attributes.Size && product.attributes.Size.length > 0) {
-        const values = product.attributes.Size.map(v => this.decodeIfEncoded(v));
+        const values = product.attributes.Size.map(v => this.decodeValue(v));
         row['attribute:Size'] = values.join(' | ');
         row['attribute_data:Size'] = '1'.repeat(values.length).split('').join(' | ');
       }
@@ -95,7 +140,7 @@ export class CSVGenerator {
       Object.keys(product.attributes).forEach(attrName => {
         if (attrName !== 'Color' && attrName !== 'Size' && product.attributes[attrName]) {
           const normalized = this.normalizeAttributeName(attrName);
-          const attrValues = product.attributes[attrName]!.map(v => this.decodeIfEncoded(v));
+          const attrValues = product.attributes[attrName]!.map(v => this.decodeValue(v));
           if (attrValues.length > 0) {
             row[`attribute:${normalized}`] = attrValues.join(' | ');
             row[`attribute_data:${normalized}`] = '1'.repeat(attrValues.length).split('').join(' | ');
@@ -116,6 +161,7 @@ export class CSVGenerator {
    */
   static async generateVariationProductsCSV(products: Product[]): Promise<Buffer> {
     const variations: Record<string, string>[] = [];
+    let variationCounter = 1; // Counter for unique menu_order
 
     products.forEach(product => {
       // Only include products with variations
@@ -123,8 +169,15 @@ export class CSVGenerator {
         product.variations.forEach(variation => {
                   // Base variation row
         const row: Record<string, string> = {
-          post_title: product.title || '', // Add post_title from parent product
-          parent_sku: product.sku || '',
+          ID: '', // Leave empty for WooCommerce to auto-assign
+          post_type: 'product_variation',
+          post_status: 'publish',
+          parent_sku: product.sku || '', // Link to parent using SKU per Import Suite
+          post_title: product.title || '', // Variation title (same as parent)
+          post_name: `${product.postName || product.title}-${variation.sku || 'var'}`.toLowerCase().replace(/[^a-z0-9-]/g, '-'), // Unique variation slug
+          post_content: '', // Empty content for variations
+          post_excerpt: '', // Empty excerpt for variations
+          menu_order: variationCounter.toString(), // Set unique variation order
           sku: variation.sku || '',
           stock_status: variation.stock_status || 'instock',
           regular_price: variation.regular_price || '',
@@ -137,15 +190,19 @@ export class CSVGenerator {
             Object.keys(variation.meta).forEach(metaKey => {
               if (metaKey.startsWith('attribute_')) {
                 const attrName = metaKey.replace('attribute_', '');
-                const attrValue = variation.meta[metaKey];
-                if (attrValue) {
-                  row[`meta:attribute_${attrName}`] = attrValue.toString();
+                const rawValue = variation.meta[metaKey];
+                if (rawValue != null) {
+                  const valueString = Array.isArray(rawValue)
+                    ? rawValue.map(v => this.decodeValue(String(v))).join(' | ')
+                    : this.decodeValue(String(rawValue));
+                  row[`meta:attribute_${attrName}`] = valueString;
                 }
               }
             });
           }
 
           variations.push(row);
+          variationCounter++; // Increment counter for next variation
         });
       }
     });
@@ -177,11 +234,10 @@ export class CSVGenerator {
   }
 
   /**
-   * Get CSV filename with timestamp
+   * Get CSV filename without timestamp (server sets category-prefixed base)
    */
   static getCSVFilename(prefix: string): string {
-    const timestamp = new Date().toISOString().replace(/[:.]/g, '-').slice(0, -5);
-    return `${prefix}_${timestamp}.csv`;
+    return `${prefix}.csv`;
   }
 
   /**

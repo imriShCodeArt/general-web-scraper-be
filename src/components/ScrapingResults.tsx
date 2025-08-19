@@ -1,12 +1,14 @@
 'use client';
 
-import { ScrapingJob } from '@/types';
+import { ScrapingJob, Product } from '@/types';
 
 interface ScrapingResultsProps {
   job: ScrapingJob;
+  products: Product[];
+  isAttributeEditing: boolean;
 }
 
-export function ScrapingResults({ job }: ScrapingResultsProps) {
+export function ScrapingResults({ job, products, isAttributeEditing }: ScrapingResultsProps) {
   const downloadCSV = async (type: 'parent' | 'variation') => {
     try {
       const response = await fetch(`/api/scrape/download/${job.id}/${type}`);
@@ -19,7 +21,11 @@ export function ScrapingResults({ job }: ScrapingResultsProps) {
       const url = window.URL.createObjectURL(blob);
       const a = document.createElement('a');
       a.href = url;
-      a.download = `${type === 'parent' ? 'PARENT_PRODUCTS' : 'VARIATION_PRODUCTS'}.csv`;
+      // Try to use server-provided filename from Content-Disposition
+      const disposition = response.headers.get('Content-Disposition') || '';
+      const match = disposition.match(/filename="?([^";]+)"?/i);
+      const serverFilename = match ? match[1] : '';
+      a.download = serverFilename || `${type === 'parent' ? 'PARENT_PRODUCTS' : 'VARIATION_PRODUCTS'}.csv`;
       document.body.appendChild(a);
       a.click();
       window.URL.revokeObjectURL(url);
@@ -70,6 +76,32 @@ export function ScrapingResults({ job }: ScrapingResultsProps) {
             </div>
           </div>
         </div>
+        
+        {/* Attribute Editing Status */}
+        {products.length > 0 && (
+          <div className="bg-blue-50 p-4 rounded-lg">
+            <h3 className="font-medium text-blue-900 mb-3">Product Attributes</h3>
+            <div className="space-y-3">
+              <div className="flex items-center gap-2">
+                <div className={`w-3 h-3 rounded-full ${isAttributeEditing ? 'bg-green-500' : 'bg-blue-500'}`}></div>
+                <span className="text-sm text-blue-700">
+                  {isAttributeEditing 
+                    ? 'Attributes have been edited and applied to products'
+                    : 'Attributes are ready for editing'
+                  }
+                </span>
+              </div>
+              
+              <div className="text-sm text-blue-700">
+                <p><strong>Total Products:</strong> {products.length}</p>
+                <p><strong>Products with Attributes:</strong> {products.filter(p => Object.keys(p.attributes).length > 0).length}</p>
+                {products.some(p => Object.keys(p.attributes).length > 0) && (
+                  <p><strong>Attribute Types Found:</strong> {Array.from(new Set(products.flatMap(p => Object.keys(p.attributes)))).join(', ')}</p>
+                )}
+              </div>
+            </div>
+          </div>
+        )}
         
         {job.csv_downloads && (
           <div className="bg-green-50 p-4 rounded-lg">

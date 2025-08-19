@@ -30,7 +30,7 @@ export class ScrapingService {
 
     try {
       // Step 1: Parse archive pages to extract product URLs (with pagination)
-      const productUrls = await this.extractProductUrlsFromArchives(archiveUrls, maxProductsPerArchive);
+      const { productUrls, archiveTitles } = await this.extractProductUrlsFromArchives(archiveUrls, maxProductsPerArchive);
       this.logger.info({ count: productUrls.length, maxProductsPerArchive }, 'Extracted product URLs from archives');
       if (requestId) {
         jobLogger.log(requestId, 'info', `Found ${productUrls.length} product URLs`);
@@ -66,7 +66,9 @@ export class ScrapingService {
         const beforeStorage = csvStorage.getJobInfo(requestId);
         this.logger.info({ requestId, beforeStorage }, 'Storage state before storing');
         
-        await csvStorage.storeCSVData(requestId, products, csvs.parentProducts, csvs.variationProducts);
+        // Prefer first non-empty archive title for naming
+        const firstTitle = archiveTitles.find(t => t && t.trim().length > 0);
+        await csvStorage.storeCSVData(requestId, products, csvs.parentProducts, csvs.variationProducts, { archiveTitle: firstTitle });
         this.logger.info({ requestId }, 'CSV data stored successfully');
         jobLogger.progress(requestId, 100, 'Done');
         
@@ -90,6 +92,7 @@ export class ScrapingService {
         data: requestId ? {
           total_products: products.length,
           processed_archives: archiveUrls.length,
+          products: products, // Always include products for attribute editing
           download_links: {
             parent: `/api/scrape/download/${requestId}/parent`,
             variation: `/api/scrape/download/${requestId}/variation`
@@ -116,8 +119,9 @@ export class ScrapingService {
   /**
    * Extract product URLs from archive pages (with pagination support)
    */
-  private async extractProductUrlsFromArchives(archiveUrls: string[], maxProductsPerArchive: number): Promise<string[]> {
+  private async extractProductUrlsFromArchives(archiveUrls: string[], maxProductsPerArchive: number): Promise<{ productUrls: string[]; archiveTitles: string[] }> {
     const allProductUrls: string[] = [];
+    const archiveTitles: string[] = [];
 
     for (const archiveUrl of archiveUrls) {
       try {
@@ -132,6 +136,13 @@ export class ScrapingService {
         // Add the found product URLs
         allProductUrls.push(...productUrls);
         
+        // Try to fetch first page and parse title for naming
+        try {
+          const html = await HTTPClient.fetchHTML(archiveUrl);
+          const page = ArchiveScraper.parseArchivePage(html, archiveUrl, 1);
+          if (page.category_title) archiveTitles.push(page.category_title);
+        } catch {}
+        
         this.logger.info({ 
           archiveUrl, 
           totalFound: productUrls.length,
@@ -144,7 +155,7 @@ export class ScrapingService {
     }
 
     // Remove duplicates
-    return Array.from(new Set(allProductUrls));
+    return { productUrls: Array.from(new Set(allProductUrls)), archiveTitles: Array.from(new Set(archiveTitles)) };
   }
 
   /**

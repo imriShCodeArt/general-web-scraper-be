@@ -1,0 +1,67 @@
+Column,Description,Accepted values,Example
+id,Assigned by WordPress.,N/A,N/A
+tax:product_type,"Required. Whether your product is Simple, Grouped, External, or Variable.",simple / variable / grouped / external,simple
+post_id,Assigned by WordPress.,N/A,N/A
+post_type,"By default, this is product.",product,product
+menu_order,Use this to sort your products.,Numerical,5
+post_status,Choose whether your post should be published or not.,draft / publish / pending / private / trash,draft
+post_title,Required. Name of the product.,Text,Killer Heels
+post_name,"Use this to update the product slug, which forms part of the product’s permalink.",Text,hoodie_with_logo
+post_date,"Date/time from your WordPress admin. You only need to add a date if you don’t want to use the current date. If you’re updating products, leave this as the exported value unless you want to make the product appear more/less recent.","mm/dd/yyyy
+dd-mm-yyyy
+More accepted date formats","01/02/2015
+02-01-2015*Both of these are January 2, 2015"
+post_content,"Post content, normally a description of the product.",Text,Super high heels are all the rage. Look beautiful this season with a gorgeous pair of killer heels. Available in 5 colors!
+post_excerpt,Short description of the product.,Text,This season’s latest heels!
+post_parent,Use for variations. Enter the ID of the parent product. Note: Variables should be imported in a separate spreadsheet.,Post ID,234
+post_password,"If your post is private, include the password.",Text,!MyAwesomePassw!
+visibility,"Choose visibility for your product.
+Learn more about product visibility.",visible / catalog / search / hidden,visible
+sku,Recommended. SKU of the product. Must be unique.,Text,SH99786
+upsell_skus,SKU(s) of the product to which you wish to upsell.,Text – multiple skus separated by a “|” character.,SKU1|SKU2
+upsell_ids,ID of the product to which you wish to upsell.,post ID – multiple IDs separated by a “|” character.,236|569
+crosssell_skus,SKU(s) of the product with which you wish to crosssell.,Text – multiple skus separated by a “|” character.,SKU1|SKU2
+crosssell_ids,ID of the product that can be purchased with this product.,post ID – multiple IDs separated by a “|” character.,236|569
+featured,Whether this product should be featured or not.,yes/no,yes
+downloadable,Whether your product is downloadable or not.,yes/no,no
+virtual,Whether your item is a non-physical object or not.,yes/no,no
+regular_price,"Required for all products except variable products.
+Normal price of your product.",Float (Decimal number),99.99
+sale_price,"Sale price of your product, if on sale.",Float (Decimal number),69.99
+manage_stock,Whether or not you are managing stock for the product.,yes/no,no
+stock,Number of this item you have in stock. Can be relative to the value currently configured in the product.,Numerical,"3
+(+)10
+(-)3"
+stock_status,Whether you have any in stock or not.,instock / outofstock,instock
+backorders,Whether you’re accepting backorders.,yes/no/ notify,yes
+weight,"Weight of your product. Complete if you’re using weight-based shipping rules or a shipping method that pulls rates from an external service.
+Use the same measurement unit set for your site.",Numerical,0.73
+length,"Length of your product. Use if you pull rates from an external service, such as USPS.
+Use the same measurement unit set for your site.",Numerical,10.5
+width,"Width of your product. Use if you pull rates from an external service, such as USPS.
+Use the same measurement unit set for your site.",Numerical,15
+height,"Height of your product. Use if you pull rates from an external service, such as USPS.
+Use the same measurement unit setted in your site.",Numerical,8
+tax_status,Use to determine whether your product is taxable or not.,taxable / shipping / none,taxable
+tax_class,Tax class of your product.,"zero-rate, reduced-rate
+Notice that you have to use the slug of the tax class.
+Leave blank if the value should be Standard Rate.",reduced-rate
+tax:product_shipping_class,Product’s shipping class,Allows you to set the Shipping Class when uploading a product to your store.,Class 1
+sale_price_dates_from,Date from when your sale price is used.,"MM DD YYdd MM YY MM” / “DD” / “YYDD” / “MM” / “YY”
+More accepted date formats",01/02/2013
+sale_price_dates_to,Date when your sale ends for this product.,"MM DD YYdd MM YY MM” / “DD” / “YYDD” / “MM” / “YY”
+More accepted date formats",01/04/2013
+images,"Import images. Use a pipe (“|”) to separate multiple images. 
+
+You can use public facing URLs for images, however, this may cause images to be duplicated in your media library when using the same image for multiple products.
+
+When importing an image that is already uploaded to your site, enter the image’s file name as shown in the example 
+
+When only using an image’s file name, the importer will look in wp-content/uploads/year/month where year/month are the year and month in which the import is run. This means that the images should be uploaded to your media library in the same month you are running the import.
+
+The first image listed is the main product image and will be used as the featured image.",Text,image1.jpg | image2.jpg | image3.jpg
+product_url,Use if the product is sold on another site. Used by External/Affiliate products only.,URL,http://amazon.com/etc
+button_text,Text that will appear on your “Add to cart” button. Used by External/Affiliate products only.,Text,Buy on Amazon!
+meta:_sold_individually,Can the product only be sold on its own?,yes/no,no
+meta:total_sales,Total sales for this product.,Numerical,56
+meta:_children,Product ID’s of a grouped product’s children,"post ID’s in brackets – multiple IDs separated by a “,” character.","[123, 124]"
