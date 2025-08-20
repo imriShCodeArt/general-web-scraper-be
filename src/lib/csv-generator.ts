@@ -95,6 +95,82 @@ export class CSVGenerator {
     return Buffer.from(csvString, 'utf8');
   }
 
+  private static isPlaceholderValue(value: string): boolean {
+    const v = (value || '').trim();
+    return v === 'בחירת אפשרות' || v === 'בחר אפשרות' || v.toLowerCase() === 'select option';
+  }
+
+  private static transformDimensionLike(raw: string): string {
+    if (!raw) return raw;
+    const decoded = this.decodeIfEncoded(raw).trim();
+    // Handle combined dimension + seats pattern like 220170-3-מושבים
+    const seatPattern = /^(\d+)-(\d+)-מושבים$/;
+    const seatMatch = decoded.match(seatPattern);
+    if (seatMatch) {
+      const base = seatMatch[1];
+      const seats = seatMatch[2];
+      const dim = (() => {
+        const numericOnly = base.replace(/[^0-9]/g, '');
+        const formatPair = (w: string, h: string): string | null => {
+          if (!w || !h) return null;
+          if (w.startsWith('0') || h.startsWith('0')) return null;
+          return `${parseInt(w, 10)}*${parseInt(h, 10)}`;
+        };
+        const len = numericOnly.length;
+        if (len >= 3) {
+          if (len % 2 === 0) {
+            const mid = len / 2;
+            const evenW = numericOnly.slice(0, mid);
+            const evenH = numericOnly.slice(mid);
+            const evenFmt = formatPair(evenW, evenH);
+            if (evenFmt) return evenFmt;
+            const w2 = numericOnly.slice(0, len - 2);
+            const h2 = numericOnly.slice(len - 2);
+            const lastTwoFmt = formatPair(w2, h2);
+            if (lastTwoFmt) return lastTwoFmt as string;
+          } else {
+            const w = numericOnly.slice(0, len - 2);
+            const h = numericOnly.slice(len - 2);
+            const oddFmt = formatPair(w, h);
+            if (oddFmt) return oddFmt as string;
+          }
+        }
+        return base;
+      })();
+      return `${dim} ${parseInt(seats, 10)} מושבים`;
+    }
+    // Keep only digits for size parsing
+    const numericOnly = decoded.replace(/[^0-9]/g, '');
+    const formatPair = (w: string, h: string): string | null => {
+      if (!w || !h) return null;
+      if (w.startsWith('0') || h.startsWith('0')) return null; // no leading zeros rule
+      return `${parseInt(w, 10)}*${parseInt(h, 10)}`;
+    };
+    if (numericOnly.length >= 3) {
+      const len = numericOnly.length;
+      // Prefer equal split when even: e.g., 140140 -> 140*140, 5060 -> 50*60
+      if (len % 2 === 0) {
+        const mid = len / 2;
+        const evenW = numericOnly.slice(0, mid);
+        const evenH = numericOnly.slice(mid);
+        const evenFmt = formatPair(evenW, evenH);
+        if (evenFmt) return evenFmt;
+        // Fallback: last two digits as height
+        const w2 = numericOnly.slice(0, len - 2);
+        const h2 = numericOnly.slice(len - 2);
+        const lastTwoFmt = formatPair(w2, h2);
+        if (lastTwoFmt) return lastTwoFmt;
+      } else {
+        // Odd lengths: use last two digits as height, e.g., 12090 -> 120*90
+        const w = numericOnly.slice(0, len - 2);
+        const h = numericOnly.slice(len - 2);
+        const oddFmt = formatPair(w, h);
+        if (oddFmt) return oddFmt;
+      }
+    }
+    return decoded;
+  }
+
   /**
    * Generate parent products CSV for WooCommerce import
    * Format matches: post_title,post_name,post_status,sku,stock_status,images,tax:product_type,tax:product_cat,attribute:Color,attribute_data:Color,attribute:Size,attribute_data:Size
@@ -125,13 +201,19 @@ export class CSVGenerator {
 
       // Add attributes if they exist (special-case common ones, decoding values)
       if (product.attributes.Color && product.attributes.Color.length > 0) {
-        const values = product.attributes.Color.map(v => this.decodeValue(v));
+        const values = product.attributes.Color
+          .map(v => this.decodeIfEncoded(v))
+          .filter(v => !this.isPlaceholderValue(v))
+          .map(v => this.transformDimensionLike(v));
         row['attribute:Color'] = values.join(' | ');
         row['attribute_data:Color'] = '1'.repeat(values.length).split('').join(' | ');
       }
 
       if (product.attributes.Size && product.attributes.Size.length > 0) {
-        const values = product.attributes.Size.map(v => this.decodeValue(v));
+        const values = product.attributes.Size
+          .map(v => this.decodeIfEncoded(v))
+          .filter(v => !this.isPlaceholderValue(v))
+          .map(v => this.transformDimensionLike(v));
         row['attribute:Size'] = values.join(' | ');
         row['attribute_data:Size'] = '1'.repeat(values.length).split('').join(' | ');
       }
@@ -140,7 +222,10 @@ export class CSVGenerator {
       Object.keys(product.attributes).forEach(attrName => {
         if (attrName !== 'Color' && attrName !== 'Size' && product.attributes[attrName]) {
           const normalized = this.normalizeAttributeName(attrName);
-          const attrValues = product.attributes[attrName]!.map(v => this.decodeValue(v));
+          const attrValues = product.attributes[attrName]!
+            .map(v => this.decodeIfEncoded(v))
+            .filter(v => !this.isPlaceholderValue(v))
+            .map(v => this.transformDimensionLike(v));
           if (attrValues.length > 0) {
             row[`attribute:${normalized}`] = attrValues.join(' | ');
             row[`attribute_data:${normalized}`] = '1'.repeat(attrValues.length).split('').join(' | ');
