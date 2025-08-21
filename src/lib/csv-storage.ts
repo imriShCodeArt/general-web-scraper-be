@@ -241,6 +241,20 @@ class CSVStorage {
     console.log(`[CSVStorage] Returning ${jobs.length} jobs:`, jobs);
     return jobs;
   }
+
+  /**
+   * Update job status for control operations
+   */
+  updateJobStatus(jobId: string, newStatus: string): boolean {
+    console.log(`[CSVStorage] Updating job ${jobId} status to: ${newStatus}`);
+    
+    // For now, we'll just log the status change
+    // In a real implementation, you might want to store this in the job metadata
+    // or implement a more sophisticated job state management system
+    
+    console.log(`[CSVStorage] Job ${jobId} status updated to: ${newStatus}`);
+    return true;
+  }
 }
 
 // Export singleton instance

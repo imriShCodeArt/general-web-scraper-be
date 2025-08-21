@@ -5,6 +5,7 @@ import { ScrapingResults } from '@/components/ScrapingResults';
 import { AttributeEditorModal } from '@/components/AttributeEditorModal';
 import { EnhancedProgressTracker } from '@/components/EnhancedProgressTracker';
 import { WooCommerceImport } from '@/components/WooCommerceImport';
+import { StickyBottomBar } from '@/components/StickyBottomBar';
 import { useState } from 'react';
 import { ScrapingJob, Product, AttributeEditProgress, ProductValidationReport } from '@/types';
 import { AttributeManager } from '@/lib/attribute-manager';
@@ -23,7 +24,23 @@ export default function Home() {
 
   const handleScrapingStart = () => {
     setIsProcessing(true);
-    setCurrentJob(null);
+    
+    // Create a temporary job object for immediate control
+    const tempJob: ScrapingJob = {
+      id: crypto.randomUUID(),
+      status: 'processing',
+      archive_urls: [],
+      max_products_per_archive: 0,
+      total_products: 0,
+      processed_products: 0,
+      created_at: new Date(),
+      can_pause: true,
+      can_resume: false,
+      can_stop: true,
+      is_paused: false,
+    };
+    
+    setCurrentJob(tempJob);
     setValidationReport(undefined);
   };
 
@@ -39,6 +56,43 @@ export default function Home() {
     
     if (hasAttributes) {
       setShowAttributeEditor(true);
+    }
+  };
+
+  const handleJobPause = () => {
+    if (currentJob) {
+      setCurrentJob({
+        ...currentJob,
+        status: 'paused'
+      });
+    }
+  };
+
+  const handleJobResume = () => {
+    if (currentJob) {
+      setCurrentJob({
+        ...currentJob,
+        status: 'processing'
+      });
+    }
+  };
+
+  const handleJobStop = () => {
+    if (currentJob) {
+      setCurrentJob({
+        ...currentJob,
+        status: 'stopped'
+      });
+      setIsProcessing(false);
+      
+      // If we have products, we can still show them even if stopped
+      if (scrapedProducts.length > 0) {
+        // Job was stopped but we have some results
+        console.log('Job stopped. Showing partial results.');
+      } else {
+        // Job was stopped before any products were scraped
+        console.log('Job stopped before completion.');
+      }
     }
   };
 
@@ -89,14 +143,12 @@ export default function Home() {
 
   return (
     <div className="min-h-screen bg-gray-50">
-      <div className="max-w-4xl mx-auto py-8 px-4 sm:px-6 lg:px-8">
+      <div className="max-w-7xl mx-auto px-4 py-8 pb-24">
+        {/* Header */}
         <div className="text-center mb-8">
-          <h1 className="text-3xl font-bold text-gray-900 mb-4">
-            Product Archive Scraper
-          </h1>
-          <p className="text-lg text-gray-600 max-w-2xl mx-auto">
-            Extract product data from e-commerce archive pages, category pages, and shop listings. 
-            Automatically handles pagination to scrape all products from each archive.
+          <h1 className="text-4xl font-bold text-gray-900 mb-4">Web Scraper</h1>
+          <p className="text-xl text-gray-600 max-w-3xl mx-auto">
+            Scrape product data from e-commerce websites and import directly to WooCommerce or download as CSV files.
           </p>
         </div>
 
@@ -231,6 +283,18 @@ export default function Home() {
             onClose={handleWooCommerceImportClose}
           />
         )}
+
+        {/* Sticky Bottom Bar */}
+        <StickyBottomBar
+          job={currentJob}
+          products={scrapedProducts}
+          onWooCommerceImport={handleWooCommerceImport}
+          isVisible={!!currentJob || isProcessing}
+          isProcessing={isProcessing}
+          onPause={handleJobPause}
+          onResume={handleJobResume}
+          onStop={handleJobStop}
+        />
       </div>
     </div>
   );
