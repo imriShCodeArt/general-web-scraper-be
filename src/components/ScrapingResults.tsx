@@ -1,14 +1,16 @@
 'use client';
 
-import { ScrapingJob, Product } from '@/types';
+import { ScrapingJob, Product, ProductValidationReport } from '@/types';
 
 interface ScrapingResultsProps {
   job: ScrapingJob;
   products: Product[];
   isAttributeEditing: boolean;
+  validation?: ProductValidationReport;
+  onWooCommerceImport: () => void;
 }
 
-export function ScrapingResults({ job, products, isAttributeEditing }: ScrapingResultsProps) {
+export function ScrapingResults({ job, products, isAttributeEditing, validation, onWooCommerceImport }: ScrapingResultsProps) {
   const downloadCSV = async (type: 'parent' | 'variation') => {
     try {
       const response = await fetch(`/api/scrape/download/${job.id}/${type}`);
@@ -21,7 +23,6 @@ export function ScrapingResults({ job, products, isAttributeEditing }: ScrapingR
       const url = window.URL.createObjectURL(blob);
       const a = document.createElement('a');
       a.href = url;
-      // Try to use server-provided filename from Content-Disposition
       const disposition = response.headers.get('Content-Disposition') || '';
       const match = disposition.match(/filename="?([^";]+)"?/i);
       const serverFilename = match ? match[1] : '';
@@ -77,6 +78,82 @@ export function ScrapingResults({ job, products, isAttributeEditing }: ScrapingR
           </div>
         </div>
         
+        {/* Data Validation Summary */}
+        {validation && (
+          <div className="bg-yellow-50 p-4 rounded-lg">
+            <h3 className="font-medium text-yellow-900 mb-3">Data Validation</h3>
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm">
+              <div className="bg-white rounded p-3 border">
+                <div className="text-gray-700 font-medium mb-1">Quality Scores</div>
+                <div className="text-gray-600">Average Score: <span className="font-semibold">{validation.totals.averageScore}</span></div>
+                <div className="text-green-600">High: {validation.totals.highQuality}</div>
+                <div className="text-orange-600">Medium: {validation.totals.mediumQuality}</div>
+                <div className="text-red-600">Low: {validation.totals.lowQuality}</div>
+              </div>
+              <div className="bg-white rounded p-3 border">
+                <div className="text-gray-700 font-medium mb-1">Missing Data</div>
+                {Object.keys(validation.missingCounts).length === 0 ? (
+                  <div className="text-gray-500">No missing fields detected</div>
+                ) : (
+                  <ul className="list-disc list-inside text-gray-600">
+                    {Object.entries(validation.missingCounts).slice(0, 6).map(([field, count]) => (
+                      <li key={field}><span className="font-medium">{field}</span>: {count}</li>
+                    ))}
+                    {Object.entries(validation.missingCounts).length > 6 && (
+                      <li className="text-xs text-gray-500">+{Object.entries(validation.missingCounts).length - 6} more…</li>
+                    )}
+                  </ul>
+                )}
+              </div>
+              <div className="bg-white rounded p-3 border">
+                <div className="text-gray-700 font-medium mb-1">Duplicates</div>
+                {validation.duplicates.length === 0 ? (
+                  <div className="text-gray-500">No duplicates detected</div>
+                ) : (
+                  <ul className="list-disc list-inside text-gray-600">
+                    {validation.duplicates.slice(0, 5).map((d, i) => (
+                      <li key={i}><span className="font-medium uppercase">{d.type}</span>: {d.value} ({d.count})</li>
+                    ))}
+                    {validation.duplicates.length > 5 && (
+                      <li className="text-xs text-gray-500">+{validation.duplicates.length - 5} more…</li>
+                    )}
+                  </ul>
+                )}
+              </div>
+            </div>
+            
+            {/* Worst products list */}
+            <div className="mt-4">
+              <div className="text-gray-700 font-medium mb-2">Lowest Quality Products</div>
+              <div className="bg-white border rounded">
+                <div className="divide-y">
+                  {validation.perProduct
+                    .slice()
+                    .sort((a, b) => a.score - b.score)
+                    .slice(0, 5)
+                    .map((p, i) => (
+                      <div key={i} className="p-3 text-sm flex items-start justify-between gap-4">
+                        <div className="flex-1">
+                          <div className="font-medium text-gray-800 break-all">{p.title || p.url}</div>
+                          <div className="text-xs text-gray-500">SKU: {p.sku || '—'}</div>
+                          {p.missingFields.length > 0 && (
+                            <div className="text-xs text-red-600 mt-1">Missing: {p.missingFields.join(', ')}</div>
+                          )}
+                          {p.warnings.length > 0 && (
+                            <div className="text-xs text-orange-600">Warnings: {p.warnings.join(', ')}</div>
+                          )}
+                        </div>
+                        <div className="text-right">
+                          <div className={`text-sm font-semibold ${p.score >= 85 ? 'text-green-600' : p.score >= 70 ? 'text-orange-600' : 'text-red-600'}`}>{p.score}</div>
+                        </div>
+                      </div>
+                  ))}
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+        
         {/* Attribute Editing Status */}
         {products.length > 0 && (
           <div className="bg-blue-50 p-4 rounded-lg">
@@ -105,24 +182,43 @@ export function ScrapingResults({ job, products, isAttributeEditing }: ScrapingR
         
         {job.csv_downloads && (
           <div className="bg-green-50 p-4 rounded-lg">
-            <h3 className="font-medium text-green-900 mb-3">Download CSV Files</h3>
-            <div className="flex flex-col sm:flex-row gap-3">
+            <h3 className="font-medium text-green-900 mb-3">Export Options</h3>
+            
+            {/* WooCommerce Direct Import */}
+            <div className="mb-4 p-4 bg-blue-50 rounded-lg border border-blue-200">
+              <h4 className="font-medium text-blue-900 mb-2">WooCommerce Direct Import</h4>
+              <p className="text-sm text-blue-700 mb-3">
+                Import products directly to your WooCommerce store without downloading CSV files.
+              </p>
               <button
-                onClick={() => downloadCSV('parent')}
-                className="flex-1 bg-green-600 text-white px-4 py-2 rounded-md hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-green-500 focus:ring-offset-2"
+                onClick={onWooCommerceImport}
+                className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2"
               >
-                Download Parent Products CSV
-              </button>
-              <button
-                onClick={() => downloadCSV('variation')}
-                className="flex-1 bg-green-600 text-white px-4 py-2 rounded-md hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-green-500 focus:ring-offset-2"
-              >
-                Download Variation Products CSV
+                Import to WooCommerce
               </button>
             </div>
-            <p className="text-sm text-green-700 mt-2">
-              These CSV files are compatible with WooCommerce Product CSV Import Suite.
-            </p>
+            
+            {/* CSV Downloads */}
+            <div>
+              <h4 className="font-medium text-green-900 mb-2">Download CSV Files</h4>
+              <div className="flex flex-col sm:flex-row gap-3">
+                <button
+                  onClick={() => downloadCSV('parent')}
+                  className="flex-1 bg-green-600 text-white px-4 py-2 rounded-md hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-green-500 focus:ring-offset-2"
+                >
+                  Download Parent Products CSV
+                </button>
+                <button
+                  onClick={() => downloadCSV('variation')}
+                  className="flex-1 bg-green-600 text-white px-4 py-2 rounded-md hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-green-500 focus:ring-offset-2"
+                >
+                  Download Variation Products CSV
+                </button>
+              </div>
+              <p className="text-sm text-green-700 mt-2">
+                These CSV files are compatible with WooCommerce Product CSV Import Suite.
+              </p>
+            </div>
           </div>
         )}
         

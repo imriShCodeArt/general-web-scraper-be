@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
+import { AttributeEditProgress } from '@/types';
 
 export interface AttributeData {
   name: string;
@@ -14,16 +15,24 @@ interface AttributeEditorModalProps {
   onClose: () => void;
   onSave: (attributes: AttributeData[]) => void;
   initialAttributes: Record<string, string[]>;
+  onProgressUpdate?: (progress: AttributeEditProgress) => void;
 }
 
 export const AttributeEditorModal: React.FC<AttributeEditorModalProps> = ({
   isOpen,
   onClose,
   onSave,
-  initialAttributes
+  initialAttributes,
+  onProgressUpdate
 }) => {
   const [attributes, setAttributes] = useState<AttributeData[]>([]);
   const [errors, setErrors] = useState<Record<string, string>>({});
+  const [isProcessing, setIsProcessing] = useState(false);
+  const [processingProgress, setProcessingProgress] = useState<AttributeEditProgress>({
+    totalProducts: 0,
+    processedProducts: 0,
+    message: 'Ready to process attributes'
+  });
 
   useEffect(() => {
     if (isOpen && initialAttributes) {
@@ -121,10 +130,60 @@ export const AttributeEditorModal: React.FC<AttributeEditorModalProps> = ({
     return Object.keys(newErrors).length === 0;
   };
 
-  const handleSave = () => {
+  const handleSave = async () => {
     if (validateAttributes()) {
-      onSave(attributes);
-      onClose();
+      setIsProcessing(true);
+      
+      // Simulate processing progress for better UX
+      const totalSteps = attributes.length * 2; // Name + values processing
+      let currentStep = 0;
+      
+      const updateProgress = (step: number, message: string) => {
+        currentStep = step;
+        const progress: AttributeEditProgress = {
+          totalProducts: totalSteps,
+          processedProducts: currentStep,
+          message,
+          currentProduct: {
+            title: `Processing attribute ${Math.floor(currentStep / 2) + 1}`,
+            index: Math.floor(currentStep / 2),
+            attributesCount: attributes[Math.floor(currentStep / 2)]?.values.length || 0
+          }
+        };
+        setProcessingProgress(progress);
+        onProgressUpdate?.(progress);
+      };
+
+      try {
+        // Simulate processing steps
+        for (let i = 0; i < attributes.length; i++) {
+          const attr = attributes[i];
+          
+          // Process attribute name
+          updateProgress(i * 2, `Processing attribute name: ${attr.name}`);
+          await new Promise(resolve => setTimeout(resolve, 100));
+          
+          // Process attribute values
+          updateProgress(i * 2 + 1, `Processing ${attr.values.length} values for ${attr.name}`);
+          await new Promise(resolve => setTimeout(resolve, 200));
+        }
+        
+        updateProgress(totalSteps, 'Attributes processed successfully');
+        
+        // Small delay to show completion
+        await new Promise(resolve => setTimeout(resolve, 500));
+        
+        onSave(attributes);
+        onClose();
+      } catch (error) {
+        console.error('Error processing attributes:', error);
+        setProcessingProgress(prev => ({
+          ...prev,
+          message: 'Error processing attributes'
+        }));
+      } finally {
+        setIsProcessing(false);
+      }
     }
   };
 
@@ -138,10 +197,42 @@ export const AttributeEditorModal: React.FC<AttributeEditorModalProps> = ({
           <button
             onClick={onClose}
             className="text-gray-500 hover:text-gray-700 text-xl"
+            disabled={isProcessing}
           >
             ×
           </button>
         </div>
+
+        {/* Processing Progress Bar */}
+        {isProcessing && (
+          <div className="mb-6 bg-blue-50 p-4 rounded-lg">
+            <div className="flex items-center justify-between mb-2">
+              <span className="text-sm font-medium text-blue-700">Processing Attributes</span>
+              <span className="text-sm text-blue-600">
+                {processingProgress.processedProducts}/{processingProgress.totalProducts}
+              </span>
+            </div>
+            <div className="w-full h-3 bg-blue-200 rounded-full overflow-hidden">
+              <div
+                className="h-3 bg-blue-500 transition-all duration-300"
+                style={{ 
+                  width: `${processingProgress.totalProducts > 0 ? (processingProgress.processedProducts / processingProgress.totalProducts) * 100 : 0}%` 
+                }}
+              />
+            </div>
+            <div className="mt-2 text-sm text-blue-600">
+              {processingProgress.message}
+            </div>
+            {processingProgress.currentProduct && (
+              <div className="mt-2 text-xs text-blue-500">
+                Current: {processingProgress.currentProduct.title} 
+                ({processingProgress.currentProduct.index + 1}/{attributes.length})
+                <br />
+                Attributes: {processingProgress.currentProduct.attributesCount}
+              </div>
+            )}
+          </div>
+        )}
 
         <div className="space-y-6">
           {attributes.map((attr, attrIndex) => (
@@ -160,6 +251,7 @@ export const AttributeEditorModal: React.FC<AttributeEditorModalProps> = ({
                     }`}
                     dir="rtl"
                     placeholder="שם התכונה"
+                    disabled={isProcessing}
                   />
                   {errors[`name-${attrIndex}`] && (
                     <p className="text-red-500 text-sm mt-1">{errors[`name-${attrIndex}`]}</p>
@@ -192,11 +284,12 @@ export const AttributeEditorModal: React.FC<AttributeEditorModalProps> = ({
                         }`}
                         dir="rtl"
                         placeholder="ערך התכונה"
+                        disabled={isProcessing}
                       />
                       <button
                         onClick={() => removeAttributeValue(attrIndex, valueIndex)}
-                        className="px-3 py-2 text-red-600 hover:text-red-800 hover:bg-red-50 rounded-md"
-                        disabled={attr.values.length <= 1}
+                        className="px-3 py-2 text-red-600 hover:text-red-800 hover:bg-red-50 rounded-md disabled:opacity-50"
+                        disabled={attr.values.length <= 1 || isProcessing}
                       >
                         Remove
                       </button>
@@ -208,7 +301,8 @@ export const AttributeEditorModal: React.FC<AttributeEditorModalProps> = ({
                 </div>
                 <button
                   onClick={() => addAttributeValue(attrIndex)}
-                  className="mt-2 px-4 py-2 text-blue-600 hover:text-blue-800 hover:bg-blue-50 rounded-md"
+                  className="mt-2 px-4 py-2 text-blue-600 hover:text-blue-800 hover:bg-blue-50 rounded-md disabled:opacity-50"
+                  disabled={isProcessing}
                 >
                   + Add Value
                 </button>
@@ -221,7 +315,8 @@ export const AttributeEditorModal: React.FC<AttributeEditorModalProps> = ({
                       const nextIndex = (attrIndex + 1) % attributes.length;
                       mergeAttributes(attrIndex, nextIndex);
                     }}
-                    className="px-4 py-2 text-orange-600 hover:text-orange-800 hover:bg-orange-50 rounded-md"
+                    className="px-4 py-2 text-orange-600 hover:text-orange-800 hover:bg-orange-50 rounded-md disabled:opacity-50"
+                    disabled={isProcessing}
                   >
                     Merge with Next
                   </button>
@@ -234,15 +329,27 @@ export const AttributeEditorModal: React.FC<AttributeEditorModalProps> = ({
         <div className="flex justify-end space-x-3 mt-6 pt-4 border-t">
           <button
             onClick={onClose}
-            className="px-6 py-2 border border-gray-300 rounded-md text-gray-700 hover:bg-gray-50"
+            className="px-6 py-2 border border-gray-300 rounded-md text-gray-700 hover:bg-gray-50 disabled:opacity-50"
+            disabled={isProcessing}
           >
             Cancel
           </button>
           <button
             onClick={handleSave}
-            className="px-6 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700"
+            className="px-6 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 disabled:opacity-50 flex items-center gap-2"
+            disabled={isProcessing}
           >
-            Save & Continue
+            {isProcessing ? (
+              <>
+                <svg className="animate-spin h-4 w-4" viewBox="0 0 24 24">
+                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none" />
+                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
+                </svg>
+                Processing...
+              </>
+            ) : (
+              'Save & Continue'
+            )}
           </button>
         </div>
       </div>

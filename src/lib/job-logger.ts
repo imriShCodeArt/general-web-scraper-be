@@ -1,3 +1,5 @@
+import { DetailedProgress, AttributeEditProgress } from '@/types';
+
 type LogLevel = 'info' | 'warn' | 'error' | 'debug';
 
 export type LogEvent = {
@@ -15,7 +17,19 @@ export type ProgressEvent = {
   timestamp: number;
 };
 
-type AnyEvent = LogEvent | ProgressEvent;
+export type DetailedProgressEvent = {
+  type: 'detailed_progress';
+  progress: DetailedProgress;
+  timestamp: number;
+};
+
+export type AttributeEditProgressEvent = {
+  type: 'attribute_edit_progress';
+  progress: AttributeEditProgress;
+  timestamp: number;
+};
+
+type AnyEvent = LogEvent | ProgressEvent | DetailedProgressEvent | AttributeEditProgressEvent;
 
 type Subscriber = (event: AnyEvent) => void;
 
@@ -62,6 +76,14 @@ class JobLogger {
   progress(jobId: string, percent: number, message?: string) {
     const pct = Math.max(0, Math.min(100, Math.round(percent)));
     this.push(jobId, { type: 'progress', percent: pct, message, timestamp: Date.now() });
+  }
+
+  detailedProgress(jobId: string, progress: DetailedProgress) {
+    this.push(jobId, { type: 'detailed_progress', progress, timestamp: Date.now() });
+  }
+
+  attributeEditProgress(jobId: string, progress: AttributeEditProgress) {
+    this.push(jobId, { type: 'attribute_edit_progress', progress, timestamp: Date.now() });
   }
 }
 

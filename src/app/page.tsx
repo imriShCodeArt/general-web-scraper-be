@@ -3,8 +3,11 @@
 import { ScrapingForm } from '@/components/ScrapingForm';
 import { ScrapingResults } from '@/components/ScrapingResults';
 import { AttributeEditorModal } from '@/components/AttributeEditorModal';
+import { EnhancedProgressTracker } from '@/components/EnhancedProgressTracker';
+import { ProgressDemo } from '@/components/ProgressDemo';
+import { WooCommerceImport } from '@/components/WooCommerceImport';
 import { useState } from 'react';
-import { ScrapingJob, Product } from '@/types';
+import { ScrapingJob, Product, AttributeEditProgress, ProductValidationReport } from '@/types';
 import { AttributeManager } from '@/lib/attribute-manager';
 import { AttributeData } from '@/components/AttributeEditorModal';
 
@@ -13,20 +16,24 @@ export default function Home() {
   const [currentJob, setCurrentJob] = useState<ScrapingJob | null>(null);
   const [showHowTo, setShowHowTo] = useState<boolean>(false);
   const [scrapedProducts, setScrapedProducts] = useState<Product[]>([]);
+  const [validationReport, setValidationReport] = useState<ProductValidationReport | undefined>();
   const [showAttributeEditor, setShowAttributeEditor] = useState(false);
   const [isAttributeEditing, setIsAttributeEditing] = useState(false);
+  const [attributeEditProgress, setAttributeEditProgress] = useState<AttributeEditProgress | undefined>();
+  const [showWooCommerceImport, setShowWooCommerceImport] = useState(false);
 
   const handleScrapingStart = () => {
     setIsProcessing(true);
     setCurrentJob(null);
+    setValidationReport(undefined);
   };
 
-  const handleScrapingComplete = (job: ScrapingJob, products: Product[]) => {
+  const handleScrapingComplete = (job: ScrapingJob, products: Product[], validation?: ProductValidationReport) => {
     setIsProcessing(false);
     setCurrentJob(job);
     setScrapedProducts(products);
+    setValidationReport(validation);
     
-    // Check if we have products with attributes to edit
     const hasAttributes = products.some(product => 
       Object.keys(product.attributes).length > 0
     );
@@ -69,6 +76,18 @@ export default function Home() {
     })();
   };
 
+  const handleAttributeProgressUpdate = (progress: AttributeEditProgress) => {
+    setAttributeEditProgress(progress);
+  };
+
+  const handleWooCommerceImport = () => {
+    setShowWooCommerceImport(true);
+  };
+
+  const handleWooCommerceImportClose = () => {
+    setShowWooCommerceImport(false);
+  };
+
   return (
     <div className="min-h-screen bg-gray-50">
       <div className="max-w-4xl mx-auto py-8 px-4 sm:px-6 lg:px-8">
@@ -81,6 +100,9 @@ export default function Home() {
             Automatically handles pagination to scrape all products from each archive.
           </p>
         </div>
+
+        {/* Progress Demo Component */}
+        <ProgressDemo />
 
         {/* How-To (Collapsible) */}
         <div className="bg-white rounded-lg shadow-md mb-8 overflow-hidden">
@@ -134,9 +156,9 @@ export default function Home() {
                   <div className="bg-primary-100 rounded-full w-12 h-12 flex items-center justify-center mx-auto mb-3">
                     <span className="text-primary-600 font-bold text-lg">4</span>
                   </div>
-                  <h3 className="font-medium text-gray-900 mb-2">Download CSVs</h3>
+                  <h3 className="font-medium text-gray-900 mb-2">Import or Download</h3>
                   <p className="text-sm text-gray-600">
-                    Get WooCommerce-compatible CSV files ready for import
+                    Import directly to WooCommerce or download CSV files
                   </p>
                 </div>
               </div>
@@ -170,6 +192,17 @@ export default function Home() {
           isProcessing={isProcessing}
         />
 
+        {/* Enhanced Progress Tracker for Attribute Editing */}
+        {!isProcessing && attributeEditProgress && (
+          <div className="mt-6">
+            <EnhancedProgressTracker
+              detailedProgress={undefined}
+              attributeEditProgress={attributeEditProgress}
+              isVisible={true}
+            />
+          </div>
+        )}
+
         {/* Attribute Editor Modal */}
         {showAttributeEditor && (
           <AttributeEditorModal
@@ -177,6 +210,7 @@ export default function Home() {
             onClose={() => setShowAttributeEditor(false)}
             onSave={handleAttributeSave}
             initialAttributes={AttributeManager.collectAttributes(scrapedProducts)}
+            onProgressUpdate={handleAttributeProgressUpdate}
           />
         )}
 
@@ -186,8 +220,18 @@ export default function Home() {
               job={currentJob} 
               products={scrapedProducts}
               isAttributeEditing={isAttributeEditing}
+              validation={validationReport}
+              onWooCommerceImport={handleWooCommerceImport}
             />
           </div>
+        )}
+
+        {/* WooCommerce Import Modal */}
+        {showWooCommerceImport && (
+          <WooCommerceImport
+            products={scrapedProducts}
+            onClose={handleWooCommerceImportClose}
+          />
         )}
       </div>
     </div>

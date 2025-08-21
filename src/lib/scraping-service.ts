@@ -3,12 +3,15 @@ import { ArchiveScraper } from './archive-scraper';
 import { ProductScraper } from './scraper';
 import { CSVGenerator } from './csv-generator';
 import { csvStorage } from './csv-storage';
-import { Product, ScrapingResult } from '@/types';
+import { Product, ScrapingResult, DetailedProgress, ProductValidationReport } from '@/types';
 import { jobLogger } from '@/lib/job-logger';
 import pino from 'pino';
+import { ProductValidator } from './product-validator';
 
 export class ScrapingService {
   private logger: pino.Logger;
+  private startTime: number = 0;
+  private lastProgressUpdate: number = 0;
 
   constructor(requestId?: string) {
     this.logger = pino({
@@ -18,28 +21,94 @@ export class ScrapingService {
     });
   }
 
+  private updateDetailedProgress(
+    requestId: string,
+    stage: 'initializing' | 'fetching_archives' | 'scraping_products' | 'generating_csv' | 'complete',
+    overall: number,
+    message: string,
+    archives?: { total: number; processed: number; current: number },
+    currentArchive?: { url: string; index: number; total: number; progress: number },
+    products?: { total: number; processed: number; current: number },
+    currentProduct?: { url: string; index: number; total: number; title?: string }
+  ) {
+    const now = Date.now();
+    const elapsed = (now - this.startTime) / 1000;
+    
+    let remaining = 0;
+    let rate = 0;
+    
+    if (this.lastProgressUpdate > 0 && products) {
+      const timeDiff = (now - this.lastProgressUpdate) / 1000;
+      if (timeDiff > 0) {
+        rate = products.processed / elapsed;
+        if (rate > 0) {
+          remaining = (products.total - products.processed) / rate;
+        }
+      }
+    }
+    
+    this.lastProgressUpdate = now;
+    
+    const detailedProgress = {
+      overall,
+      stage,
+      message,
+      archives: archives || { total: 0, processed: 0, current: 0 },
+      currentArchive,
+      products: products || { total: 0, processed: 0, current: 0 },
+      currentProduct,
+      timeEstimate: {
+        elapsed,
+        remaining,
+        rate
+      }
+    };
+    
+    jobLogger.detailedProgress(requestId, detailedProgress);
+  }
+
   /**
    * Main scraping pipeline for archive pages
    */
   async scrapeFromArchiveUrls(archiveUrls: string[], maxProductsPerArchive: number = 100, requestId?: string): Promise<ScrapingResult> {
+    this.startTime = Date.now();
     this.logger.info({ archiveUrls, maxProductsPerArchive, requestId }, 'Starting archive scraping pipeline');
+    
     if (requestId) {
       jobLogger.log(requestId, 'info', 'Starting archive scraping');
-      jobLogger.progress(requestId, 1, 'Initializing');
+      this.updateDetailedProgress(requestId, 'initializing', 1, 'Initializing scraping process');
     }
 
     try {
       // Step 1: Parse archive pages to extract product URLs (with pagination)
-      const { productUrls, archiveTitles } = await this.extractProductUrlsFromArchives(archiveUrls, maxProductsPerArchive);
+      if (requestId) {
+        this.updateDetailedProgress(
+          requestId, 
+          'fetching_archives', 
+          5, 
+          'Fetching archive pages',
+          { total: archiveUrls.length, processed: 0, current: 0 }
+        );
+      }
+      
+      const { productUrls, archiveTitles } = await this.extractProductUrlsFromArchives(archiveUrls, maxProductsPerArchive, requestId);
       this.logger.info({ count: productUrls.length, maxProductsPerArchive }, 'Extracted product URLs from archives');
+      
       if (requestId) {
         jobLogger.log(requestId, 'info', `Found ${productUrls.length} product URLs`);
-        jobLogger.progress(requestId, 10, 'Fetched archive URLs');
+        this.updateDetailedProgress(
+          requestId, 
+          'fetching_archives', 
+          10, 
+          `Found ${productUrls.length} product URLs`,
+          { total: archiveUrls.length, processed: archiveUrls.length, current: archiveUrls.length }
+        );
       }
 
       if (productUrls.length === 0) {
         return {
           success: false,
+          data: [],
           error: 'No product URLs found in the provided archive pages',
           total_archives: archiveUrls.length,
           processed_archives: 0,
@@ -47,16 +116,68 @@ export class ScrapingService {
       }
 
       // Step 2: Scrape each product page
-      if (requestId && productUrls.length > 0) jobLogger.progress(requestId, 5, 'Starting product pages scrape');
+      if (requestId) {
+        this.updateDetailedProgress(
+          requestId, 
+          'scraping_products', 
+          15, 
+          'Starting product scraping',
+          { total: archiveUrls.length, processed: archiveUrls.length, current: archiveUrls.length },
+          undefined,
+          { total: productUrls.length, processed: 0, current: 0 }
+        );
+      }
+      
       const products = await this.scrapeProductPages(productUrls, requestId);
       this.logger.info({ count: products.length }, 'Scraped product pages');
-      if (requestId) jobLogger.log(requestId, 'info', `Scraped ${products.length} products`);
+      
+      // Step 2.5: Validate products
+      let validation: ProductValidationReport | undefined = undefined;
+      try {
+        validation = ProductValidator.validate(products);
+        this.logger.info({ validationSummary: validation?.totals, duplicates: validation?.duplicates?.length }, 'Product validation completed');
+        if (requestId) {
+          jobLogger.log(requestId, 'info', `Validation: avg score ${validation.totals.averageScore}, duplicates ${validation.duplicates.length}`);
+        }
+      } catch (e) {
+        this.logger.warn({ e }, 'Product validation failed');
+      }
+
+      if (requestId) {
+        jobLogger.log(requestId, 'info', `Scraped ${products.length} products`);
+        this.updateDetailedProgress(
+          requestId, 
+          'scraping_products', 
+          90, 
+          `Scraped ${products.length} products`,
+          { total: archiveUrls.length, processed: archiveUrls.length, current: archiveUrls.length },
+          undefined,
+          { total: productUrls.length, processed: productUrls.length, current: productUrls.length }
+        );
+      }
 
       // Step 3: Generate CSV files and store them if requestId is provided
-      if (requestId) jobLogger.progress(requestId, 90, 'Generating CSV files');
+      if (requestId) {
+        this.updateDetailedProgress(
+          requestId, 
+          'generating_csv', 
+          95, 
+          'Generating CSV files'
+        );
+      }
+      
       const csvs = await CSVGenerator.generateWooCommerceCSVs(products);
       this.logger.info('Generated CSV files');
-      if (requestId) jobLogger.log(requestId, 'info', 'CSV files generated');
+      
+      if (requestId) {
+        jobLogger.log(requestId, 'info', 'CSV files generated');
+        this.updateDetailedProgress(
+          requestId, 
+          'generating_csv', 
+          98, 
+          'CSV files generated'
+        );
+      }
       
       // Store CSV data for download if we have a requestId
       if (requestId) {
@@ -70,7 +191,13 @@ export class ScrapingService {
         const firstTitle = archiveTitles.find(t => t && t.trim().length > 0);
         await csvStorage.storeCSVData(requestId, products, csvs.parentProducts, csvs.variationProducts, { archiveTitle: firstTitle });
         this.logger.info({ requestId }, 'CSV data stored successfully');
-        jobLogger.progress(requestId, 100, 'Done');
+        
+        this.updateDetailedProgress(
+          requestId, 
+          'complete', 
+          100, 
+          'Scraping completed successfully'
+        );
         
         // Verify storage immediately
         const storedJobInfo = csvStorage.getJobInfo(requestId);
@@ -96,7 +223,9 @@ export class ScrapingService {
           download_links: {
             parent: `/api/scrape/download/${requestId}/parent`,
             variation: `/api/scrape/download/${requestId}/variation`
-          }
+          },
+          // Include validation in response for UI reporting
+          validation: validation
         } : products,
         total_archives: archiveUrls.length,
         processed_archives: archiveUrls.length,
@@ -106,6 +235,7 @@ export class ScrapingService {
       if (requestId) jobLogger.log(requestId, 'error', 'Scraping failed', { error: error instanceof Error ? error.message : String(error) });
       return {
         success: false,
+        data: [],
         error: error instanceof Error ? error.message : 'Unknown error occurred',
         total_archives: archiveUrls.length,
         processed_archives: 0,
@@ -119,13 +249,25 @@ export class ScrapingService {
   /**
    * Extract product URLs from archive pages (with pagination support)
    */
-  private async extractProductUrlsFromArchives(archiveUrls: string[], maxProductsPerArchive: number): Promise<{ productUrls: string[]; archiveTitles: string[] }> {
+  private async extractProductUrlsFromArchives(archiveUrls: string[], maxProductsPerArchive: number, requestId?: string): Promise<{ productUrls: string[]; archiveTitles: string[] }> {
     const allProductUrls: string[] = [];
     const archiveTitles: string[] = [];
 
-    for (const archiveUrl of archiveUrls) {
+    for (let i = 0; i < archiveUrls.length; i++) {
+      const archiveUrl = archiveUrls[i];
       try {
         this.logger.info({ archiveUrl }, 'Processing archive page');
+        
+        if (requestId) {
+          this.updateDetailedProgress(
+            requestId,
+            'fetching_archives',
+            Math.min(10, 5 + ((i + 1) / archiveUrls.length) * 5),
+            `Processing archive ${i + 1}/${archiveUrls.length}`,
+            { total: archiveUrls.length, processed: i, current: i + 1 },
+            { url: archiveUrl, index: i, total: archiveUrls.length, progress: ((i + 1) / archiveUrls.length) * 100 }
+          );
+        }
         
         console.log('Processing archive:', archiveUrl);
         console.log('Max products per archive:', maxProductsPerArchive);
@@ -168,9 +310,21 @@ export class ScrapingService {
     for (let i = 0; i < productUrls.length; i += batchSize) {
       const batch = productUrls.slice(i, i + batchSize);
       this.logger.info({ batch: i / batchSize + 1, total: Math.ceil(productUrls.length / batchSize) }, 'Processing batch');
-      if (requestId) jobLogger.progress(requestId, Math.min(85, Math.round(((i + batch.length) / productUrls.length) * 80) + 5), `Processing batch ${i / batchSize + 1}`);
+      
+      if (requestId) {
+        const overallProgress = Math.min(85, Math.round(((i + batch.length) / productUrls.length) * 80) + 15);
+        this.updateDetailedProgress(
+          requestId,
+          'scraping_products',
+          overallProgress,
+          `Processing batch ${i / batchSize + 1}/${Math.ceil(productUrls.length / batchSize)}`,
+          undefined,
+          undefined,
+          { total: productUrls.length, processed: i, current: i + batch.length }
+        );
+      }
 
-      const batchPromises = batch.map(async (url) => {
+      const batchPromises = batch.map(async (url, batchIndex) => {
         try {
           const html = await HTTPClient.fetchHTML(url);
           const productData = await ProductScraper.scrapeProductPage(url, html);
@@ -180,7 +334,23 @@ export class ScrapingService {
           if (completeProduct) {
             products.push(completeProduct);
             this.logger.info({ url, title: completeProduct.title }, 'Successfully scraped product');
-            if (requestId) jobLogger.log(requestId, 'info', `Scraped product: ${completeProduct.title}`);
+            
+            if (requestId) {
+              jobLogger.log(requestId, 'info', `Scraped product: ${completeProduct.title}`);
+              
+              // Update progress for individual product
+              const currentIndex = i + batchIndex;
+              this.updateDetailedProgress(
+                requestId,
+                'scraping_products',
+                Math.min(85, Math.round(((currentIndex + 1) / productUrls.length) * 80) + 15),
+                `Scraped: ${completeProduct.title}`,
+                undefined,
+                undefined,
+                { total: productUrls.length, processed: currentIndex + 1, current: currentIndex + 1 },
+                { url, index: currentIndex, total: productUrls.length, title: completeProduct.title }
+              );
+            }
           }
         } catch (error) {
           this.logger.error({ url, error }, 'Failed to scrape product page');

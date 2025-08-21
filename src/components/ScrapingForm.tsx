@@ -1,11 +1,12 @@
 'use client';
 
 import { useEffect, useRef, useState } from 'react';
-import { ScrapingJob, Product } from '@/types';
+import { ScrapingJob, Product, DetailedProgress, AttributeEditProgress, ProductValidationReport } from '@/types';
+import { EnhancedProgressTracker } from './EnhancedProgressTracker';
 
 interface ScrapingFormProps {
   onScrapingStart: () => void;
-  onScrapingComplete: (job: ScrapingJob, products: Product[]) => void;
+  onScrapingComplete: (job: ScrapingJob, products: Product[], validation?: ProductValidationReport) => void;
   isProcessing: boolean;
 }
 
@@ -16,6 +17,8 @@ export function ScrapingForm({ onScrapingStart, onScrapingComplete, isProcessing
   const [showLogs, setShowLogs] = useState<boolean>(false);
   const [logs, setLogs] = useState<Array<{ ts: number; level?: string; msg: string }>>([]);
   const [progress, setProgress] = useState<number>(0);
+  const [detailedProgress, setDetailedProgress] = useState<DetailedProgress | undefined>();
+  const [attributeEditProgress, setAttributeEditProgress] = useState<AttributeEditProgress | undefined>();
   const esRef = useRef<EventSource | null>(null);
   const logContainerRef = useRef<HTMLDivElement | null>(null);
   const [autoScroll, setAutoScroll] = useState<boolean>(true);
@@ -96,6 +99,8 @@ export function ScrapingForm({ onScrapingStart, onScrapingComplete, isProcessing
       // reset UI state
       setLogs([]);
       setProgress(0);
+      setDetailedProgress(undefined);
+      setAttributeEditProgress(undefined);
       setShowLogs(true);
       // open SSE early
       if (esRef.current) {
@@ -112,6 +117,12 @@ export function ScrapingForm({ onScrapingStart, onScrapingComplete, isProcessing
           } else if (data.type === 'progress') {
             if (typeof data.percent === 'number') setProgress(data.percent);
             if (data.message) setLogs((prev) => [...prev, { ts: data.timestamp, msg: data.message }]);
+          } else if (data.type === 'detailed_progress') {
+            setDetailedProgress(data.progress);
+            // Also update the simple progress for backward compatibility
+            setProgress(data.progress.overall);
+          } else if (data.type === 'attribute_edit_progress') {
+            setAttributeEditProgress(data.progress);
           }
         } catch {}
       };
@@ -142,6 +153,11 @@ export function ScrapingForm({ onScrapingStart, onScrapingComplete, isProcessing
               if (e?.type === 'progress') {
                 if (typeof e.percent === 'number') setProgress(e.percent);
                 if (e.message) merged.push({ ts: e.timestamp, msg: e.message });
+              } else if (e?.type === 'detailed_progress') {
+                setDetailedProgress(e.progress);
+                setProgress(e.progress.overall);
+              } else if (e?.type === 'attribute_edit_progress') {
+                setAttributeEditProgress(e.progress);
               }
             }
             return merged;
@@ -162,7 +178,8 @@ export function ScrapingForm({ onScrapingStart, onScrapingComplete, isProcessing
 
         // Extract products from the response for attribute editing
         const products = result.data.products || [];
-        onScrapingComplete(job, products);
+        const validation: ProductValidationReport | undefined = result.data.validation;
+        onScrapingComplete(job, products, validation);
       } else {
         console.error('Archive scraping failed:', result.error);
         // Show error to user with more details
@@ -263,6 +280,15 @@ export function ScrapingForm({ onScrapingStart, onScrapingComplete, isProcessing
       >
         {isProcessing ? 'Scraping Archives...' : 'Start Scraping Archives'}
       </button>
+
+      {/* Enhanced Progress Tracker */}
+      {isProcessing && (
+        <EnhancedProgressTracker
+          detailedProgress={detailedProgress}
+          attributeEditProgress={attributeEditProgress}
+          isVisible={isProcessing}
+        />
+      )}
 
       {/* Always-visible Progress Bar */}
       <div className="mt-4 bg-white border rounded-md p-3">
