@@ -4,7 +4,6 @@ import { ScrapingForm } from '@/components/ScrapingForm';
 import { ScrapingResults } from '@/components/ScrapingResults';
 import { AttributeEditorModal } from '@/components/AttributeEditorModal';
 import { EnhancedProgressTracker } from '@/components/EnhancedProgressTracker';
-import { ProgressDemo } from '@/components/ProgressDemo';
 import { WooCommerceImport } from '@/components/WooCommerceImport';
 import { useState } from 'react';
 import { ScrapingJob, Product, AttributeEditProgress, ProductValidationReport } from '@/types';
@@ -101,8 +100,7 @@ export default function Home() {
           </p>
         </div>
 
-        {/* Progress Demo Component */}
-        <ProgressDemo />
+        
 
         {/* How-To (Collapsible) */}
         <div className="bg-white rounded-lg shadow-md mb-8 overflow-hidden">
