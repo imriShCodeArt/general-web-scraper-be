@@ -11,159 +11,31 @@ import { ProductValidator } from './product-validator';
 function setupCustomAdapters() {
   console.log('[ScrapingService] Setting up universal extraction with specific fallbacks');
   
-  // Temporary: Re-enable wash-and-dry.eu adapter as fallback
-  const washAndDryArchiveAdapter = {
-    extractProductUrls: ($: any, baseUrl: string, html: string) => {
-      const productUrls: string[] = [];
-      const seenHandles = new Set<string>();
-
-      console.log('[wash-and-dry] Starting custom extraction');
-
-      // Strategy 1: Look for product cards/containers first to avoid duplicates
-      const productCards = $('.productitem, .productgrid--item, [data-label-product-handle], .product-card');
-      console.log(`[wash-and-dry] Found ${productCards.length} product cards`);
-
-      if (productCards.length > 0) {
-        // Extract from product cards to avoid duplicate counting
-        productCards.each((_: number, card: any) => {
-          const $card = $(card);
-          
-          // Look for the main product link within this card
-          const productLink = $card.find('a[href*="/products/"]').first();
-          if (productLink.length === 0) return;
-          
-          const href = productLink.attr('href');
-          if (!href) return;
-          
-          try {
-            const u = new URL(href, baseUrl);
-            if (!u.pathname.includes('/products/')) return;
-            
-            // Extract Shopify handle and canonicalize
-            const m = u.pathname.match(/\/products\/([^\/?#]+)/);
-            if (!m) return;
-            
-            const handle = m[1].toLowerCase();
-            if (seenHandles.has(handle)) return;
-            
-            seenHandles.add(handle);
-            const canonical = `${u.origin}/products/${handle}`;
-            productUrls.push(canonical);
-            
-          } catch (e) {
-            console.log(`[wash-and-dry] Error processing card link: ${href}`, e);
-          }
-        });
+        // Import and setup the wash-and-dry adapter for both wash-and-dry.eu and washdrymats.com
+      try {
+        const { setupWashAndDryAdapter } = require('./wash-and-dry-adapter');
+        setupWashAndDryAdapter();
+        console.log('[ScrapingService] wash-and-dry adapters registered successfully');
+      } catch (error) {
+        console.warn('[ScrapingService] Could not load wash-and-dry adapter:', error instanceof Error ? error.message : String(error));
       }
 
-      // Strategy 2: Fallback to direct link scanning if no cards found
-      if (productUrls.length === 0) {
-        console.log('[wash-and-dry] No product cards found, falling back to direct link scanning');
-        
-        const productLinks = $('a[href*="/products/"]');
-        console.log(`[wash-and-dry] Found ${productLinks.length} potential product links`);
-
-        productLinks.each((_: number, link: any) => {
-          const href = $(link).attr('href');
-          if (!href) return;
-          
-          try {
-            const u = new URL(href, baseUrl);
-            if (!u.pathname.includes('/products/')) return;
-            
-            // Skip cart/checkout links
-            if (u.pathname.includes('cart') || u.pathname.includes('checkout') || u.search.includes('add-to-cart')) {
-              return;
-            }
-            
-            // Extract Shopify handle and canonicalize
-            const m = u.pathname.match(/\/products\/([^\/?#]+)/);
-            if (!m) return;
-            
-            const handle = m[1].toLowerCase();
-            if (seenHandles.has(handle)) return;
-            
-            seenHandles.add(handle);
-            const canonical = `${u.origin}/products/${handle}`;
-            productUrls.push(canonical);
-            
-          } catch (e) {
-            console.log(`[wash-and-dry] Error processing link: ${href}`, e);
-          }
-        });
+      // Register washdrymats.com product scraper adapter
+      try {
+        ProductScraper.registerWashDryMatsAdapter();
+        console.log('[ScrapingService] washdrymats.com product adapter registered successfully');
+      } catch (error) {
+        console.warn('[ScrapingService] Could not load washdrymats.com product adapter:', error instanceof Error ? error.message : String(error));
       }
 
-      console.log(`[wash-and-dry] Extracted ${productUrls.length} unique product URLs`);
-      return productUrls;
-    },
-
-    findNextPage: ($: any, baseUrl: string, currentPage: number) => {
-      // Look for pagination
-      const nextSelectors = [
-        'a[rel="next"]',
-        '.pagination .next a',
-        '.pagination a:contains("Next")',
-        '.pagination a:contains("Weiter")',
-        'a:contains("Weiter")',
-        'a:contains("Next")',
-        '.pagination a[href*="page="]'
-      ];
-      
-      for (const selector of nextSelectors) {
-        const nextLink = $(selector);
-        if (nextLink.length > 0) {
-          const href = nextLink.attr('href');
-          if (href) {
-            try {
-              const fullUrl = new URL(href, baseUrl);
-              return { has_next_page: true, next_page_url: fullUrl.toString() };
-            } catch {}
-          }
-        }
+      // Register modanbags.co.il adapter for AJAX load-more pagination
+      try {
+        const { setupModanbagsAdapter } = require('./modanbags-adapter');
+        setupModanbagsAdapter();
+        console.log('[ScrapingService] modanbags.co.il adapter registered successfully');
+      } catch (error) {
+        console.warn('[ScrapingService] Could not load modanbags.co.il adapter:', error instanceof Error ? error.message : String(error));
       }
-      
-      return { has_next_page: false };
-    },
-
-    // Detect variable products from archive page structure
-    detectVariableProducts: ($: any, baseUrl: string) => {
-      const variableProductHandles: string[] = [];
-      
-      // Look for products with size selectors or "Optionen auswählen" buttons
-      const productCards = $('.productitem, .productgrid--item, [data-label-product-handle], .product-card');
-      
-      productCards.each((_: number, card: any) => {
-        const $card = $(card);
-        
-        // Check for size selectors, variant options, or "Optionen auswählen" buttons
-        const hasVariants = $card.find('select[name*="Size"], select[name*="size"], .variant-selector, .product-options select, select[class*="variant"], select[class*="option"], button:contains("Optionen auswählen"), a:contains("Optionen auswählen")').length > 0;
-        
-        if (hasVariants) {
-          // Extract the product handle
-          const productLink = $card.find('a[href*="/products/"]').first();
-          if (productLink.length > 0) {
-            const href = productLink.attr('href');
-            if (href) {
-              try {
-                const u = new URL(href, baseUrl);
-                const m = u.pathname.match(/\/products\/([^\/?#]+)/);
-                if (m) {
-                  variableProductHandles.push(m[1].toLowerCase());
-                }
-              } catch {}
-            }
-          }
-        }
-      });
-      
-      console.log(`[wash-and-dry] Detected ${variableProductHandles.length} variable products from archive page`);
-      return variableProductHandles;
-    }
-  };
-
-  // Register the wash-and-dry.eu adapter as fallback
-  ArchiveScraper.registerAdapter('wash-and-dry.eu', washAndDryArchiveAdapter);
-  console.log('[ScrapingService] Registered wash-and-dry.eu adapter as fallback');
   
   // The universal scraper now handles common e-commerce patterns automatically
   // Site-specific adapters are kept as fallbacks only for truly unique cases
@@ -420,19 +292,21 @@ export class ScrapingService {
           const page = ArchiveScraper.parseArchivePage(html, archiveUrl, 1);
           if (page.category_title) archiveTitles.push(page.category_title);
           
+          // Update progress with total products found (not just first page)
+          if (requestId) {
+            this.updateDetailedProgress(
+              requestId,
+              'fetching_archives',
+              6,
+              `Found ${productUrls.length} total products across all pages`,
+              { total: archiveUrls.length, processed: i, current: i + 1 },
+              { url: archiveUrl, index: i, total: archiveUrls.length, progress: ((i + 1) / archiveUrls.length) * 100 }
+            );
+          }
+          
           // Capture initial product count from first archive page for frontend display
           if (i === 0 && !initialProductCount) {
-            initialProductCount = page.product_urls.length;
-            if (requestId) {
-              this.updateDetailedProgress(
-                requestId,
-                'fetching_archives',
-                6,
-                `Found ${initialProductCount} products on archive page`,
-                { total: archiveUrls.length, processed: i, current: i + 1 },
-                { url: archiveUrl, index: i, total: archiveUrls.length, progress: ((i + 1) / archiveUrls.length) * 100 }
-              );
-            }
+            initialProductCount = productUrls.length;
           }
         } catch {}
         
@@ -544,7 +418,7 @@ export class ScrapingService {
 
     // Only create variations if the product actually has variation data
     // For simple products, leave variations array empty
-    if (product.variations.length === 0 && ((product.attributes.Color && product.attributes.Color.length > 0) || (product.attributes.Size && product.attributes.Size.length > 0))) {
+    if (product.variations.length === 0 && ((product.attributes.Color && Array.isArray(product.attributes.Color) && product.attributes.Color.length > 0) || (product.attributes.Size && Array.isArray(product.attributes.Size) && product.attributes.Size.length > 0))) {
       // This product has attributes but no variations, so it's likely a simple product
       // Don't create artificial variations
     }

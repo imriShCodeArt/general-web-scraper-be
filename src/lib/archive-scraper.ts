@@ -17,6 +17,9 @@ export type ArchiveAdapter = {
   
   // Optional method to detect variable products from archive page structure
   detectVariableProducts?: ($: cheerio.CheerioAPI, baseUrl: string) => string[];
+  
+  // Optional method for custom pagination handling (e.g., AJAX load-more)
+  scrapeAllPages?: (baseUrl: string, maxProducts: number) => Promise<string[]>;
 };
 
 export class ArchiveScraper {
@@ -27,43 +30,8 @@ export class ArchiveScraper {
    * Universal product URL extraction using intelligent pattern detection
    */
   private static extractProductUrlsUniversal($: cheerio.CheerioAPI, baseUrl: string, html: string): string[] {
-    const productUrls: string[] = [];
-    const seenUrls = new Set<string>();
-
-    console.log(`[Universal] Starting extraction for: ${baseUrl}`);
-
-    // Define common e-commerce patterns in order of specificity
-    const extractionStrategies = [
-      // Strategy 1: Detect and extract from product grids/containers
-      () => this.extractFromProductContainers($, baseUrl, seenUrls),
-      
-      // Strategy 2: Shopify-specific patterns
-      () => this.extractShopifyProducts($, baseUrl, seenUrls),
-      
-      // Strategy 3: WooCommerce patterns
-      () => this.extractWooCommerceProducts($, baseUrl, seenUrls),
-      
-      // Strategy 4: Generic e-commerce patterns
-      () => this.extractGenericEcommerceProducts($, baseUrl, seenUrls),
-      
-      // Strategy 5: Pattern-based URL detection
-      () => this.extractByUrlPatterns($, baseUrl, seenUrls)
-    ];
-
-    // Try each strategy until we find products
-    for (let i = 0; i < extractionStrategies.length; i++) {
-      console.log(`[Universal] Trying strategy ${i + 1}`);
-      const urls = extractionStrategies[i]();
-      console.log(`[Universal] Strategy ${i + 1} found ${urls.length} products`);
-      
-      if (urls.length > 0) {
-        console.log(`[Universal] Success with strategy ${i + 1}: ${urls.length} products found`);
-        return urls;
-      }
-    }
-
-    console.log(`[Universal] No products found with any strategy`);
-    return [];
+    // Use our new universal extraction method
+    return this.extractProductUrls(html, baseUrl);
   }
 
   /**
@@ -77,9 +45,21 @@ export class ArchiveScraper {
       // wash-and-dry.eu specific containers
       '.productgrid',
       '.productgrid--items',
+      '.productgrid--wrapper',
       '.collection-grid',
       '.productitem',
       '[data-label-product-handle]',
+      // washdrymats.com specific containers
+      '.product-item',
+      '.product-card',
+      '[data-product-id]',
+      '.product',
+      '.item',
+      '.grid-item',
+      // WooCommerce custom theme containers
+      '.michlol-products',
+      '.products.michlol-products',
+      '.products-loop-3-4',
       // Standard e-commerce containers
       '.collection__products',
       '.collection-products', 
@@ -120,7 +100,7 @@ export class ArchiveScraper {
   private static extractShopifyProducts($: cheerio.CheerioAPI, baseUrl: string, seenUrls: Set<string>): string[] {
     const productUrls: string[] = [];
     
-    // Shopify-specific selectors (including wash-and-dry.eu specific patterns)
+    // Shopify-specific selectors (including wash-and-dry.eu and washdrymats.com specific patterns)
     const shopifySelectors = [
       // Standard Shopify patterns
       'a[href*="/products/"]',
@@ -134,8 +114,16 @@ export class ArchiveScraper {
       '.productgrid--item a[href*="/products/"]',
       '.productitem--image-link[href*="/products/"]',
       'a[data-product-page-link][href*="/products/"]',
+      // washdrymats.com specific patterns
+      '.product-item a[href*="/products/"]',
+      '.product-card a[href*="/products/"]',
+      '[data-product-id] a[href*="/products/"]',
+      '.product a[href*="/products/"]',
+      '.item a[href*="/products/"]',
+      '.grid-item a[href*="/products/"]',
       // Generic product grid patterns
       '.productgrid a[href*="/products/"]',
+      '.productgrid--wrapper a[href*="/products/"]',
       '.collection-grid a[href*="/products/"]',
       '.product-grid a[href*="/products/"]'
     ];
@@ -172,7 +160,11 @@ export class ArchiveScraper {
       '.woocommerce ul.products li.product a',
       '.products li.product a',
       'a.woocommerce-LoopProduct-link',
-      'a[href*="/product/"]'
+      'a[href*="/product/"]',
+      // Custom WooCommerce themes
+      '.michlol-product a.woocommerce-LoopProduct-link',
+      '.michlol-product a[href*="/product/"]',
+      '.products.michlol-products a[href*="/product/"]'
     ];
 
     for (const selector of wooSelectors) {
@@ -374,6 +366,10 @@ export class ArchiveScraper {
       '.collection-grid',
       '[data-label-product-handle]',
       '.product-card',
+      // washdrymats.com specific contexts
+      '.product-item',
+      '.product-card',
+      '[data-product-id]',
       // Standard e-commerce contexts
       '.product',
       '.item',
@@ -411,22 +407,23 @@ export class ArchiveScraper {
    * Universal pagination detection
    */
   private static findPaginationUniversal($: cheerio.CheerioAPI, baseUrl: string, currentPage: number): { has_next_page: boolean; next_page_url?: string } | null {
-    // Strategy 1: Look for next page links
-    const nextSelectors = [
-      'a[rel="next"]',
-      'a.next',
-      '.next a',
-      '.pagination .next',
-      '.pagination a:contains("Next")',
-      '.pagination a:contains(">")',
-      '.pagination a:contains("→")',
-      '.pager .next',
-      '.page-next a',
-      '.load-more',
-      'button:contains("Load More")',
-      'a:contains("Show More")',
-      'a:contains("View More")'
-    ];
+          // Strategy 1: Look for next page links
+      const nextSelectors = [
+        'a[rel="next"]',
+        'a.next',
+        '.next a',
+        '.pagination .next',
+        '.pagination a:contains("Next")',
+        '.pagination a:contains(">")',
+        '.pagination a:contains("→")',
+        '.pager .next',
+        '.page-next a',
+        '.load-more',
+        'button:contains("Load More")',
+        'a:contains("Show More")',
+        'a:contains("View More")',
+        'a:contains("הצג עוד")' // Hebrew "Show More"
+      ];
 
     for (const selector of nextSelectors) {
       const nextLink = $(selector).first();
@@ -464,7 +461,39 @@ export class ArchiveScraper {
       }
     }
 
-    // Strategy 3: Synthesize pagination URL
+    // Strategy 3: Check for custom load-more pagination with data attributes
+    const loadMoreButton = $('.load-more-button, #load-more-products');
+    if (loadMoreButton.length > 0) {
+      // Try multiple ways to get total pages
+      const totalPages = loadMoreButton.data('total-pages') || 
+                        loadMoreButton.attr('data-total-pages') || 
+                        loadMoreButton.attr('data-total-pages');
+      
+      console.log(`[ArchiveScraper] Load-more button found, total pages: ${totalPages}, current page: ${currentPage}`);
+      
+      if (totalPages && parseInt(totalPages) > currentPage) {
+        try {
+          const url = new URL(baseUrl);
+          // Add page number to path for load-more sites
+          if (url.pathname.includes('/page/')) {
+            url.pathname = url.pathname.replace(/\/page\/\d+/, `/page/${nextPageNum}`);
+          } else {
+            // Ensure we don't create double slashes
+            const cleanPath = url.pathname.endsWith('/') ? url.pathname.slice(0, -1) : url.pathname;
+            url.pathname = cleanPath + `/page/${nextPageNum}`;
+          }
+          
+          console.log(`[ArchiveScraper] Generated next page URL: ${url.toString()}`);
+          return { has_next_page: true, next_page_url: url.toString() };
+        } catch (e) {
+          console.log(`[ArchiveScraper] Error generating load-more URL:`, e);
+        }
+      } else {
+        console.log(`[ArchiveScraper] Load-more: total pages (${totalPages}) <= current page (${currentPage})`);
+      }
+    }
+
+    // Strategy 4: Synthesize pagination URL
     try {
       const url = new URL(baseUrl);
       
@@ -488,14 +517,16 @@ export class ArchiveScraper {
           if (url.pathname.includes('/page/')) {
             url.pathname = url.pathname.replace(/\/page\/\d+/, `/page/${nextPageNum}`);
           } else {
-            url.pathname += `/page/${nextPageNum}`;
+            // Ensure we don't create double slashes
+            const cleanPath = url.pathname.endsWith('/') ? url.pathname.slice(0, -1) : url.pathname;
+            url.pathname = cleanPath + `/page/${nextPageNum}`;
           }
           return url.toString();
         }
       ];
 
       // Check if we have pagination indicators on the page
-      const hasPagination = $('.pagination, .pager, .page-numbers, .load-more').length > 0;
+      const hasPagination = $('.pagination, .pager, .page-numbers, .load-more, .load-more-button, #load-more-products').length > 0;
       
       if (hasPagination) {
         // Try the first pattern (query parameter)
@@ -585,8 +616,11 @@ export class ArchiveScraper {
     }
     
     // Look for pagination (universal first, adapter as fallback)
+    console.log(`[ArchiveScraper] Checking pagination for page ${pageNumber}...`);
     const paginationInfo = this.findPaginationUniversal($, baseUrl, pageNumber) || 
                            (adapter?.findNextPage ? (adapter.findNextPage($, baseUrl, pageNumber) || { has_next_page: false }) : this.findPagination($, baseUrl));
+    
+    console.log(`[ArchiveScraper] Pagination result:`, paginationInfo);
     
 
     
@@ -624,6 +658,10 @@ export class ArchiveScraper {
       // WooCommerce specific
       '.woocommerce-products-header__title',
       '.woocommerce-products-header h1',
+      // Custom WooCommerce theme selectors
+      '.products-content-wrapper h1',
+      '.products-loop-3-4 h1',
+      'section.products-content-wrapper h1',
       // Generic selectors
       'h1[class*="title"]',
       'h1[class*="category"]',
@@ -848,6 +886,21 @@ export class ArchiveScraper {
    * Scrape all pages of an archive to get all product URLs
    */
   static async scrapeAllArchivePages(archiveUrl: string, maxProducts: number = 0): Promise<string[]> {
+    // Check if there's a custom adapter with its own pagination logic
+    const adapter = this.getAdapterForUrl(archiveUrl);
+    if (adapter?.scrapeAllPages) {
+      console.log(`[ArchiveScraper] Using custom adapter's scrapeAllPages method for ${archiveUrl}`);
+      try {
+        const result = await adapter.scrapeAllPages(archiveUrl, maxProducts);
+        console.log(`[ArchiveScraper] Custom adapter returned ${result.length} products`);
+        return result;
+      } catch (error) {
+        console.error(`[ArchiveScraper] Custom adapter failed, falling back to universal method:`, error);
+      }
+    }
+
+    // Fallback to universal pagination handling
+    console.log(`[ArchiveScraper] Using universal pagination method for ${archiveUrl}`);
     const allProductUrls: string[] = [];
     const visitedPages = new Set<string>();
     const queue: string[] = [];
@@ -868,7 +921,20 @@ export class ArchiveScraper {
       try {
 
         const html = await HTTPClient.fetchHTML(currentUrl);
-        const page = this.parseArchivePage(html, currentUrl, processed);
+        
+        // Extract actual page number from URL
+        let actualPageNumber = 1;
+        try {
+          const url = new URL(currentUrl);
+          const pageMatch = url.pathname.match(/\/page\/(\d+)\/?$/);
+          if (pageMatch) {
+            actualPageNumber = parseInt(pageMatch[1]);
+          }
+        } catch {}
+        
+        console.log(`[ArchiveScraper] Processing URL: ${currentUrl}, actual page: ${actualPageNumber}, processed: ${processed}`);
+        
+        const page = this.parseArchivePage(html, currentUrl, actualPageNumber);
 
         // Add products
         for (const productUrl of page.product_urls) {
@@ -894,13 +960,21 @@ export class ArchiveScraper {
           }
         }
 
-        // As a fallback, if page suggests next via findPagination, enqueue it too
-        const nextInfo = adapter?.findNextPage ? adapter.findNextPage($, currentUrl, processed) : this.findPagination($, currentUrl);
+        // As a fallback, if page suggests next via findPaginationUniversal, enqueue it too
+        const nextInfo = adapter?.findNextPage ? adapter.findNextPage($, currentUrl, actualPageNumber) : this.findPaginationUniversal($, currentUrl, actualPageNumber);
+        console.log(`[ArchiveScraper] Pagination info for page ${actualPageNumber}:`, nextInfo);
+        
         if (nextInfo.has_next_page && nextInfo.next_page_url) {
           const nextUrl = nextInfo.next_page_url;
+          console.log(`[ArchiveScraper] Adding next page to queue: ${nextUrl}`);
           if (!visitedPages.has(nextUrl) && !queue.includes(nextUrl)) {
             queue.push(nextUrl);
+            console.log(`[ArchiveScraper] Queue now has ${queue.length} URLs`);
+          } else {
+            console.log(`[ArchiveScraper] Next URL already in queue or visited`);
           }
+        } else {
+          console.log(`[ArchiveScraper] No next page found for page ${actualPageNumber}`);
         }
 
         // Be polite
@@ -971,5 +1045,548 @@ export class ArchiveScraper {
 
     // Fallback
     return maxProducts > 0 ? Math.min(firstCount, maxProducts) : firstCount;
+  }
+
+  /**
+   * Extract product URLs from any archive/collection page using intelligent pattern recognition
+   */
+  static extractProductUrls(html: string, baseUrl: string): string[] {
+    const $ = cheerio.load(html);
+    const productUrls = new Set<string>(); // Use Set to automatically handle duplicates
+    const seenUrls = new Set<string>();
+
+    console.log(`[Universal] Starting intelligent extraction for: ${baseUrl}`);
+
+    // Strategy 1: Smart container-based extraction with context validation
+    console.log(`[Universal] Starting extraction with ${$('a[href]').length} total links found`);
+    const containerResults = this.extractFromSmartContainers($, baseUrl, seenUrls);
+    console.log(`[Universal] Container strategy found ${containerResults.length} products`);
+    containerResults.forEach(url => productUrls.add(url));
+
+    // Strategy 2: Pattern-based extraction with deduplication
+    if (productUrls.size === 0) {
+      const patternResults = this.extractByIntelligentPatterns($, baseUrl, seenUrls);
+      console.log(`[Universal] Pattern strategy found ${patternResults.length} products`);
+      patternResults.forEach(url => productUrls.add(url));
+    }
+
+    // Strategy 3: Fallback to comprehensive link analysis
+    if (productUrls.size === 0) {
+      const fallbackResults = this.extractByComprehensiveAnalysis($, baseUrl, seenUrls);
+      console.log(`[Universal] Comprehensive strategy found ${fallbackResults.length} products`);
+      fallbackResults.forEach(url => productUrls.add(url));
+    }
+    
+    // Strategy 4: Last resort - try to find any links that look like products
+    if (productUrls.size === 0) {
+      console.log(`[Universal] No products found with intelligent strategies, trying last resort...`);
+      const lastResortResults = this.extractByLastResort($, baseUrl, seenUrls);
+      console.log(`[Universal] Last resort strategy found ${lastResortResults.length} products`);
+      lastResortResults.forEach(url => productUrls.add(url));
+    }
+
+    const finalUrls = Array.from(productUrls);
+    console.log(`[Universal] Final extraction result: ${finalUrls.length} unique product URLs`);
+    
+    return finalUrls;
+  }
+
+  /**
+   * Smart container-based extraction that analyzes page structure
+   */
+  private static extractFromSmartContainers($: cheerio.CheerioAPI, baseUrl: string, seenUrls: Set<string>): string[] {
+    const productUrls: string[] = [];
+    
+    // Analyze page structure to find the most likely product containers
+    const pageStructure = this.analyzePageStructure($);
+    console.log(`[Smart Containers] Page structure analysis:`, pageStructure);
+
+    // Use the most promising container based on analysis
+    const bestContainer = this.findBestProductContainer($, pageStructure);
+    
+    if (bestContainer) {
+      console.log(`[Smart Containers] Using best container: ${bestContainer.selector} (score: ${bestContainer.score})`);
+      
+      const containers = $(bestContainer.selector);
+      if (containers.length > 0) {
+        const productLinks = this.extractProductLinksFromContainer($, containers, baseUrl, seenUrls);
+        productUrls.push(...productLinks);
+      }
+    }
+
+    return productUrls;
+  }
+
+  /**
+   * Analyze page structure to understand the layout
+   */
+  private static analyzePageStructure($: cheerio.CheerioAPI): any {
+    const structure = {
+      hasProductGrid: false,
+      hasProductList: false,
+      hasCollectionHeader: false,
+      productLinkCount: 0,
+      totalLinkCount: 0,
+      likelyContainers: [] as Array<{selector: string, score: number, linkCount: number}>
+    };
+
+    // Count total links
+    structure.totalLinkCount = $('a[href]').length;
+
+    // Analyze potential product containers
+    const containerCandidates = [
+      '.productgrid', '.productgrid--items', '.collection-grid', '.productitem',
+      '.collection__products', '.collection-products', '.product-grid', '.products-grid',
+      '.product-list', '.shop-products', '.products-container', '.woocommerce ul.products',
+      '.products', '[data-products]', '.main-products', '.category-products',
+      '.product-card', '.product-item', '.card', '.item', '.product',
+      // washdrymats.com specific containers
+      '.product-item', '.product-card', '[data-product-id]',
+      '.grid', '.list', '.container', '.content', '.main', '.products-section'
+    ];
+
+    containerCandidates.forEach(selector => {
+      const containers = $(selector);
+      if (containers.length > 0) {
+        const productLinks = containers.find('a[href*="/products/"], a[href*="/product/"], a[href*="/shop/"]');
+        const score = this.calculateContainerScore(containers, productLinks);
+        
+        if (score > 0) {
+          structure.likelyContainers.push({
+            selector,
+            score,
+            linkCount: productLinks.length
+          });
+        }
+      }
+    });
+
+    // Sort by score (highest first)
+    structure.likelyContainers.sort((a, b) => b.score - a.score);
+
+    return structure;
+  }
+
+  /**
+   * Calculate how likely a container is to hold products
+   */
+  private static calculateContainerScore(containers: cheerio.CheerioAPI, productLinks: cheerio.CheerioAPI): number {
+    let score = 0;
+    
+    // Base score for having product links
+    if (productLinks.length > 0) {
+      score += productLinks.length * 10;
+    }
+
+    // Bonus for container characteristics
+    const container = containers.first();
+    
+    // Check for product-related classes
+    const classes = container.attr('class') || '';
+    if (classes.includes('product') || classes.includes('grid') || classes.includes('collection')) {
+      score += 20;
+    }
+
+    // Check for product-related data attributes
+    if (container.attr('data-products') || container.attr('data-product-grid')) {
+      score += 30;
+    }
+
+    // Check for product-related IDs
+    const id = container.attr('id') || '';
+    if (id.includes('product') || id.includes('collection') || id.includes('grid')) {
+      score += 15;
+    }
+
+    // Reduced penalty for many links (some sites have many products)
+    if (productLinks.length > 100) {
+      score -= 10; // Reduced from -20
+    } else if (productLinks.length > 50) {
+      score -= 5;  // Reduced from -20
+    }
+
+    // Bonus for having a reasonable number of links (typical for product pages)
+    if (productLinks.length >= 10 && productLinks.length <= 50) {
+      score += 15;
+    }
+
+    return score;
+  }
+
+  /**
+   * Find the best product container based on analysis
+   */
+  private static findBestProductContainer($: cheerio.CheerioAPI, structure: any): {selector: string, score: number} | null {
+    if (structure.likelyContainers.length === 0) return null;
+    
+    // Return the highest scoring container
+    return structure.likelyContainers[0];
+  }
+
+  /**
+   * Extract product links from a specific container with intelligent filtering
+   */
+  private static extractProductLinksFromContainer($: cheerio.CheerioAPI, containers: cheerio.CheerioAPI, baseUrl: string, seenUrls: Set<string>): string[] {
+    const productUrls: string[] = [];
+    
+    containers.each((_, container) => {
+      const $container = $(container);
+      
+      // Look for product links with intelligent filtering
+      const allLinks = $container.find('a[href]');
+      
+      allLinks.each((_, link) => {
+        const $link = $(link);
+        const href = $link.attr('href');
+        
+        if (href && this.isLikelyProductLink(href, $link)) {
+          const url = this.normalizeUrl(href, baseUrl);
+          
+          if (url && !seenUrls.has(url)) {
+            seenUrls.add(url);
+            productUrls.push(url);
+            console.log(`[Smart Containers] ✅ Added product URL: ${url}`);
+          }
+        }
+      });
+    });
+
+    return productUrls;
+  }
+
+  /**
+   * Intelligent pattern-based extraction that adapts to the site structure
+   */
+  private static extractByIntelligentPatterns($: cheerio.CheerioAPI, baseUrl: string, seenUrls: Set<string>): string[] {
+    const productUrls: string[] = [];
+    
+    // Detect the site type and use appropriate patterns
+    const siteType = this.detectSiteType($);
+    console.log(`[Intelligent Patterns] Detected site type: ${siteType}`);
+
+    const patterns = this.getPatternsForSiteType(siteType);
+    
+    for (const pattern of patterns) {
+      const links = $(pattern.selector);
+      if (links.length > 0) {
+        console.log(`[Intelligent Patterns] Found ${links.length} links with: ${pattern.selector}`);
+        
+        let addedCount = 0;
+        links.each((_, link) => {
+          const $link = $(link);
+          const href = $link.attr('href');
+          
+          if (href && pattern.validator(href, $link)) {
+            const url = this.normalizeUrl(href, baseUrl);
+            
+            if (url && !seenUrls.has(url)) {
+              seenUrls.add(url);
+              productUrls.push(url);
+              addedCount++;
+              console.log(`[Intelligent Patterns] ✅ Added: ${url}`);
+            }
+          }
+        });
+        
+        // Don't break after first pattern - try all patterns to get more products
+        if (addedCount > 0) {
+          console.log(`[Intelligent Patterns] Successfully added ${addedCount} products with pattern: ${pattern.selector}`);
+        }
+      }
+    }
+
+    return productUrls;
+  }
+
+  /**
+   * Detect the type of e-commerce platform
+   */
+  private static detectSiteType($: cheerio.CheerioAPI): string {
+    // Check for platform-specific indicators
+    if ($('body').hasClass('shopify') || $('[data-shopify]').length > 0 || $('script[src*="shopify"]').length > 0) {
+      return 'shopify';
+    }
+    
+    if ($('body').hasClass('woocommerce') || $('.woocommerce').length > 0 || $('script[src*="woocommerce"]').length > 0) {
+      return 'woocommerce';
+    }
+    
+    if ($('body').hasClass('magento') || $('[data-mage-init]').length > 0) {
+      return 'magento';
+    }
+    
+    if ($('body').hasClass('bigcommerce') || $('[data-bc-product]').length > 0) {
+      return 'bigcommerce';
+    }
+    
+    // Check for common patterns
+    if ($('a[href*="/products/"]').length > 0) {
+      return 'shopify-like';
+    }
+    
+    if ($('a[href*="/product/"]').length > 0) {
+      return 'woocommerce-like';
+    }
+    
+    return 'generic';
+  }
+
+  /**
+   * Get extraction patterns based on detected site type
+   */
+  private static getPatternsForSiteType(siteType: string): Array<{selector: string, validator: (href: string, $link: cheerio.CheerioAPI) => boolean}> {
+    const basePatterns = [
+      {
+        selector: 'a[href*="/products/"]',
+        validator: (href: string) => href.includes('/products/') && !href.includes('/collections/')
+      },
+      {
+        selector: 'a[href*="/product/"]',
+        validator: (href: string) => href.includes('/product/') && !href.includes('/category/')
+      },
+      {
+        selector: 'a[href*="/shop/"]',
+        validator: (href: string) => href.includes('/shop/') && !href.includes('/category/')
+      }
+    ];
+
+    switch (siteType) {
+      case 'shopify':
+      case 'shopify-like':
+        return [
+          ...basePatterns,
+          {
+            selector: '.product-card a, .product-item a, .card__heading a',
+            validator: (href: string, $link: cheerio.CheerioAPI) => {
+              const parent = $link.closest('.product-card, .product-item, .card');
+              return parent.length > 0 && href.includes('/products/');
+            }
+          }
+        ];
+      
+      case 'woocommerce':
+      case 'woocommerce-like':
+        return [
+          ...basePatterns,
+          {
+            selector: '.woocommerce ul.products li.product a, .products li.product a',
+            validator: (href: string, $link: cheerio.CheerioAPI) => {
+              const parent = $link.closest('li.product');
+              return parent.length > 0;
+            }
+          }
+        ];
+      
+      default:
+        return basePatterns;
+    }
+  }
+
+  /**
+   * Comprehensive fallback analysis for difficult sites
+   */
+  private static extractByComprehensiveAnalysis($: cheerio.CheerioAPI, baseUrl: string, seenUrls: Set<string>): string[] {
+    const productUrls: string[] = [];
+    
+    console.log(`[Comprehensive Analysis] Performing deep analysis...`);
+    
+    // Look for any links that might be products
+    const allLinks = $('a[href]');
+    const potentialProducts: Array<{url: string, score: number}> = [];
+    
+    allLinks.each((_, link) => {
+      const $link = $(link);
+      const href = $link.attr('href');
+      
+      if (href) {
+        const score = this.calculateLinkScore($link, href);
+        // Lower threshold to be more inclusive
+        if (score > -10) { // Changed from > 0 to > -10
+          const url = this.normalizeUrl(href, baseUrl);
+          if (url) {
+            potentialProducts.push({ url, score });
+          }
+        }
+      }
+    });
+    
+    // Sort by score and take the highest scoring links
+    potentialProducts.sort((a, b) => b.score - a.score);
+    
+    // Take more candidates to be more inclusive
+    const topCandidates = potentialProducts.slice(0, 50); // Increased from 20 to 50
+    
+    topCandidates.forEach(({ url, score }) => {
+      if (!seenUrls.has(url)) {
+        seenUrls.add(url);
+        productUrls.push(url);
+        console.log(`[Comprehensive Analysis] ✅ Added (score: ${score}): ${url}`);
+      }
+    });
+    
+    return productUrls;
+  }
+
+  /**
+   * Calculate how likely a link is to be a product
+   */
+  private static calculateLinkScore($link: cheerio.CheerioAPI, href: string): number {
+    let score = 0;
+    
+    // Base score for product-like URLs
+    if (href.includes('/products/') || href.includes('/product/') || href.includes('/shop/')) {
+      score += 50;
+    }
+    
+    // Check link context
+    const parent = $link.parent();
+    const grandparent = parent.parent();
+    
+    // Product-related parent classes
+    const parentClasses = parent.attr('class') || '';
+    if (parentClasses.includes('product') || parentClasses.includes('item') || parentClasses.includes('card')) {
+      score += 30;
+    }
+    
+    // Product-related grandparent classes
+    const grandparentClasses = grandparent.attr('class') || '';
+    if (grandparentClasses.includes('product') || grandparentClasses.includes('grid') || grandparentClasses.includes('list')) {
+      score += 20;
+    }
+    
+    // Check for product-related attributes
+    if ($link.attr('data-product') || $link.attr('data-product-id')) {
+      score += 40;
+    }
+    
+    // Check link text for product indicators
+    const linkText = $link.text().toLowerCase();
+    if (linkText.includes('view') || linkText.includes('details') || linkText.includes('buy')) {
+      score += 15;
+    }
+    
+    // Penalty for navigation-like links
+    if (href.includes('/collections/') || href.includes('/category/') || href.includes('/search')) {
+      score -= 30;
+    }
+    
+    return score;
+  }
+
+  /**
+   * Check if a link is likely to be a product link
+   */
+  private static isLikelyProductLink(href: string, $link: cheerio.CheerioAPI): boolean {
+    // Must contain product indicators
+    if (!href.includes('/products/') && !href.includes('/product/') && !href.includes('/shop/')) {
+      return false;
+    }
+    
+    // Must not be collection/category links
+    if (href.includes('/collections/') || href.includes('/category/') || href.includes('/search')) {
+      return false;
+    }
+    
+    // More permissive context checking - look for any product-related context
+    const parent = $link.closest('.product-card, .product-item, .card, .item, .product, .productgrid--item, .productitem, .collection-grid, .product-grid');
+    if (parent.length === 0) {
+      // If no specific product container found, check if we're in a general product area
+      const grandparent = $link.closest('.collection, .products, .shop, .catalog, .grid, .list');
+      if (grandparent.length === 0) {
+        // Last resort: check if the link itself has product-like characteristics
+        const linkClasses = $link.attr('class') || '';
+        const linkText = $link.text().toLowerCase();
+        
+        // Allow if link has product-related classes or text
+        if (linkClasses.includes('product') || 
+            linkClasses.includes('item') || 
+            linkText.includes('view') || 
+            linkText.includes('details') ||
+            linkText.includes('buy')) {
+          return true;
+        }
+        
+        return false;
+      }
+      return true;
+    }
+    
+    return true;
+  }
+
+  /**
+   * Normalize and validate URLs
+   */
+  private static normalizeUrl(href: string, baseUrl: string): string | null {
+    try {
+      // Convert relative URLs to absolute
+      const url = href.startsWith('http') ? href : new URL(href, baseUrl).href;
+      
+      // Basic validation
+      if (!url || url === baseUrl || url === `${baseUrl}/`) {
+        return null;
+      }
+      
+      // Must be from the same domain
+      const urlObj = new URL(url);
+      const baseObj = new URL(baseUrl);
+      if (urlObj.hostname !== baseObj.hostname) {
+        return null;
+      }
+      
+      return url;
+    } catch {
+      return null;
+    }
+  }
+
+  /**
+   * Last resort extraction - very permissive approach
+   */
+  private static extractByLastResort($: cheerio.CheerioAPI, baseUrl: string, seenUrls: Set<string>): string[] {
+    const productUrls: string[] = [];
+    
+    console.log(`[Last Resort] Trying very permissive extraction...`);
+    
+    // Look for any links that might be products with minimal filtering
+    const allLinks = $('a[href]');
+    
+    allLinks.each((_, link) => {
+      const $link = $(link);
+      const href = $link.attr('href');
+      
+      if (href) {
+        // Very permissive filtering - just avoid obvious non-products
+        if (!href.includes('/collections/') && 
+            !href.includes('/category/') && 
+            !href.includes('/search') &&
+            !href.includes('/cart') &&
+            !href.includes('/checkout') &&
+            !href.includes('/account') &&
+            !href.includes('/login') &&
+            !href.includes('/register') &&
+            !href.includes('/about') &&
+            !href.includes('/contact') &&
+            !href.includes('/help') &&
+            !href.includes('/faq')) {
+          
+          const url = this.normalizeUrl(href, baseUrl);
+          if (url && !seenUrls.has(url)) {
+            seenUrls.add(url);
+            productUrls.push(url);
+            console.log(`[Last Resort] ✅ Added: ${url}`);
+          }
+        }
+      }
+    });
+    
+    return productUrls;
+  }
+
+  /**
+   * Legacy method for backward compatibility
+   */
+  static extractProducts(html: string, baseUrl: string): string[] {
+    return this.extractProductUrls(html, baseUrl);
   }
 }

@@ -178,7 +178,7 @@ export class CSVGenerator {
   static async generateParentProductsCSV(products: Product[]): Promise<Buffer> {
     const csvData = products.map(product => {
       // Determine product type
-      const productType = product.meta?.product_type || (product.variations.length > 0 ? 'variable' : 'simple');
+      const productType = product.meta?.product_type || ((product.variations && Array.isArray(product.variations) && product.variations.length > 0) ? 'variable' : 'simple');
       
       // Base row with required fields
       const row: Record<string, string> = {
@@ -193,14 +193,14 @@ export class CSVGenerator {
         post_type: 'product', // Product post type
         sku: product.sku || '',
         stock_status: product.stock_status || 'instock',
-        images: product.images.length > 0 ? product.images.join(' | ') : '',
+        images: (product.images && product.images.length > 0) ? product.images.join(' | ') : '',
         'tax:product_type': productType,
         'tax:product_cat': product.category || 'Uncategorized',
         description: product.description || ''
       };
 
       // Add attributes if they exist (special-case common ones, decoding values)
-      if (product.attributes.Color && product.attributes.Color.length > 0) {
+      if (product.attributes.Color && Array.isArray(product.attributes.Color) && product.attributes.Color.length > 0) {
         const values = product.attributes.Color
           .map(v => this.decodeIfEncoded(v))
           .filter(v => !this.isPlaceholderValue(v))
@@ -209,7 +209,7 @@ export class CSVGenerator {
         row['attribute_data:Color'] = '1'.repeat(values.length).split('').join(' | ');
       }
 
-      if (product.attributes.Size && product.attributes.Size.length > 0) {
+      if (product.attributes.Size && Array.isArray(product.attributes.Size) && product.attributes.Size.length > 0) {
         const values = product.attributes.Size
           .map(v => this.decodeIfEncoded(v))
           .filter(v => !this.isPlaceholderValue(v))
@@ -226,7 +226,7 @@ export class CSVGenerator {
             .map(v => this.decodeIfEncoded(v))
             .filter(v => !this.isPlaceholderValue(v))
             .map(v => this.transformDimensionLike(v));
-          if (attrValues.length > 0) {
+          if (Array.isArray(attrValues) && attrValues.length > 0) {
             row[`attribute:${normalized}`] = attrValues.join(' | ');
             row[`attribute_data:${normalized}`] = '1'.repeat(attrValues.length).split('').join(' | ');
           }
@@ -250,7 +250,7 @@ export class CSVGenerator {
 
     products.forEach(product => {
       // Only include products with variations
-      if (product.variations.length > 0) {
+      if (product.variations && Array.isArray(product.variations) && product.variations.length > 0) {
         product.variations.forEach(variation => {
                   // Base variation row
         const row: Record<string, string> = {
@@ -267,7 +267,7 @@ export class CSVGenerator {
           stock_status: variation.stock_status || 'instock',
           regular_price: variation.regular_price || '',
           tax_class: variation.tax_class || 'parent',
-          images: variation.images.length > 0 ? variation.images.join(' | ') : ''
+          images: (variation.images && variation.images.length > 0) ? variation.images.join(' | ') : ''
         };
 
           // Add attribute meta data
@@ -330,7 +330,7 @@ export class CSVGenerator {
    */
   static async generateSimpleProductsCSV(products: Product[]): Promise<Buffer> {
     const simpleProducts = products.filter(product => 
-      product.meta?.product_type === 'simple' || product.variations.length === 0
+      product.meta?.product_type === 'simple' || !product.variations || !Array.isArray(product.variations) || product.variations.length === 0
     );
 
     const csvData = simpleProducts.map(product => {
@@ -340,7 +340,7 @@ export class CSVGenerator {
         post_status: 'publish',
         sku: product.sku || '',
         stock_status: product.stock_status || 'instock',
-        images: product.images.length > 0 ? product.images.join(' | ') : '',
+        images: (product.images && product.images.length > 0) ? product.images.join(' | ') : '',
         'tax:product_type': 'simple',
         'tax:product_cat': product.category || 'Uncategorized',
         description: product.description || '',
@@ -353,7 +353,7 @@ export class CSVGenerator {
       Object.keys(product.attributes).forEach(attrName => {
         if (product.attributes[attrName]) {
           const attrValues = product.attributes[attrName]!;
-          if (attrValues.length > 0) {
+          if (Array.isArray(attrValues) && attrValues.length > 0) {
             row[`attribute:${attrName}`] = attrValues.join(' | ');
             row[`attribute_data:${attrName}`] = '1'.repeat(attrValues.length).split('').join(' | ');
           }

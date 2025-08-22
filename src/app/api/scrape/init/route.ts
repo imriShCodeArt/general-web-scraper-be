@@ -69,7 +69,7 @@ export async function POST(request: NextRequest) {
 			requestId,
 			data: {
 				total_products: productCount,
-				processed_archives: result.processed_archives,
+				processed_archives: result.processed_archives || result.total_archives || 0,
 				products: scrapedProducts, // Add products for attribute editing
 				// Add initial product count when available for early UI logging
 				initial_product_count: Array.isArray(result.data) ? undefined : (result.data as any)?.initial_product_count,

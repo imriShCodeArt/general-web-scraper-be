@@ -105,6 +105,23 @@ export class ProductScraper {
     this.adapters.push({ test: tester, adapter });
   }
 
+  /** Register washdrymats.com product adapter */
+  static registerWashDryMatsAdapter(): void {
+    try {
+      const { washDryMatsProductAdapter } = require('./wash-and-dry-adapter');
+      this.registerAdapter('washdrymats.com', washDryMatsProductAdapter);
+      console.log('✅ washdrymats.com product adapter registered successfully');
+    } catch (error) {
+      console.warn('Could not load washdrymats.com product adapter:', error);
+    }
+  }
+
+  /** Get adapter for a specific host (for testing) */
+  static getAdapter(host: string): ProductScraperAdapter | null {
+    const entry = this.adapters.find(a => a.test(host));
+    return entry ? entry.adapter : null;
+  }
+
   /** Clear all adapters (useful for tests). */
   static clearAdapters(): void {
     this.adapters = [];
