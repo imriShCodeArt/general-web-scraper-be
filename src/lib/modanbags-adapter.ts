@@ -1,15 +1,13 @@
 import { ArchiveAdapter } from './archive-scraper';
+import * as cheerio from 'cheerio';
 import { HTTPClient } from './http-client';
 
 /**
  * Custom adapter for modanbags.co.il that handles AJAX load-more pagination
  */
 export const modanbagsAdapter: ArchiveAdapter = {
-  // Test if this adapter should be used
-  test: (host: string) => host === 'modanbags.co.il',
-
   // Extract product URLs from the page
-  extractProductUrls: async ($: cheerio.CheerioAPI, baseUrl: string): Promise<string[]> => {
+  extractProductUrls: ($: cheerio.CheerioAPI, baseUrl: string, html: string): string[] => {
     const productUrls: string[] = [];
     const seenUrls = new Set<string>();
 
@@ -79,7 +77,7 @@ export const modanbagsAdapter: ArchiveAdapter = {
         const $ = cheerio.load(html);
 
         // Extract products from this page
-        const pageProductUrls = await this.extractProductUrls($, pageUrl);
+        const pageProductUrls = modanbagsAdapter.extractProductUrls!($, pageUrl, html);
         console.log(`[modanbags.co.il] Page ${currentPage} has ${pageProductUrls.length} products`);
 
         // Add new products

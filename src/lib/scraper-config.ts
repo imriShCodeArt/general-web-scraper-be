@@ -137,6 +137,8 @@ export const WEBSITE_PROFILES: WebsiteProfile[] = [
     domain: 'shopify.com',
     config: {
       website: {
+        name: 'Shopify Store',
+        domain: 'shopify.com',
         type: 'shopify',
         customSelectors: [
           '.product-card a[href*="/products/"]',
@@ -148,7 +150,11 @@ export const WEBSITE_PROFILES: WebsiteProfile[] = [
       },
       extraction: {
         preferContainers: true,
-        preferPatterns: false
+        preferPatterns: false,
+        maxProductsPerPage: 50,
+        deduplicate: true,
+        validateUrls: true,
+        followPagination: true
       }
     }
   },
@@ -157,6 +163,8 @@ export const WEBSITE_PROFILES: WebsiteProfile[] = [
     domain: 'woocommerce.com',
     config: {
       website: {
+        name: 'WooCommerce Store',
+        domain: 'woocommerce.com',
         type: 'woocommerce',
         customSelectors: [
           '.woocommerce ul.products li.product a',
@@ -168,7 +176,11 @@ export const WEBSITE_PROFILES: WebsiteProfile[] = [
       },
       extraction: {
         preferContainers: true,
-        preferPatterns: false
+        preferPatterns: false,
+        maxProductsPerPage: 50,
+        deduplicate: true,
+        validateUrls: true,
+        followPagination: true
       }
     }
   },
@@ -177,6 +189,8 @@ export const WEBSITE_PROFILES: WebsiteProfile[] = [
     domain: 'magento.com',
     config: {
       website: {
+        name: 'Magento Store',
+        domain: 'magento.com',
         type: 'magento',
         customSelectors: [
           '.product-item a[href*="/product/"]',
@@ -193,6 +207,8 @@ export const WEBSITE_PROFILES: WebsiteProfile[] = [
     domain: 'bigcommerce.com',
     config: {
       website: {
+        name: 'BigCommerce Store',
+        domain: 'bigcommerce.com',
         type: 'bigcommerce',
         customSelectors: [
           '.product a[href*="/products/"]',
@@ -238,10 +254,14 @@ export class ScraperConfigManager {
       }
       
       // Check for partial domain match
-      for (const [profileDomain, config] of this.customProfiles) {
-        if (domain.includes(profileDomain) || profileDomain.includes(domain)) {
-          return config;
+      let foundConfig: ScraperConfig | null = null;
+      this.customProfiles.forEach((config, profileDomain) => {
+        if (!foundConfig && (domain.includes(profileDomain) || profileDomain.includes(domain))) {
+          foundConfig = config;
         }
+      });
+      if (foundConfig) {
+        return foundConfig;
       }
       
       // Return default config

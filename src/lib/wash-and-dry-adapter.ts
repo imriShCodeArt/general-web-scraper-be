@@ -376,7 +376,7 @@ const washDryMatsAdapter: ArchiveAdapter = {
 // Create a product scraper adapter for washdrymats.com product pages
 export const washDryMatsProductAdapter = {
   // Enhanced title extraction for washdrymats.com
-  extractTitle: ($) => {
+  extractTitle: ($: any) => {
     // Look for the main product title
     const titleSelectors = [
       'h1:contains("Floor Mats"), h1:contains("Floor Mat"), h1:contains("Mats"), h1:contains("Mat")',
@@ -400,7 +400,7 @@ export const washDryMatsProductAdapter = {
   },
 
   // Enhanced description extraction
-  extractDescription: ($) => {
+  extractDescription: ($: any) => {
     // Look for the main product description
     const descSelectors = [
       '.description',
@@ -427,7 +427,7 @@ export const washDryMatsProductAdapter = {
       const paragraphs = mainContent.find('p');
       const descriptions: string[] = [];
       
-      paragraphs.each((_, p) => {
+      paragraphs.each((_: any, p: any) => {
         const text = $(p).text().trim();
         if (text.length > 20 && !text.includes('$') && !text.includes('Add to cart')) {
           descriptions.push(text);
@@ -443,7 +443,7 @@ export const washDryMatsProductAdapter = {
   },
 
   // Enhanced price extraction
-  extractRegularPrice: ($) => {
+  extractRegularPrice: ($: any) => {
     // Look for original price (crossed out)
     const priceSelectors = [
       '.original-price',
@@ -470,7 +470,7 @@ export const washDryMatsProductAdapter = {
     return '';
   },
 
-  extractSalePrice: ($) => {
+  extractSalePrice: ($: any) => {
     // Look for current/sale price
     const priceSelectors = [
       '.current-price',
@@ -498,7 +498,7 @@ export const washDryMatsProductAdapter = {
   },
 
   // Enhanced image extraction
-  extractImages: ($) => {
+  extractImages: ($: any) => {
     const images: string[] = [];
     
     // Look for product images in various selectors
@@ -514,7 +514,7 @@ export const washDryMatsProductAdapter = {
     
     for (const selector of imageSelectors) {
       const imgElements = $(selector);
-      imgElements.each((_, img) => {
+      imgElements.each((_: any, img: any) => {
         const src = $(img).attr('src');
         const dataSrc = $(img).attr('data-src');
         const srcset = $(img).attr('srcset');
@@ -539,14 +539,14 @@ export const washDryMatsProductAdapter = {
   },
 
   // Enhanced attribute extraction
-  extractAttributes: ($) => {
+  extractAttributes: ($: any) => {
     const attributes: { [key: string]: string[] } = {};
     
     // Extract size information
     const sizeElements = $('*:contains("Size:"), *:contains("size:"), *:contains("20"x"27.5"), *:contains("S68")');
     if (sizeElements.length > 0) {
       const sizes: string[] = [];
-      sizeElements.each((_, el) => {
+      sizeElements.each((_: any, el: any) => {
         const text = $(el).text();
         const sizeMatch = text.match(/(\d+(?:\.\d+)?"x\d+(?:\.\d+)?")/g);
         if (sizeMatch) {
@@ -558,7 +558,7 @@ export const washDryMatsProductAdapter = {
         }
       });
       if (sizes.length > 0) {
-        attributes.Size = [...new Set(sizes)];
+        attributes.Size = Array.from(new Set(sizes));
       }
     }
     
@@ -566,7 +566,7 @@ export const washDryMatsProductAdapter = {
     const materialElements = $('*:contains("nylon"), *:contains("Nylon"), *:contains("rubber"), *:contains("Rubber")');
     if (materialElements.length > 0) {
       const materials: string[] = [];
-      materialElements.each((_, el) => {
+      materialElements.each((_: any, el: any) => {
         const text = $(el).text();
         if (text.includes('nylon') || text.includes('Nylon')) {
           materials.push('Nylon');
@@ -576,7 +576,7 @@ export const washDryMatsProductAdapter = {
         }
       });
       if (materials.length > 0) {
-        attributes.Material = [...new Set(materials)];
+        attributes.Material = Array.from(new Set(materials));
       }
     }
     
@@ -589,7 +589,7 @@ export const washDryMatsProductAdapter = {
     // Extract features
     const features: string[] = [];
     const featureElements = $('*:contains("washable"), *:contains("Washable"), *:contains("machine wash"), *:contains("slip resistant")');
-    featureElements.each((_, el) => {
+    featureElements.each((_: any, el: any) => {
       const text = $(el).text();
       if (text.includes('washable') || text.includes('Washable')) {
         features.push('Machine Washable');
@@ -602,20 +602,20 @@ export const washDryMatsProductAdapter = {
       }
     });
     if (features.length > 0) {
-      attributes.Features = [...new Set(features)];
+      attributes.Features = Array.from(new Set(features));
     }
     
     return attributes;
   },
 
   // Enhanced variation extraction
-  extractVariations: ($) => {
+  extractVariations: ($: any) => {
     const variations: any[] = [];
     
     // Look for size variants
     const variantElements = $('*:contains("Choose a variant"), *:contains("Size:"), *:contains("S68")');
     if (variantElements.length > 0) {
-      variantElements.each((_, el) => {
+      variantElements.each((_: any, el: any) => {
         const text = $(el).text();
         const sizeMatch = text.match(/(\d+(?:\.\d+)?"x\d+(?:\.\d+)?")/g);
         const codeMatch = text.match(/S\d+/g);
@@ -635,7 +635,7 @@ export const washDryMatsProductAdapter = {
   },
 
   // Enhanced SKU extraction
-  extractSKU: ($) => {
+  extractSKU: ($: any) => {
     // Look for product codes like S68
     const skuElements = $('*:contains("S68"), *:contains("S-68"), *:contains("SKU:")');
     if (skuElements.length > 0) {

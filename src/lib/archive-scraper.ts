@@ -471,7 +471,7 @@ export class ArchiveScraper {
       
       console.log(`[ArchiveScraper] Load-more button found, total pages: ${totalPages}, current page: ${currentPage}`);
       
-      if (totalPages && parseInt(totalPages) > currentPage) {
+      if (totalPages && typeof totalPages === 'string' && parseInt(totalPages) > currentPage) {
         try {
           const url = new URL(baseUrl);
           // Add page number to path for load-more sites
@@ -964,7 +964,7 @@ export class ArchiveScraper {
         const nextInfo = adapter?.findNextPage ? adapter.findNextPage($, currentUrl, actualPageNumber) : this.findPaginationUniversal($, currentUrl, actualPageNumber);
         console.log(`[ArchiveScraper] Pagination info for page ${actualPageNumber}:`, nextInfo);
         
-        if (nextInfo.has_next_page && nextInfo.next_page_url) {
+        if (nextInfo && nextInfo.has_next_page && nextInfo.next_page_url) {
           const nextUrl = nextInfo.next_page_url;
           console.log(`[ArchiveScraper] Adding next page to queue: ${nextUrl}`);
           if (!visitedPages.has(nextUrl) && !queue.includes(nextUrl)) {
@@ -1170,7 +1170,7 @@ export class ArchiveScraper {
   /**
    * Calculate how likely a container is to hold products
    */
-  private static calculateContainerScore(containers: cheerio.CheerioAPI, productLinks: cheerio.CheerioAPI): number {
+  private static calculateContainerScore(containers: cheerio.Cheerio<cheerio.AnyNode>, productLinks: cheerio.Cheerio<cheerio.AnyNode>): number {
     let score = 0;
     
     // Base score for having product links
@@ -1226,7 +1226,7 @@ export class ArchiveScraper {
   /**
    * Extract product links from a specific container with intelligent filtering
    */
-  private static extractProductLinksFromContainer($: cheerio.CheerioAPI, containers: cheerio.CheerioAPI, baseUrl: string, seenUrls: Set<string>): string[] {
+  private static extractProductLinksFromContainer($: cheerio.CheerioAPI, containers: cheerio.Cheerio<cheerio.AnyNode>, baseUrl: string, seenUrls: Set<string>): string[] {
     const productUrls: string[] = [];
     
     containers.each((_, container) => {
@@ -1334,7 +1334,7 @@ export class ArchiveScraper {
   /**
    * Get extraction patterns based on detected site type
    */
-  private static getPatternsForSiteType(siteType: string): Array<{selector: string, validator: (href: string, $link: cheerio.CheerioAPI) => boolean}> {
+  private static getPatternsForSiteType(siteType: string): Array<{selector: string, validator: (href: string, $link: cheerio.Cheerio<cheerio.AnyNode>) => boolean}> {
     const basePatterns = [
       {
         selector: 'a[href*="/products/"]',
@@ -1357,7 +1357,7 @@ export class ArchiveScraper {
           ...basePatterns,
           {
             selector: '.product-card a, .product-item a, .card__heading a',
-            validator: (href: string, $link: cheerio.CheerioAPI) => {
+            validator: (href: string, $link: cheerio.Cheerio<cheerio.AnyNode>) => {
               const parent = $link.closest('.product-card, .product-item, .card');
               return parent.length > 0 && href.includes('/products/');
             }
@@ -1370,7 +1370,7 @@ export class ArchiveScraper {
           ...basePatterns,
           {
             selector: '.woocommerce ul.products li.product a, .products li.product a',
-            validator: (href: string, $link: cheerio.CheerioAPI) => {
+            validator: (href: string, $link: cheerio.Cheerio<cheerio.AnyNode>) => {
               const parent = $link.closest('li.product');
               return parent.length > 0;
             }
@@ -1430,7 +1430,7 @@ export class ArchiveScraper {
   /**
    * Calculate how likely a link is to be a product
    */
-  private static calculateLinkScore($link: cheerio.CheerioAPI, href: string): number {
+  private static calculateLinkScore($link: cheerio.Cheerio<cheerio.AnyNode>, href: string): number {
     let score = 0;
     
     // Base score for product-like URLs
@@ -1476,7 +1476,7 @@ export class ArchiveScraper {
   /**
    * Check if a link is likely to be a product link
    */
-  private static isLikelyProductLink(href: string, $link: cheerio.CheerioAPI): boolean {
+  private static isLikelyProductLink(href: string, $link: cheerio.Cheerio<cheerio.AnyNode>): boolean {
     // Must contain product indicators
     if (!href.includes('/products/') && !href.includes('/product/') && !href.includes('/shop/')) {
       return false;
