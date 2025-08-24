@@ -20,12 +20,22 @@ function setupCustomAdapters() {
         console.warn('[ScrapingService] Could not load wash-and-dry adapter:', error instanceof Error ? error.message : String(error));
       }
 
-      // Register washdrymats.com product scraper adapter
+      // Register wash-and-dry product scraper adapters
       try {
-        ProductScraper.registerWashDryMatsAdapter();
-        console.log('[ScrapingService] washdrymats.com product adapter registered successfully');
+        const { washDryMatsProductAdapter } = require('./wash-and-dry-adapter');
+        console.log('[ScrapingService] Loaded washDryMatsProductAdapter:', !!washDryMatsProductAdapter);
+        console.log('[ScrapingService] washDryMatsProductAdapter methods:', Object.keys(washDryMatsProductAdapter || {}));
+        
+        ProductScraper.registerAdapter('wash-and-dry.eu', washDryMatsProductAdapter);
+        ProductScraper.registerAdapter('washdrymats.com', washDryMatsProductAdapter);
+        
+        // Verify registration
+        const testAdapter = ProductScraper.getAdapter('wash-and-dry.eu');
+        console.log('[ScrapingService] wash-and-dry.eu adapter registered successfully:', !!testAdapter);
+        console.log('[ScrapingService] washdrymats.com product adapters registered successfully');
       } catch (error) {
-        console.warn('[ScrapingService] Could not load washdrymats.com product adapter:', error instanceof Error ? error.message : String(error));
+        console.warn('[ScrapingService] Could not load wash-and-dry product adapters:', error instanceof Error ? error.message : String(error));
+        console.error('[ScrapingService] Full error:', error);
       }
 
       // Register modanbags.co.il adapter for AJAX load-more pagination

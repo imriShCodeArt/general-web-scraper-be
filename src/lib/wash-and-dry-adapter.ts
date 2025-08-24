@@ -239,6 +239,50 @@ export const washAndDryAdapter: ArchiveAdapter = {
     return allProductUrls;
   },
 
+  // Detect variable products for wash-and-dry.eu
+  detectVariableProducts: ($: any, baseUrl: string) => {
+    console.log('[wash-and-dry] Detecting variable products...');
+    
+    const variableProductHandles: string[] = [];
+    
+    // Look for products with size variants
+    const productLinks = $('a[href*="/products/"]');
+    productLinks.each((_: any, link: any) => {
+      const href = $(link).attr('href');
+      if (href) {
+        try {
+          const url = new URL(href, baseUrl);
+          if (url.pathname.includes('/products/')) {
+            // Check if this product has size variants mentioned nearby
+            const $link = $(link);
+            const nearbyText = $link.closest('.productitem, .productgrid--item, .product-item').text();
+            
+            // Look for size indicators
+            if (nearbyText.includes('50x75cm') || 
+                nearbyText.includes('75x120cm') || 
+                nearbyText.includes('60x180cm') || 
+                nearbyText.includes('75x190cm') || 
+                nearbyText.includes('115x175cm') ||
+                nearbyText.includes('Wählen Sie eine Variante') ||
+                nearbyText.includes('Choose a variant')) {
+              
+              const handle = url.pathname.split('/products/')[1];
+              if (handle && !variableProductHandles.includes(handle)) {
+                variableProductHandles.push(handle);
+                console.log(`[wash-and-dry] Found variable product: ${handle}`);
+              }
+            }
+          }
+        } catch (e) {
+          // Skip invalid URLs
+        }
+      }
+    });
+    
+    console.log(`[wash-and-dry] Detected ${variableProductHandles.length} variable products`);
+    return variableProductHandles;
+  },
+
 
 };
 
@@ -375,6 +419,41 @@ const washDryMatsAdapter: ArchiveAdapter = {
 
 // Create a product scraper adapter for washdrymats.com product pages
 export const washDryMatsProductAdapter = {
+  // Enhanced product type detection for wash-and-dry.eu
+  getProductType: ($: any) => {
+    console.log('[wash-and-dry] Detecting product type...');
+    
+    // Look for Shopify variant selectors
+    const hasVariantSelector = $('select[name*="Size"], select[name*="size"], .variant-selector, .product-options select').length > 0;
+    if (hasVariantSelector) {
+      console.log('[wash-and-dry] Product type: variable (variant selector found)');
+      return 'variable';
+    }
+    
+    // Look for variant radio buttons
+    const hasVariantButtons = $('input[type="radio"][name*="Size"], input[type="radio"][name*="size"]').length > 0;
+    if (hasVariantButtons) {
+      console.log('[wash-and-dry] Product type: variable (variant buttons found)');
+      return 'variable';
+    }
+    
+    // Look for size options in text
+    const hasSizeOptions = $('*:contains("50x75cm"), *:contains("75x120cm"), *:contains("60x180cm"), *:contains("75x190cm"), *:contains("115x175cm")').length > 0;
+    if (hasSizeOptions) {
+      console.log('[wash-and-dry] Product type: variable (size options found)');
+      return 'variable';
+    }
+    
+    // Look for "Wählen Sie eine Variante" text
+    const hasVariantText = $('*:contains("Wählen Sie eine Variante"), *:contains("Choose a variant")').length > 0;
+    if (hasVariantText) {
+      console.log('[wash-and-dry] Product type: variable (variant selection text found)');
+      return 'variable';
+    }
+    
+    console.log('[wash-and-dry] Product type: simple (no variants detected)');
+    return 'simple';
+  },
   // Enhanced title extraction for washdrymats.com
   extractTitle: ($: any) => {
     // Look for the main product title
@@ -442,178 +521,138 @@ export const washDryMatsProductAdapter = {
     return '';
   },
 
-  // Enhanced price extraction for wash-and-dry.eu
-  extractRegularPrice: ($: any) => {
-    console.log('[wash-and-dry] Starting regular price extraction...');
+  // Enhanced variation extraction for wash-and-dry.eu
+  extractVariations: ($: any) => {
+    const variations: any[] = [];
     
-    // Look for original price (crossed out) - most reliable
-    const priceSelectors = [
-      '.original-price',
-      '.price .original',
-      '.price del',
-      '.price .crossed-out',
-      '.product-price .original',
-      '.product-price del',
-      'del .price',
-      '.price del .amount',
-      '.price del .woocommerce-Price-amount'
-    ];
+    console.log('[wash-and-dry] Starting enhanced variation extraction...');
     
-    for (const selector of priceSelectors) {
-      const element = $(selector);
-      if (element.length > 0) {
-        const priceText = element.text().trim();
-        const priceMatch = priceText.match(/€?(\d+(?:,\d+)?)/);
-        if (priceMatch) {
-          const price = priceMatch[1].replace(',', '.');
-          console.log(`[wash-and-dry] Found regular price: €${price}`);
-          return price;
-        }
-      }
-    }
-    
-    // Look for price range in variant options
-    const variantOptions = $('select option, .variant-option');
-    let lowestPrice: number | null = null;
-    let highestPrice: number | null = null;
-    
-    variantOptions.each((_: any, option: any) => {
-      const optionText = $(option).text().trim();
-      const priceMatch = optionText.match(/€?(\d+(?:,\d+)?)/);
-      if (priceMatch) {
-        const price = parseFloat(priceMatch[1].replace(',', '.'));
-        if (!lowestPrice || price < lowestPrice) {
-          lowestPrice = price;
-        }
-        if (!highestPrice || price > highestPrice) {
-          highestPrice = price;
-        }
-      }
-    });
-    
-    if (lowestPrice !== null && highestPrice !== null) {
-      if (lowestPrice === highestPrice) {
-        console.log(`[wash-and-dry] Found single price: €${lowestPrice}`);
-        return lowestPrice.toString();
-      } else {
-        console.log(`[wash-and-dry] Found price range: €${lowestPrice} - €${highestPrice}`);
-        return lowestPrice.toString(); // Return lowest price as regular price
-      }
-    }
-    
-    // Look for any price mention in the page
-    const priceElements = $('*:contains("€")');
-    if (priceElements.length > 0) {
-      for (const el of priceElements) {
-        const text = $(el).text();
-        const priceMatch = text.match(/€?(\d+(?:,\d+)?)/);
-        if (priceMatch) {
-          const price = priceMatch[1].replace(',', '.');
-          console.log(`[wash-and-dry] Found price in text: €${price}`);
-          return price;
-        }
-      }
-    }
-    
-    console.log('[wash-and-dry] No regular price found');
-    return '';
-  },
-
-  extractSalePrice: ($: any) => {
-    console.log('[wash-and-dry] Starting sale price extraction...');
-    
-    // Look for current/sale price
-    const priceSelectors = [
-      '.current-price',
-      '.price .current',
-      '.price .sale',
-      '.product-price .current',
-      '.product-price .sale',
-      '.price .amount',
-      '.woocommerce-Price-amount',
-      '.product-price .amount'
-    ];
-    
-    for (const selector of priceSelectors) {
-      const element = $(selector);
-      if (element.length > 0) {
-        const priceText = element.text().trim();
-        const priceMatch = priceText.match(/€?(\d+(?:,\d+)?)/);
-        if (priceMatch) {
-          const price = priceMatch[1].replace(',', '.');
-          console.log(`[wash-and-dry] Found sale price: €${price}`);
-          return price;
-        }
-      }
-    }
-    
-    // Look for price in variant selector (current selection)
-    const selectedVariant = $('select option:selected, .variant-option.selected, .variant-option.active');
-    if (selectedVariant.length > 0) {
-      const variantText = selectedVariant.text().trim();
-      const priceMatch = variantText.match(/€?(\d+(?:,\d+)?)/);
-      if (priceMatch) {
-        const price = priceMatch[1].replace(',', '.');
-        console.log(`[wash-and-dry] Found price in selected variant: €${price}`);
-        return price;
-      }
-    }
-    
-    // If no specific sale price found, try to get the first available price
-    const variantOptions = $('select option, .variant-option');
-    for (const option of variantOptions) {
-      const optionText = $(option).text().trim();
-      const priceMatch = optionText.match(/€?(\d+(?:,\d+)?)/);
-      if (priceMatch) {
-        const price = priceMatch[1].replace(',', '.');
-        console.log(`[wash-and-dry] Found price in variant option: €${price}`);
-        return price;
-      }
-    }
-    
-    console.log('[wash-and-dry] No sale price found');
-    return '';
-  },
-
-  // Enhanced image extraction
-  extractImages: ($: any) => {
-    const images: string[] = [];
-    
-    // Look for product images in various selectors
-    const imageSelectors = [
-      '.product-images img',
-      '.product__images img',
-      '[data-product-images] img',
-      '.product-gallery img',
-      '.product__gallery img',
-      'img[alt*="Floor Mat"], img[alt*="Floor Mats"]',
-      'img[alt*="Mat"], img[alt*="Mats"]'
-    ];
-    
-    for (const selector of imageSelectors) {
-      const imgElements = $(selector);
-      imgElements.each((_: any, img: any) => {
-        const src = $(img).attr('src');
-        const dataSrc = $(img).attr('data-src');
-        const srcset = $(img).attr('srcset');
+    // Method 1: Look for Shopify variant selectors (most reliable)
+    const variantSelect = $('select[name*="Size"], select[name*="size"], .variant-selector, .product-options select');
+    if (variantSelect.length > 0) {
+      console.log('[wash-and-dry] Found variant selector, extracting options...');
+      
+      variantSelect.each((_: any, select: any) => {
+        const $select = $(select);
+        const options = $select.find('option');
         
-        if (src && !images.includes(src)) {
-          images.push(src);
-        }
-        if (dataSrc && !images.includes(dataSrc)) {
-          images.push(dataSrc);
-        }
-        if (srcset) {
-          // Extract first image from srcset
-          const firstSrc = srcset.split(',')[0].split(' ')[0];
-          if (firstSrc && !images.includes(firstSrc)) {
-            images.push(firstSrc);
+        options.each((_: any, option: any) => {
+          const $option = $(option);
+          const optionText = $option.text().trim();
+          const optionValue = $option.attr('value') || optionText;
+          
+          if (optionText && optionText !== 'Wählen Sie eine Variante' && optionText !== 'Choose a variant') {
+            // Parse size and price from option text (e.g., "50x75cm - €47,50")
+            const sizePriceMatch = optionText.match(/(\d+(?:\.\d+)?x\d+(?:\.\d+)?(?:cm|m)?)\s*-\s*€?(\d+(?:,\d+)?)/);
+            
+            if (sizePriceMatch) {
+              const size = sizePriceMatch[1];
+              const price = sizePriceMatch[2].replace(',', '.');
+              
+              variations.push({
+                size: size,
+                price: price,
+                sku: optionValue,
+                stock_status: 'instock',
+                regular_price: price,
+                meta: {
+                  attribute_size: size
+                }
+              });
+              
+              console.log(`[wash-and-dry] Added variation: ${size} - €${price}`);
+            } else {
+              // Fallback: just extract size if no price found
+              const sizeMatch = optionText.match(/(\d+(?:\.\d+)?x\d+(?:\.\d+)?(?:cm|m)?)/);
+              if (sizeMatch) {
+                variations.push({
+                  size: sizeMatch[1],
+                  price: '',
+                  sku: optionValue,
+                  stock_status: 'instock',
+                  regular_price: '',
+                  meta: {
+                    attribute_size: sizeMatch[1]
+                  }
+                });
+                
+                console.log(`[wash-and-dry] Added variation (no price): ${sizeMatch[1]}`);
+              }
+            }
           }
-        }
+        });
       });
     }
     
-    return images;
+    // Method 2: Look for variant buttons or radio buttons
+    if (variations.length === 0) {
+      const variantButtons = $('input[type="radio"][name*="Size"], input[type="radio"][name*="size"], .variant-option input[type="radio"]');
+      if (variantButtons.length > 0) {
+        console.log('[wash-and-dry] Found variant radio buttons, extracting options...');
+        
+        variantButtons.each((_: any, button: any) => {
+          const $button = $(button);
+          const buttonText = $button.closest('label, .variant-option').text().trim();
+          const buttonValue = $button.attr('value') || buttonText;
+          
+          if (buttonText && buttonText !== 'Wählen Sie eine Variante') {
+            const sizePriceMatch = buttonText.match(/(\d+(?:\.\d+)?x\d+(?:\.\d+)?(?:cm|m)?)\s*-\s*€?(\d+(?:,\d+)?)/);
+            
+            if (sizePriceMatch) {
+              const size = sizePriceMatch[1];
+              const price = sizePriceMatch[2].replace(',', '.');
+              
+              variations.push({
+                size: size,
+                price: price,
+                sku: buttonValue,
+                stock_status: 'instock',
+                regular_price: price,
+                meta: {
+                  attribute_size: size
+                }
+              });
+            }
+          }
+        });
+      }
+    }
+    
+    // Method 3: Look for variant display elements (fallback)
+    if (variations.length === 0) {
+      const variantElements = $('*:contains("50x75cm"), *:contains("75x120cm"), *:contains("60x180cm"), *:contains("75x190cm"), *:contains("115x175cm")');
+      if (variantElements.length > 0) {
+        console.log('[wash-and-dry] Found variant elements, extracting sizes...');
+        
+        const sizePatterns = [
+          /50x75cm/,
+          /75x120cm/,
+          /60x180cm/,
+          /75x190cm/,
+          /115x175cm/
+        ];
+        
+        sizePatterns.forEach(pattern => {
+          const matchingElements = $(`*:contains("${pattern.source}")`);
+          if (matchingElements.length > 0) {
+            const size = pattern.source;
+            variations.push({
+              size: size,
+              price: '',
+              sku: size,
+              stock_status: 'instock',
+              regular_price: '',
+              meta: {
+                attribute_size: size
+              }
+            });
+          }
+        });
+      }
+    }
+    
+    console.log(`[wash-and-dry] Extracted ${variations.length} variations`);
+    return variations;
   },
 
   // Enhanced attribute extraction for wash-and-dry.eu
@@ -768,138 +807,178 @@ export const washDryMatsProductAdapter = {
     return attributes;
   },
 
-  // Enhanced variation extraction for wash-and-dry.eu
-  extractVariations: ($: any) => {
-    const variations: any[] = [];
+  // Enhanced price extraction for wash-and-dry.eu
+  extractRegularPrice: ($: any) => {
+    console.log('[wash-and-dry] Starting regular price extraction...');
     
-    console.log('[wash-and-dry] Starting enhanced variation extraction...');
+    // Look for original price (crossed out) - most reliable
+    const priceSelectors = [
+      '.original-price',
+      '.price .original',
+      '.price del',
+      '.price .crossed-out',
+      '.product-price .original',
+      '.product-price del',
+      'del .price',
+      '.price del .amount',
+      '.price del .woocommerce-Price-amount'
+    ];
     
-    // Method 1: Look for Shopify variant selectors (most reliable)
-    const variantSelect = $('select[name*="Size"], select[name*="size"], .variant-selector, .product-options select');
-    if (variantSelect.length > 0) {
-      console.log('[wash-and-dry] Found variant selector, extracting options...');
-      
-      variantSelect.each((_: any, select: any) => {
-        const $select = $(select);
-        const options = $select.find('option');
+    for (const selector of priceSelectors) {
+      const element = $(selector);
+      if (element.length > 0) {
+        const priceText = element.text().trim();
+        const priceMatch = priceText.match(/€?(\d+(?:,\d+)?)/);
+        if (priceMatch) {
+          const price = priceMatch[1].replace(',', '.');
+          console.log(`[wash-and-dry] Found regular price: €${price}`);
+          return price;
+        }
+      }
+    }
+    
+    // Look for price range in variant options
+    const variantOptions = $('select option, .variant-option');
+    let lowestPrice: number | null = null;
+    let highestPrice: number | null = null;
+    
+    variantOptions.each((_: any, option: any) => {
+      const optionText = $(option).text().trim();
+      const priceMatch = optionText.match(/€?(\d+(?:,\d+)?)/);
+      if (priceMatch) {
+        const price = parseFloat(priceMatch[1].replace(',', '.'));
+        if (!lowestPrice || price < lowestPrice) {
+          lowestPrice = price;
+        }
+        if (!highestPrice || price > highestPrice) {
+          highestPrice = price;
+        }
+      }
+    });
+    
+    if (lowestPrice !== null && highestPrice !== null) {
+          if (lowestPrice === highestPrice) {
+      console.log(`[wash-and-dry] Found single price: €${lowestPrice}`);
+      return String(lowestPrice);
+    } else {
+      console.log(`[wash-and-dry] Found price range: €${lowestPrice} - €${highestPrice}`);
+      return String(lowestPrice); // Return lowest price as regular price
+    }
+    }
+    
+    // Look for any price mention in the page
+    const priceElements = $('*:contains("€")');
+    if (priceElements.length > 0) {
+      for (const el of priceElements) {
+        const text = $(el).text();
+        const priceMatch = text.match(/€?(\d+(?:,\d+)?)/);
+        if (priceMatch) {
+          const price = priceMatch[1].replace(',', '.');
+          console.log(`[wash-and-dry] Found price in text: €${price}`);
+          return price;
+        }
+      }
+    }
+    
+    console.log('[wash-and-dry] No regular price found');
+    return '';
+  },
+
+  extractSalePrice: ($: any) => {
+    console.log('[wash-and-dry] Starting sale price extraction...');
+    
+    // Look for current/sale price
+    const priceSelectors = [
+      '.current-price',
+      '.price .current',
+      '.price .sale',
+      '.product-price .current',
+      '.product-price .sale',
+      '.price .amount',
+      '.woocommerce-Price-amount',
+      '.product-price .amount'
+    ];
+    
+    for (const selector of priceSelectors) {
+      const element = $(selector);
+      if (element.length > 0) {
+        const priceText = element.text().trim();
+        const priceMatch = priceText.match(/€?(\d+(?:,\d+)?)/);
+        if (priceMatch) {
+          const price = priceMatch[1].replace(',', '.');
+          console.log(`[wash-and-dry] Found sale price: €${price}`);
+          return price;
+        }
+      }
+    }
+    
+    // Look for price in variant selector (current selection)
+    const selectedVariant = $('select option:selected, .variant-option.selected, .variant-option.active');
+    if (selectedVariant.length > 0) {
+      const variantText = selectedVariant.text().trim();
+      const priceMatch = variantText.match(/€?(\d+(?:,\d+)?)/);
+      if (priceMatch) {
+        const price = priceMatch[1].replace(',', '.');
+        console.log(`[wash-and-dry] Found price in selected variant: €${price}`);
+        return price;
+      }
+    }
+    
+    // If no specific sale price found, try to get the first available price
+    const variantOptions = $('select option, .variant-option');
+    for (const option of variantOptions) {
+      const optionText = $(option).text().trim();
+      const priceMatch = optionText.match(/€?(\d+(?:,\d+)?)/);
+      if (priceMatch) {
+        const price = priceMatch[1].replace(',', '.');
+        console.log(`[wash-and-dry] Found price in variant option: €${price}`);
+        return price;
+      }
+    }
+    
+    console.log('[wash-and-dry] No sale price found');
+    return '';
+  },
+
+  // Enhanced image extraction
+  extractImages: ($: any) => {
+    const images: string[] = [];
+    
+    // Look for product images in various selectors
+    const imageSelectors = [
+      '.product-images img',
+      '.product__images img',
+      '[data-product-images] img',
+      '.product-gallery img',
+      '.product__gallery img',
+      'img[alt*="Floor Mat"], img[alt*="Floor Mats"]',
+      'img[alt*="Mat"], img[alt*="Mats"]'
+    ];
+    
+    for (const selector of imageSelectors) {
+      const imgElements = $(selector);
+      imgElements.each((_: any, img: any) => {
+        const src = $(img).attr('src');
+        const dataSrc = $(img).attr('data-src');
+        const srcset = $(img).attr('srcset');
         
-        options.each((_: any, option: any) => {
-          const $option = $(option);
-          const optionText = $option.text().trim();
-          const optionValue = $option.attr('value') || optionText;
-          
-          if (optionText && optionText !== 'Wählen Sie eine Variante' && optionText !== 'Choose a variant') {
-            // Parse size and price from option text (e.g., "50x75cm - €47,50")
-            const sizePriceMatch = optionText.match(/(\d+(?:\.\d+)?x\d+(?:\.\d+)?(?:cm|m)?)\s*-\s*€?(\d+(?:,\d+)?)/);
-            
-            if (sizePriceMatch) {
-              const size = sizePriceMatch[1];
-              const price = sizePriceMatch[2].replace(',', '.');
-              
-              variations.push({
-                size: size,
-                price: price,
-                sku: optionValue,
-                stock_status: 'instock',
-                regular_price: price,
-                meta: {
-                  attribute_size: size
-                }
-              });
-              
-              console.log(`[wash-and-dry] Added variation: ${size} - €${price}`);
-            } else {
-              // Fallback: just extract size if no price found
-              const sizeMatch = optionText.match(/(\d+(?:\.\d+)?x\d+(?:\.\d+)?(?:cm|m)?)/);
-              if (sizeMatch) {
-                variations.push({
-                  size: sizeMatch[1],
-                  price: '',
-                  sku: optionValue,
-                  stock_status: 'instock',
-                  regular_price: '',
-                  meta: {
-                    attribute_size: sizeMatch[1]
-                  }
-                });
-                
-                console.log(`[wash-and-dry] Added variation (no price): ${sizeMatch[1]}`);
-              }
-            }
+        if (src && !images.includes(src)) {
+          images.push(src);
+        }
+        if (dataSrc && !images.includes(dataSrc)) {
+          images.push(dataSrc);
+        }
+        if (srcset) {
+          // Extract first image from srcset
+          const firstSrc = srcset.split(',')[0].split(' ')[0];
+          if (firstSrc && !images.includes(firstSrc)) {
+            images.push(firstSrc);
           }
-        });
+        }
       });
     }
     
-    // Method 2: Look for variant buttons or radio buttons
-    if (variations.length === 0) {
-      const variantButtons = $('input[type="radio"][name*="Size"], input[type="radio"][name*="size"], .variant-option input[type="radio"]');
-      if (variantButtons.length > 0) {
-        console.log('[wash-and-dry] Found variant radio buttons, extracting options...');
-        
-        variantButtons.each((_: any, button: any) => {
-          const $button = $(button);
-          const buttonText = $button.closest('label, .variant-option').text().trim();
-          const buttonValue = $button.attr('value') || buttonText;
-          
-          if (buttonText && buttonText !== 'Wählen Sie eine Variante') {
-            const sizePriceMatch = buttonText.match(/(\d+(?:\.\d+)?x\d+(?:\.\d+)?(?:cm|m)?)\s*-\s*€?(\d+(?:,\d+)?)/);
-            
-            if (sizePriceMatch) {
-              const size = sizePriceMatch[1];
-              const price = sizePriceMatch[2].replace(',', '.');
-              
-              variations.push({
-                size: size,
-                price: price,
-                sku: buttonValue,
-                stock_status: 'instock',
-                regular_price: price,
-                meta: {
-                  attribute_size: size
-                }
-              });
-            }
-          }
-        });
-      }
-    }
-    
-    // Method 3: Look for variant display elements (fallback)
-    if (variations.length === 0) {
-      const variantElements = $('*:contains("50x75cm"), *:contains("75x120cm"), *:contains("60x180cm"), *:contains("75x190cm"), *:contains("115x175cm")');
-      if (variantElements.length > 0) {
-        console.log('[wash-and-dry] Found variant elements, extracting sizes...');
-        
-        const sizePatterns = [
-          /50x75cm/,
-          /75x120cm/,
-          /60x180cm/,
-          /75x190cm/,
-          /115x175cm/
-        ];
-        
-        sizePatterns.forEach(pattern => {
-          const matchingElements = $(`*:contains("${pattern.source}")`);
-          if (matchingElements.length > 0) {
-            const size = pattern.source;
-            variations.push({
-              size: size,
-              price: '',
-              sku: size,
-              stock_status: 'instock',
-              regular_price: '',
-              meta: {
-                attribute_size: size
-              }
-            });
-          }
-        });
-      }
-    }
-    
-    console.log(`[wash-and-dry] Extracted ${variations.length} variations`);
-    return variations;
+    return images;
   },
 
   // Enhanced SKU extraction
@@ -929,9 +1008,9 @@ export function setupWashAndDryAdapter(): void {
   // Register with ProductScraper for product page parsing
   try {
     const { ProductScraper } = require('./scraper');
-    ProductScraper.registerAdapter('wash-and-dry.eu', washAndDryAdapter);
-    ProductScraper.registerAdapter('washdrymats.com', washDryMatsAdapter);
-    console.log('✅ wash-and-dry.eu and washdrymats.com adapters registered with ProductScraper!');
+    ProductScraper.registerAdapter('wash-and-dry.eu', washDryMatsProductAdapter);
+    ProductScraper.registerAdapter('washdrymats.com', washDryMatsProductAdapter);
+    console.log('✅ wash-and-dry.eu and washdrymats.com product adapters registered with ProductScraper!');
   } catch (error) {
     console.warn('Could not register with ProductScraper:', error);
   }
