@@ -86,6 +86,13 @@ export class RecipeManager {
   }
 
   /**
+   * List all available recipes with full details
+   */
+  async listRecipesWithDetails(): Promise<RecipeConfig[]> {
+    return await this.recipeLoader.listRecipesWithDetails();
+  }
+
+  /**
    * Get recipe configuration by name
    */
   async getRecipe(recipeName: string): Promise<RecipeConfig> {
@@ -142,6 +149,19 @@ export class RecipeManager {
    */
   private validateSiteUrl(recipeUrl: string, siteUrl: string): boolean {
     try {
+      // Handle wildcard URLs
+      if (recipeUrl === "*") {
+        return true; // Generic recipe matches any site
+      }
+      
+      if (recipeUrl.startsWith("*.")) {
+        // Wildcard subdomain matching (e.g., *.co.il)
+        const recipeDomain = recipeUrl.substring(2); // Remove "*."
+        const siteHost = new URL(siteUrl).hostname;
+        return siteHost.endsWith(recipeDomain);
+      }
+      
+      // Exact hostname matching
       const recipeHost = new URL(recipeUrl).hostname;
       const siteHost = new URL(siteUrl).hostname;
       return recipeHost === siteHost;

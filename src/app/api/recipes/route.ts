@@ -81,13 +81,27 @@ router.get('/getBySite', async (req: Request, res: Response) => {
 // List all recipes with details
 router.get('/all', async (req: Request, res: Response) => {
   try {
-    const allRecipes = await recipeManager.listRecipes();
+    const allRecipes = await recipeManager.listRecipesWithDetails();
     return res.json({ success: true, data: allRecipes });
   } catch (error) {
     console.error('Failed to get all recipes:', error);
     return res.status(500).json({
       success: false,
       error: 'Failed to get all recipes',
+    });
+  }
+});
+
+// List all recipe names (backward compatibility)
+router.get('/names', async (req: Request, res: Response) => {
+  try {
+    const recipeNames = await recipeManager.listRecipes();
+    return res.json({ success: true, data: recipeNames });
+  } catch (error) {
+    console.error('Failed to get recipe names:', error);
+    return res.status(500).json({
+      success: false,
+      error: 'Failed to get recipe names',
     });
   }
 });

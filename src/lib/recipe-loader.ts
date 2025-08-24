@@ -115,6 +115,25 @@ export class RecipeLoaderService implements RecipeLoader {
   }
 
   /**
+   * List all available recipes with full details
+   */
+  async listRecipesWithDetails(): Promise<RecipeConfig[]> {
+    const recipeFiles = this.findRecipeFiles();
+    const recipes: RecipeConfig[] = [];
+
+    for (const filePath of recipeFiles) {
+      try {
+        const recipe = await this.loadRecipeFromFile(filePath);
+        recipes.push(recipe);
+      } catch (error) {
+        console.warn(`Failed to load recipe from ${filePath}:`, error);
+      }
+    }
+
+    return recipes;
+  }
+
+  /**
    * Validate a recipe configuration
    */
   validateRecipe(recipe: RecipeConfig): boolean {
@@ -168,19 +187,38 @@ export class RecipeLoaderService implements RecipeLoader {
    */
   async getRecipeBySiteUrl(siteUrl: string): Promise<RecipeConfig | null> {
     const recipeFiles = this.findRecipeFiles();
+    const matchingRecipes: Array<{ recipe: RecipeConfig; specificity: number }> = [];
     
     for (const filePath of recipeFiles) {
       try {
         const recipe = await this.loadRecipeFromFile(filePath);
+        
         if (this.matchesSiteUrl(recipe.siteUrl, siteUrl)) {
-          return recipe;
+          // Calculate specificity: exact match = 3, wildcard subdomain = 2, generic = 1
+          let specificity = 1;
+          if (recipe.siteUrl === "*") {
+            specificity = 1; // Generic recipe
+          } else if (recipe.siteUrl.startsWith("*.")) {
+            specificity = 2; // Wildcard subdomain
+          } else {
+            specificity = 3; // Exact match
+          }
+          
+          matchingRecipes.push({ recipe, specificity });
         }
       } catch (error) {
         console.warn(`Failed to load recipe from ${filePath}:`, error);
       }
     }
 
-    return null;
+    if (matchingRecipes.length === 0) {
+      return null;
+    }
+
+    // Sort by specificity (highest first) and return the most specific match
+    matchingRecipes.sort((a, b) => b.specificity - a.specificity);
+    const selectedRecipe = matchingRecipes[0]!; // We know this exists because we checked length > 0
+    return selectedRecipe.recipe;
   }
 
   /**
@@ -188,6 +226,19 @@ export class RecipeLoaderService implements RecipeLoader {
    */
   private matchesSiteUrl(recipeUrl: string, siteUrl: string): boolean {
     try {
+      // Handle wildcard URLs
+      if (recipeUrl === "*") {
+        return true; // Generic recipe matches any site
+      }
+      
+      if (recipeUrl.startsWith("*.")) {
+        // Wildcard subdomain matching (e.g., *.co.il)
+        const recipeDomain = recipeUrl.substring(2); // Remove "*."
+        const siteHost = new URL(siteUrl).hostname;
+        return siteHost.endsWith(recipeDomain);
+      }
+      
+      // Exact hostname matching
       const recipeHost = new URL(recipeUrl).hostname;
       const siteHost = new URL(siteUrl).hostname;
       return recipeHost === siteHost;
