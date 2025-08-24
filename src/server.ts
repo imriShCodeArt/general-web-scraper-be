@@ -5,6 +5,7 @@ import compression from 'compression';
 import { ScrapingService } from './lib/scraping-service';
 import { StorageService } from './lib/storage';
 import pino from 'pino';
+import recipeRoutes from './app/api/recipes/route';
 
 const app = express();
 const port = process.env.PORT || 3000;
@@ -46,6 +47,9 @@ app.get('/health', (req, res) => {
   res.json({ status: 'ok', timestamp: new Date().toISOString() });
 });
 
+// Recipe management routes
+app.use('/api/recipes', recipeRoutes);
+
 // API Routes
 
 // Start scraping job
@@ -67,13 +71,13 @@ app.post('/api/scrape/init', async (req, res) => {
     });
 
     if (result.success) {
-      res.status(201).json(result);
+      return res.status(201).json(result);
     } else {
-      res.status(400).json(result);
+      return res.status(400).json(result);
     }
   } catch (error) {
     logger.error('Failed to start scraping:', error);
-    res.status(500).json({
+    return res.status(500).json({
       success: false,
       error: 'Internal server error',
     });
@@ -87,13 +91,13 @@ app.get('/api/scrape/status/:jobId', async (req, res) => {
     const result = await scrapingService.getJobStatus(jobId);
     
     if (result.success) {
-      res.json(result);
+      return res.json(result);
     } else {
-      res.status(404).json(result);
+      return res.status(404).json(result);
     }
   } catch (error) {
     logger.error('Failed to get job status:', error);
-    res.status(500).json({
+    return res.status(500).json({
       success: false,
       error: 'Internal server error',
     });
@@ -104,10 +108,10 @@ app.get('/api/scrape/status/:jobId', async (req, res) => {
 app.get('/api/scrape/jobs', async (req, res) => {
   try {
     const result = await scrapingService.getAllJobs();
-    res.json(result);
+    return res.json(result);
   } catch (error) {
     logger.error('Failed to get jobs:', error);
-    res.status(500).json({
+    return res.status(500).json({
       success: false,
       error: 'Internal server error',
     });
@@ -121,13 +125,13 @@ app.post('/api/scrape/cancel/:jobId', async (req, res) => {
     const result = await scrapingService.cancelJob(jobId);
     
     if (result.success) {
-      res.json(result);
+      return res.json(result);
     } else {
-      res.status(400).json(result);
+      return res.status(400).json(result);
     }
   } catch (error) {
     logger.error('Failed to cancel job:', error);
-    res.status(500).json({
+    return res.status(500).json({
       success: false,
       error: 'Internal server error',
     });
@@ -179,10 +183,11 @@ app.get('/api/scrape/download/:jobId/:type', async (req, res) => {
     
     // Send CSV content
     res.send(csvContent);
+    return;
 
   } catch (error) {
     logger.error('Failed to download CSV:', error);
-    res.status(500).json({
+    return res.status(500).json({
       success: false,
       error: 'Internal server error',
     });

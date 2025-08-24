@@ -28,11 +28,11 @@ export interface RawProduct {
   title?: string;
   slug?: string;
   description?: string;
-  shortDescription?: string;
+  shortDescription?: string | undefined;
   sku?: string;
   stockStatus?: string;
   images?: string[];
-  category?: string;
+  category?: string | undefined;
   attributes?: Record<string, string[]>;
   variations?: RawVariation[];
 }
@@ -50,27 +50,100 @@ export interface RawVariation {
 export interface SiteAdapter {
   discoverProducts(): AsyncIterable<string>;
   extractProduct(url: string): Promise<RawProduct>;
+  getConfig(): RecipeConfig;
 }
 
 // Recipe Configuration
 export interface RecipeConfig {
+  // Basic site information
+  name: string;
+  description?: string;
+  version: string;
+  siteUrl: string;
+  
+  // Selectors for data extraction
   selectors: {
-    title: string;
-    price: string;
-    images: string;
-    stock: string;
-    attributes: string;
-    variations: string;
+    // Core product fields
+    title: string | string[];
+    price: string | string[];
+    images: string | string[];
+    stock: string | string[];
+    sku: string | string[];
+    description: string | string[];
+    shortDescription?: string | string[];
+    category?: string | string[];
+    
+    // Product discovery
+    productLinks: string | string[];
+    pagination?: {
+      nextPage: string;
+      maxPages?: number;
+    };
+    
+    // Attributes and variations
+    attributes: string | string[];
+    variations?: string | string[];
+    
+    // Embedded data sources
+    embeddedJson?: string[];
+    apiEndpoints?: string[];
   };
-  transforms: {
-    title?: string;
-    price?: string;
-    attributes?: Record<string, string>;
+  
+  // Text transformations and cleaning
+  transforms?: {
+    title?: string[];
+    price?: string[];
+    description?: string[];
+    attributes?: Record<string, string[]>;
+    category?: string[];
   };
-  pagination: {
-    pattern: string;
-    nextPage: string;
+  
+  // Site-specific behavior
+  behavior?: {
+    waitForSelectors?: string[];
+    scrollToLoad?: boolean;
+    useHeadlessBrowser?: boolean;
+    rateLimit?: number; // ms between requests
+    maxConcurrent?: number;
   };
+  
+  // Fallback strategies
+  fallbacks?: {
+    title?: string[];
+    price?: string[];
+    images?: string[];
+    stock?: string[];
+    sku?: string[];
+    description?: string[];
+    shortDescription?: string[];
+    category?: string[];
+  };
+  
+  // Validation rules
+  validation?: {
+    requiredFields?: string[];
+    priceFormat?: string; // regex pattern
+    skuFormat?: string; // regex pattern
+  };
+}
+
+// Recipe file structure
+export interface RecipeFile {
+  recipes: RecipeConfig[];
+  globalSettings?: {
+    defaultRateLimit?: number;
+    defaultMaxConcurrent?: number;
+    userAgents?: string[];
+  };
+}
+
+// Recipe loading and management
+export interface RecipeLoader {
+  loadRecipe(recipeName: string): Promise<RecipeConfig>;
+  loadRecipeFromFile(filePath: string): Promise<RecipeConfig>;
+  loadRecipeFromUrl(url: string): Promise<RecipeConfig>;
+  listAvailableRecipes(): Promise<string[]>;
+  validateRecipe(recipe: RecipeConfig): boolean;
 }
 
 // Job Management

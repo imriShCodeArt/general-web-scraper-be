@@ -5,7 +5,7 @@ import { StorageEntry, JobResult } from '../types';
 export class StorageService {
   private inMemoryStorage = new Map<string, StorageEntry>();
   private storageDir: string;
-  private cleanupInterval: NodeJS.Timeout;
+  private cleanupInterval!: NodeJS.Timeout;
 
   constructor(storageDir: string = './storage') {
     this.storageDir = storageDir;

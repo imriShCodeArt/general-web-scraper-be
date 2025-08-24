@@ -1,0 +1,162 @@
+name: "Hebrew E-commerce"
+description: "Recipe optimized for Hebrew/RTL e-commerce sites"
+version: "1.0.0"
+siteUrl: "https://hebrew-site.co.il"
+
+selectors:
+  # Core product fields with Hebrew-specific selectors
+  title: 
+    - "h1.כותרת-מוצר"
+    - "h1.שם-מוצר"
+    - ".כותרת-מוצר"
+    - ".שם-מוצר"
+    - "h1"
+    - ".product-title"
+  
+  price:
+    - ".מחיר-מוצר .מחיר"
+    - ".מחיר .סכום"
+    - ".product-price .price"
+    - ".price .amount"
+    - ".מחיר"
+    - ".price"
+    - "[data-price]"
+  
+  sku:
+    - ".קוד-מוצר"
+    - ".sku"
+    - "[data-sku]"
+    - ".product-code"
+  
+  description:
+    - ".תיאור-מוצר"
+    - ".תיאור"
+    - ".פרטי-מוצר"
+    - ".product-description"
+    - ".description"
+  
+  shortDescription:
+    - ".סיכום-מוצר"
+    - ".תיאור-קצר"
+    - ".product-summary"
+    - ".short-description"
+  
+  images:
+    - ".גלריית-מוצר img"
+    - ".תמונות-מוצר img"
+    - ".product-gallery img"
+    - ".product-images img"
+    - ".gallery img"
+  
+  stock:
+    - ".סטטוס-מלאי"
+    - ".זמינות"
+    - ".במלאי"
+    - ".אזל-המלאי"
+    - ".stock-status"
+    - ".availability"
+  
+  category:
+    - ".פירורי-לחם"
+    - ".קטגוריה"
+    - ".קטגוריית-מוצר"
+    - ".breadcrumb"
+    - ".category"
+  
+  # Product discovery
+  productLinks:
+    - ".פריט-מוצר a"
+    - ".כרטיס-מוצר a"
+    - ".product-item a"
+    - ".product-card a"
+    - "a[href*='/מוצר/']"
+    - "a[href*='/product/']"
+  
+  # Pagination
+  pagination:
+    nextPage: ".עמוד-הבא"
+    maxPages: 50
+  
+  # Attributes and variations
+  attributes:
+    - ".אפשרויות-מוצר"
+    - ".תכונות-מוצר"
+    - ".וריאציות"
+    - ".product-options"
+    - ".product-attributes"
+  
+  variations:
+    - ".וריאנטים-מוצר"
+    - ".variants"
+    - ".product-variants"
+  
+  # Embedded data sources
+  embeddedJson:
+    - "script[type='application/ld+json']"
+    - "script[data-json]"
+    - "#__NEXT_DATA__"
+
+transforms:
+  title:
+    - "trim: "
+    - "replace:^\\s+|\\s+$"
+    - "replace:^\\s*-\\s*"
+  
+  price:
+    - "replace:[^\\d.,]"
+    - "replace:,|."
+    - "replace:₪|$|€|£"
+  
+  description:
+    - "trim: \n\t"
+    - "replace:\\s+ | "
+    - "replace:^\\s*-\\s*"
+  
+  attributes:
+    צבע:
+      - "replace:^\\s+|\\s+$"
+      - "replace:^\\s*-\\s*"
+      - "replace:בחר צבע|בחרי צבע"
+    גודל:
+      - "replace:^\\s+|\\s+$"
+      - "replace:^\\s*-\\s*"
+      - "replace:בחר גודל|בחרי גודל"
+    Color:
+      - "replace:^\\s+|\\s+$"
+      - "replace:^\\s*-\\s*"
+    Size:
+      - "replace:^\\s+|\\s+$"
+      - "replace:^\\s*-\\s*"
+
+behavior:
+  waitForSelectors:
+    - ".כותרת-מוצר"
+    - ".מחיר-מוצר"
+    - ".product-title"
+    - ".product-price"
+  scrollToLoad: false
+  useHeadlessBrowser: false
+  rateLimit: 1500
+  maxConcurrent: 2
+
+fallbacks:
+  title:
+    - "h1"
+    - ".title"
+    - ".כותרת"
+  price:
+    - ".price"
+    - ".מחיר"
+    - "[data-price]"
+  images:
+    - "img[src*='מוצר']"
+    - "img[src*='product']"
+    - "img"
+
+validation:
+  requiredFields:
+    - "title"
+    - "price"
+    - "images"
+  priceFormat: "\\d+(\\.\\d{2})?"
+  skuFormat: "[A-Za-z0-9-_א-ת]+"

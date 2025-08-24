@@ -21,7 +21,9 @@ export class HttpClient {
     // Add request interceptor for rotating user agents
     this.client.interceptors.request.use((config) => {
       const randomUserAgent = this.userAgents[Math.floor(Math.random() * this.userAgents.length)];
-      config.headers['User-Agent'] = randomUserAgent;
+      if (randomUserAgent) {
+        config.headers['User-Agent'] = randomUserAgent;
+      }
       config.headers['Accept'] = 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8';
       config.headers['Accept-Language'] = 'en-US,en;q=0.5,he;q=0.3';
       config.headers['Accept-Encoding'] = 'gzip, deflate';
@@ -120,7 +122,13 @@ export class HttpClient {
   async getHeaders(url: string): Promise<Record<string, string>> {
     try {
       const response = await this.client.head(url);
-      return response.headers;
+      const headers: Record<string, string> = {};
+      Object.entries(response.headers).forEach(([key, value]) => {
+        if (value !== undefined) {
+          headers[key] = String(value);
+        }
+      });
+      return headers;
     } catch (error) {
       throw new Error(`Failed to get headers from ${url}: ${error}`);
     }
@@ -210,8 +218,8 @@ export class HttpClient {
    */
   setProxy(proxy: string): void {
     this.client.defaults.proxy = {
-      host: proxy.split(':')[0],
-      port: parseInt(proxy.split(':')[1]),
+      host: proxy.split(':')[0] || 'localhost',
+      port: parseInt(proxy.split(':')[1] || '8080'),
     };
   }
 

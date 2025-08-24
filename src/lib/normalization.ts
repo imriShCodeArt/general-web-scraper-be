@@ -67,7 +67,7 @@ export class NormalizationToolkit {
   static generateSku(url: string): string {
     const urlParts = url.split('/');
     const lastPart = urlParts[urlParts.length - 1];
-    return lastPart.replace(/[^a-zA-Z0-9]/g, '').toUpperCase();
+    return lastPart?.replace(/[^a-zA-Z0-9]/g, '').toUpperCase() || 'PRODUCT';
   }
 
   /**
@@ -241,8 +241,8 @@ export class NormalizationToolkit {
     
     if (match) {
       return {
-        width: parseInt(match[1]),
-        height: parseInt(match[2])
+        width: parseInt(match[1] || '0'),
+        height: parseInt(match[2] || '0')
       };
     }
     
@@ -252,8 +252,8 @@ export class NormalizationToolkit {
     
     if (xMatch) {
       return {
-        width: parseInt(xMatch[1]),
-        height: parseInt(xMatch[2])
+        width: parseInt(xMatch[1] || '0'),
+        height: parseInt(xMatch[2] || '0')
       };
     }
     

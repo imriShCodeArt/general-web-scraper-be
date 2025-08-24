@@ -225,11 +225,11 @@ export abstract class BaseAdapter implements SiteAdapter {
   }
 
   /**
-   * Extract product URLs from a page
+   * Extract product URLs from a page (generic implementation)
    */
   protected extractProductUrls(dom: JSDOM): string[] {
     // This is a generic implementation - subclasses should override
-    const productLinks = dom.window.document.querySelectorAll('a[href*="/product/"], a[href*="/item/"], a[href*="/p/"]');
+    const productLinks = dom.window.document.querySelectorAll('a[href*="/product/"], a[href*="/item/"], a[href*="/item/"], a[href*="/p/"]');
     return Array.from(productLinks)
       .map(link => link.getAttribute('href'))
       .filter((href): href is string => href !== null)
@@ -248,8 +248,10 @@ export abstract class BaseAdapter implements SiteAdapter {
         // In a real implementation, this could be more sophisticated
         if (transform.includes('->')) {
           const [pattern, replacement] = transform.split('->').map(s => s.trim());
-          const regex = new RegExp(pattern, 'g');
-          result = result.replace(regex, replacement);
+          if (pattern && replacement) {
+            const regex = new RegExp(pattern, 'g');
+            result = result.replace(regex, replacement);
+          }
         }
       } catch (error) {
         console.warn(`Failed to apply transformation: ${transform}`, error);

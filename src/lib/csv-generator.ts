@@ -164,18 +164,18 @@ export class CsvGenerator {
     for (let i = 0; i < products.length; i++) {
       const product = products[i];
       
-      if (!product.sku) {
+      if (!product?.sku) {
         errors.push(`Product ${i + 1}: Missing SKU`);
       }
       
-      if (!product.title) {
+      if (!product?.title) {
         errors.push(`Product ${i + 1}: Missing title`);
       }
 
-      if (product.productType === 'variable') {
-        for (let j = 0; j < product.variations.length; j++) {
-          const variation = product.variations[j];
-          if (!variation.sku) {
+      if (product?.productType === 'variable') {
+        for (let j = 0; j < (product?.variations?.length || 0); j++) {
+          const variation = product?.variations?.[j];
+          if (!variation?.sku) {
             errors.push(`Product ${i + 1}, Variation ${j + 1}: Missing SKU`);
           }
         }

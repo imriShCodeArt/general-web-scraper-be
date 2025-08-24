@@ -10,11 +10,13 @@ import { SiteAdapter } from '../types';
 import { NormalizationToolkit } from './normalization';
 import { CsvGenerator } from './csv-generator';
 import { StorageService } from './storage';
+import { RecipeManager } from './recipe-manager';
 import pino from 'pino';
 
 export class ScrapingService {
   private logger: pino.Logger;
   private storage: StorageService;
+  private recipeManager: RecipeManager;
   private activeJobs = new Map<string, ScrapingJob>();
   private jobQueue: ScrapingJob[] = [];
   private isProcessing = false;
@@ -32,6 +34,7 @@ export class ScrapingService {
     });
     
     this.storage = new StorageService();
+    this.recipeManager = new RecipeManager();
   }
 
   /**
@@ -196,26 +199,24 @@ export class ScrapingService {
    * Create adapter based on recipe
    */
   private async createAdapter(recipe: string, siteUrl: string): Promise<SiteAdapter> {
-    // This is a simplified implementation
-    // In a real system, you'd load recipe configurations from files/database
-    // and dynamically create appropriate adapters
-    
-    // For now, return a generic adapter
-    return new GenericAdapter({
-      selectors: {
-        title: 'h1, .product-title, .title',
-        price: '.price, .product-price, [data-price]',
-        images: 'img[src*="product"], .product-image img',
-        stock: '.stock, .availability, [data-stock]',
-        attributes: '.attributes, .product-options, .variations',
-        variations: '.variation, .product-variant, .option',
-      },
-      transforms: {},
-      pagination: {
-        pattern: 'page={page}',
-        nextPage: '.next-page, .pagination-next',
-      },
-    }, siteUrl);
+    try {
+      // Try to create adapter using the recipe manager
+      const adapter = await this.recipeManager.createAdapter(siteUrl, recipe);
+      this.logger.info(`Created adapter for ${siteUrl} using recipe: ${recipe}`);
+      return adapter;
+    } catch (error) {
+      this.logger.warn(`Failed to create adapter with recipe '${recipe}', trying auto-detection: ${error}`);
+      
+      try {
+        // Fallback to auto-detection
+        const adapter = await this.recipeManager.createAdapter(siteUrl);
+        this.logger.info(`Created adapter for ${siteUrl} using auto-detected recipe`);
+        return adapter;
+      } catch (fallbackError) {
+        this.logger.error(`Failed to create adapter for ${siteUrl}: ${fallbackError}`);
+        throw new Error(`No suitable recipe found for ${siteUrl}. Please provide a valid recipe name or ensure a recipe exists for this site.`);
+      }
+    }
   }
 
   /**
@@ -257,6 +258,67 @@ export class ScrapingService {
       return {
         success: false,
         error: `Failed to get jobs: ${error}`,
+      };
+    }
+  }
+
+  /**
+   * List all available recipes
+   */
+  async listRecipes(): Promise<ApiResponse<string[]>> {
+    try {
+      const recipes = await this.recipeManager.listRecipes();
+      return {
+        success: true,
+        data: recipes,
+      };
+    } catch (error) {
+      return {
+        success: false,
+        error: `Failed to list recipes: ${error}`,
+      };
+    }
+  }
+
+  /**
+   * Get recipe configuration by name
+   */
+  async getRecipe(recipeName: string): Promise<ApiResponse<any>> {
+    try {
+      const recipe = await this.recipeManager.getRecipe(recipeName);
+      return {
+        success: true,
+        data: recipe,
+      };
+    } catch (error) {
+      return {
+        success: false,
+        error: `Failed to get recipe: ${error}`,
+      };
+    }
+  }
+
+  /**
+   * Get recipe configuration by site URL
+   */
+  async getRecipeBySiteUrl(siteUrl: string): Promise<ApiResponse<any>> {
+    try {
+      const recipe = await this.recipeManager.getRecipeBySiteUrl(siteUrl);
+      if (recipe) {
+        return {
+          success: true,
+          data: recipe,
+        };
+      } else {
+        return {
+          success: false,
+          error: 'No recipe found for this site',
+        };
+      }
+    } catch (error) {
+      return {
+        success: false,
+        error: `Failed to get recipe for site: ${error}`,
       };
     }
   }
@@ -337,6 +399,10 @@ class GenericAdapter implements SiteAdapter {
     private config: any,
     private baseUrl: string
   ) {}
+
+  getConfig(): any {
+    return this.config;
+  }
 
   async *discoverProducts(): AsyncIterable<string> {
     // This is a placeholder implementation
