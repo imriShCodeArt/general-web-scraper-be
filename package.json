@@ -17,7 +17,8 @@
     "frontend:dev": "cd frontend && npm run dev",
     "frontend:build": "cd frontend && npm run build",
     "frontend:install": "cd frontend && npm install",
-    "dev:full": "concurrently \"npm run dev\" \"npm run frontend:dev\""
+    "dev:full": "concurrently \"npm run dev\" \"npm run frontend:dev\"",
+    "vercel-build": "npm run build"
   },
   "keywords": [
     "web-scraper",
