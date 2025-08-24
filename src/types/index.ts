@@ -1,305 +1,164 @@
-export type Product = {
-  url: string;
+import { z } from 'zod';
+
+// Core Product Types
+export interface NormalizedProduct {
   title: string;
   slug: string;
-  sku: string;
-  stock_status: "instock" | "outofstock";
-  images: string[];
   description: string;
   shortDescription: string;
-  category: string;
-  attributes: {
-    Color?: string[];
-    Size?: string[];
-    [key: string]: string[] | undefined;
-  };
-  variations: Variation[];
-  postName: string;
-  regularPrice: string;
-  salePrice: string;
-  meta?: {
-    product_type?: string;
-    is_variable?: boolean;
-    variation_count?: number;
-    [key: string]: any;
-  };
-};
-
-export type Variation = {
-  parent_sku: string;
   sku: string;
-  stock_status: string;
-  regular_price: string;
-  tax_class: string;
+  stockStatus: 'instock' | 'outofstock';
   images: string[];
-  meta: {
-    attribute_Color?: string;
-    attribute_Size?: string;
-    [key: string]: string | undefined;
+  category: string;
+  productType: 'simple' | 'variable';
+  attributes: Record<string, string[]>;
+  variations: ProductVariation[];
+}
+
+export interface ProductVariation {
+  sku: string;
+  regularPrice: string;
+  taxClass: string;
+  stockStatus: 'instock' | 'outofstock';
+  images: string[];
+  attributeAssignments: Record<string, string>;
+}
+
+export interface RawProduct {
+  title?: string;
+  slug?: string;
+  description?: string;
+  shortDescription?: string;
+  sku?: string;
+  stockStatus?: string;
+  images?: string[];
+  category?: string;
+  attributes?: Record<string, string[]>;
+  variations?: RawVariation[];
+}
+
+export interface RawVariation {
+  sku?: string;
+  regularPrice?: string;
+  taxClass?: string;
+  stockStatus?: string;
+  images?: string[];
+  attributeAssignments?: Record<string, string>;
+}
+
+// Adapter Interface
+export interface SiteAdapter {
+  discoverProducts(): AsyncIterable<string>;
+  extractProduct(url: string): Promise<RawProduct>;
+}
+
+// Recipe Configuration
+export interface RecipeConfig {
+  selectors: {
+    title: string;
+    price: string;
+    images: string;
+    stock: string;
+    attributes: string;
+    variations: string;
   };
-};
-
-export type ScrapingJob = {
-  id: string;
-  status: "pending" | "processing" | "paused" | "completed" | "failed" | "stopped";
-  archive_urls: string[];
-  max_products_per_archive: number;
-  total_products: number;
-  processed_products: number;
-  created_at: Date;
-  completed_at?: Date;
-  error?: string;
-  csv_downloads?: {
-    parent: string;
-    variation: string;
-  };
-  // Control properties
-  can_pause?: boolean;
-  can_resume?: boolean;
-  can_stop?: boolean;
-  is_paused?: boolean;
-};
-
-export type ArchivePage = {
-  url: string;
-  page_number: number;
-  product_urls: string[];
-  has_next_page: boolean;
-  next_page_url?: string;
-  category_title?: string;
-};
-
-export type ScrapingResult = {
-  success: boolean;
-  data: {
-    total_products: number;
-    processed_archives: number;
-    products: Product[];
-    download_links: {
-      parent: string;
-      variation: string;
-    };
-    validation?: ProductValidationReport;
-    initial_product_count?: number;
-  } | Product[];
-  error?: string;
-  total_archives: number;
-  processed_archives: number;
-};
-
-// New types for enhanced progress tracking
-export type DetailedProgress = {
-  overall: number; // 0-100
-  stage: 'initializing' | 'fetching_archives' | 'scraping_products' | 'generating_csv' | 'complete';
-  currentArchive?: {
-    url: string;
-    index: number;
-    total: number;
-    progress: number;
-  };
-  currentProduct?: {
-    url: string;
-    index: number;
-    total: number;
+  transforms: {
     title?: string;
+    price?: string;
+    attributes?: Record<string, string>;
   };
-  archives: {
-    total: number;
-    processed: number;
-    current: number;
+  pagination: {
+    pattern: string;
+    nextPage: string;
   };
-  products: {
-    total: number;
-    processed: number;
-    current: number;
-  };
-  timeEstimate?: {
-    remaining: number; // seconds
-    elapsed: number; // seconds
-    rate: number; // items per second
-  };
-  message: string;
-};
+}
 
-export type AttributeEditProgress = {
+// Job Management
+export interface ScrapingJob {
+  id: string;
+  status: 'pending' | 'running' | 'completed' | 'failed';
+  createdAt: Date;
+  startedAt?: Date;
+  completedAt?: Date;
   totalProducts: number;
   processedProducts: number;
-  currentProduct?: {
-    title: string;
-    index: number;
-    attributesCount: number;
+  errors: string[];
+  metadata: {
+    siteUrl: string;
+    recipe: string;
+    categories: string[];
   };
-  message: string;
-};
+}
 
-// Product validation types
-export type ProductQualityIssue = {
-  field: string;
-  severity: 'error' | 'warn' | 'info';
-  message: string;
-};
+export interface JobResult {
+  jobId: string;
+  parentCsv: string;
+  variationCsv: string;
+  productCount: number;
+  variationCount: number;
+  filename: string;
+}
 
-export type ProductQualityEntry = {
-  url: string;
-  sku: string;
-  title: string;
-  score: number; // 0-100
-  missingFields: string[];
-  warnings: string[];
-  issues: ProductQualityIssue[];
-};
+// CSV Schemas
+export const ParentCsvSchema = z.object({
+  ID: z.string(),
+  post_title: z.string(),
+  post_name: z.string(),
+  post_status: z.string(),
+  post_content: z.string(),
+  post_excerpt: z.string(),
+  post_parent: z.string(),
+  menu_order: z.string(),
+  post_type: z.string(),
+  sku: z.string(),
+  stock_status: z.string(),
+  images: z.string(),
+  'tax:product_type': z.string(),
+  'tax:product_cat': z.string(),
+  description: z.string(),
+});
 
-export type DuplicateGroup = {
-  type: 'sku' | 'slug' | 'title';
-  value: string;
-  count: number;
-  products: Array<{ url: string; sku: string; title: string }>;
-};
+export const VariationCsvSchema = z.object({
+  ID: z.string(),
+  post_type: z.string(),
+  post_status: z.string(),
+  parent_sku: z.string(),
+  post_title: z.string(),
+  post_name: z.string(),
+  post_content: z.string(),
+  post_excerpt: z.string(),
+  menu_order: z.string(),
+  sku: z.string(),
+  stock_status: z.string(),
+  regular_price: z.string(),
+  tax_class: z.string(),
+  images: z.string(),
+});
 
-export type ProductValidationReport = {
-  totals: {
-    numProducts: number;
-    averageScore: number;
-    highQuality: number; // >= 85
-    mediumQuality: number; // 70-84
-    lowQuality: number; // < 70
-  };
-  missingCounts: Record<string, number>;
-  duplicates: DuplicateGroup[];
-  perProduct: ProductQualityEntry[];
-};
-
-// WooCommerce import types
-export type WooCommerceCredentials = {
-  siteUrl: string;
-  consumerKey: string;
-  consumerSecret: string;
-  verifySSL: boolean;
-};
-
-export type WooCommerceProduct = {
-  id?: number;
-  name: string;
-  slug: string;
-  type: 'simple' | 'variable';
-  status: 'publish' | 'draft' | 'pending';
-  featured: boolean;
-  catalog_visibility: 'visible' | 'catalog' | 'search' | 'hidden';
-  description: string;
-  short_description: string;
-  sku: string;
-  regular_price: string;
-  sale_price?: string;
-  on_sale: boolean;
-  purchasable: boolean;
-  total_sales: number;
-  virtual: boolean;
-  downloadable: boolean;
-  tax_status: 'taxable' | 'shipping' | 'none';
-  tax_class: string;
-  manage_stock: boolean;
-  stock_quantity?: number;
-  stock_status: 'instock' | 'outofstock' | 'onbackorder';
-  backorders: 'no' | 'notify' | 'yes';
-  backorders_allowed: boolean;
-  backordered: boolean;
-  sold_individually: boolean;
-  weight: string;
-  dimensions: {
-    length: string;
-    width: string;
-    height: string;
-  };
-  shipping_required: boolean;
-  shipping_taxable: boolean;
-  shipping_class: string;
-  shipping_class_id: number;
-  reviews_allowed: boolean;
-  average_rating: string;
-  rating_count: number;
-  related_ids: number[];
-  upsell_ids: number[];
-  cross_sell_ids: number[];
-  parent_id: number;
-  categories: Array<{
-    id: number;
-    name: string;
-    slug: string;
-  }>;
-  tags: Array<{
-    id: number;
-    name: string;
-    slug: string;
-  }>;
-  images: Array<{
-    id: number;
-    src: string;
-    name: string;
-    alt: string;
-  }>;
-  attributes: Array<{
-    id: number;
-    name: string;
-    position: number;
-    visible: boolean;
-    variation: boolean;
-    options: string[];
-  }>;
-  variations: number[];
-  menu_order: number;
-  meta_data: Array<{
-    key: string;
-    value: any;
-  }>;
-  date_created: string;
-  date_created_gmt: string;
-  date_modified: string;
-  date_modified_gmt: string;
-};
-
-export type ImportPreview = {
-  newProducts: WooCommerceProduct[];
-  existingProducts: Array<{
-    existing: WooCommerceProduct;
-    updated: WooCommerceProduct;
-    changes: Array<{
-      field: string;
-      oldValue: any;
-      newValue: any;
-    }>;
-  }>;
-  skippedProducts: Array<{
-    product: Product;
-    reason: string;
-  }>;
-  summary: {
-    total: number;
-    new: number;
-    updates: number;
-    skipped: number;
-  };
-};
-
-export type ImportProgress = {
-  total: number;
-  processed: number;
-  current: number;
-  stage: 'preparing' | 'importing' | 'updating' | 'complete';
-  message: string;
-  currentProduct?: {
-    name: string;
-    action: 'analyzing' | 'creating' | 'updating' | 'skipping';
-  };
-};
-
-export type ImportResult = {
+// API Response Types
+export interface ApiResponse<T> {
   success: boolean;
-  imported: number;
-  updated: number;
-  skipped: number;
-  errors: Array<{
-    product: string;
-    error: string;
-  }>;
-  summary: string;
-};
+  data?: T;
+  error?: string;
+  message?: string;
+}
+
+export interface ScrapingRequest {
+  siteUrl: string;
+  recipe: string;
+  options?: {
+    maxProducts?: number;
+    categories?: string[];
+    enableEnrichment?: boolean;
+  };
+}
+
+// Storage Types
+export interface StorageEntry {
+  jobId: string;
+  parentCsv: string;
+  variationCsv: string;
+  metadata: JobResult;
+  createdAt: Date;
+  expiresAt: Date;
+}

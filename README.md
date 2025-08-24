@@ -1,203 +1,237 @@
-# Product Table Scraper - WooCommerce CSV Generator
+# Web Scraper v2
 
-A web application that extracts product data from HTML tables and generates WooCommerce-compatible CSV files for easy import.
+A universal web scraper with deterministic CSV outputs and WooCommerce compatibility.
 
-## Features
+## 🎯 Features
 
-- **Table Parsing**: Automatically extract product URLs from HTML tables with columns for URL, Images, and Last Modified
-- **Product Extraction**: Scrape product details including titles, descriptions, images, attributes, and variations
-- **WooCommerce Ready**: Generate CSV files compatible with WooCommerce Product CSV Import Suite
-- **Modern UI**: Clean, responsive interface built with Next.js and Tailwind CSS
-- **Robust Scraping**: Fallback from Cheerio to Playwright for JavaScript-rendered pages
+- **Universal**: Adaptable to any retail/catalog site (multi-language incl. Hebrew, RTL)
+- **Deterministic outputs**: Always emit WooCommerce-compatible CSVs (Parent + Variation) with correct linking and attributes
+- **Robust**: Survive messy markup, percent-encoding, HTML entities, odd dimension formats, duplicate/placeholder options
+- **Performant**: Batch, parallel generation, memory-safe storage and cleanup
+- **Configurable**: YAML/JSON recipes for site-specific selectors and transformations
 
-## Tech Stack
+## 🏗️ Architecture
 
-- **Frontend**: Next.js 14 (App Router) + TypeScript + Tailwind CSS
-- **Backend**: Next.js API Routes + Node.js
-- **Scraping**: Cheerio (primary) + Playwright (fallback)
-- **CSV Generation**: fast-csv
-- **Logging**: pino
-- **Validation**: zod
+### Core Components
 
-## Prerequisites
+1. **Site Adapters**: Per-domain implementations for product discovery and extraction
+2. **Normalization Toolkit**: Text cleaning, attribute normalization, dimension parsing
+3. **CSV Generator**: WooCommerce-compatible Parent and Variation CSV generation
+4. **Storage Service**: Dual storage (in-memory + filesystem) with automatic cleanup
+5. **HTTP Client**: Robust web requests with rotating user agents and error handling
+6. **Scraping Service**: Job queue management and orchestration
+
+### Data Flow
+
+```
+Discovery → Extraction → Normalization → Product Typing → CSV Mapping → Storage & Delivery
+```
+
+## 🚀 Quick Start
+
+### Prerequisites
 
 - Node.js 18+ 
 - npm or yarn
-- Git
 
-## Installation
+### Installation
 
-1. **Clone the repository**
-   ```bash
-   git clone <repository-url>
-   cd general-web-scraper
-   ```
+```bash
+# Clone the repository
+git clone <your-repo>
+cd web-scraper-v2
 
-2. **Install dependencies**
-   ```bash
-   npm install
-   ```
+# Install dependencies
+npm install
 
-3. **Install Playwright browsers** (required for JS-rendered page fallback)
-   ```bash
-   npx playwright install chromium
-   ```
+# Build the project
+npm run build
 
-## Development
-
-1. **Start the development server**
-   ```bash
-   npm run dev
-   ```
-
-2. **Open your browser**
-   Navigate to [http://localhost:3000](http://localhost:3000)
-
-## Usage
-
-### 1. Input Table URLs
-Enter URLs of HTML pages containing tables with product information. The table should have columns for:
-- **URL**: Product page links
-- **Images**: Product images (optional)
-- **Last Modified**: Last update date (optional)
-
-### 2. Start Scraping
-Click "Start Scraping" to begin the extraction process. The system will:
-- Parse each table page to extract product URLs
-- Scrape individual product pages for metadata
-- Generate WooCommerce-compatible CSV files
-
-### 3. Download Results
-Once complete, download two CSV files:
-- **PARENT_PRODUCTS.csv**: Main product information and attributes
-- **VARIATION_PRODUCTS.csv**: Product variations and pricing
-
-### 4. Import to WooCommerce
-1. Import the Parent Products CSV first
-2. Then import the Variation Products CSV
-3. Review and adjust product data as needed
-
-## API Endpoints
-
-### POST /api/scrape/init
-Initiates a scraping job.
-
-**Request Body:**
-```json
-{
-  "urls": [
-    "https://example.com/products-table-1",
-    "https://example.com/products-table-2"
-  ]
-}
+# Start the server
+npm start
 ```
 
-**Response:**
-```json
-{
-  "success": true,
-  "requestId": "uuid",
-  "data": {
-    "total_products": 25,
-    "processed_urls": 3,
-    "csv_files": {
-      "parent_products": "PARENT_PRODUCTS_2024-01-15T10-30-00.csv",
-      "variation_products": "VARIATION_PRODUCTS_2024-01-15T10-30-00.csv"
-    },
-    "download_links": {
-      "parent_products": "/api/scrape/download/uuid/parent",
-      "variation_products": "/api/scrape/download/uuid/variation"
-    }
+### Development
+
+```bash
+# Start in development mode with auto-reload
+npm run dev
+
+# Run tests
+npm test
+
+# Lint code
+npm run lint
+```
+
+## 📡 API Endpoints
+
+### Scraping
+
+- `POST /api/scrape/init` - Start a new scraping job
+- `GET /api/scrape/status/:jobId` - Get job status
+- `GET /api/scrape/jobs` - List all jobs
+- `POST /api/scrape/cancel/:jobId` - Cancel a job
+- `GET /api/scrape/download/:jobId/:type` - Download CSV files
+
+### Storage
+
+- `GET /api/storage/stats` - Get storage statistics
+- `DELETE /api/storage/clear` - Clear all storage
+
+### Health
+
+- `GET /health` - Health check endpoint
+
+## 🔧 Configuration
+
+### Recipe Format
+
+Recipes define how to extract data from specific sites:
+
+```yaml
+selectors:
+  title: "h1, .product-title, .title"
+  price: ".price, .product-price, [data-price]"
+  images: "img[src*='product'], .product-image img"
+  stock: ".stock, .availability, [data-stock]"
+  attributes: ".attributes, .product-options, .variations"
+  variations: ".variation, .product-variant, .option"
+
+transforms:
+  title: "Remove Brand -> Brand Name"
+  price: "Clean Currency -> [0-9.,]+"
+
+pagination:
+  pattern: "page={page}"
+  nextPage: ".next-page, .pagination-next"
+```
+
+## 📊 CSV Output
+
+### Parent Products CSV
+
+```
+ID, post_title, post_name, post_status, post_content, post_excerpt, 
+post_parent, menu_order, post_type, sku, stock_status, images, 
+tax:product_type, tax:product_cat, description, 
+attribute:Color, attribute_data:Color, attribute:Size, attribute_data:Size
+```
+
+### Variation CSV
+
+```
+ID, post_type, post_status, parent_sku, post_title, post_name, 
+post_content, post_excerpt, menu_order, sku, stock_status, 
+regular_price, tax_class, images, meta:attribute_Color, meta:attribute_Size
+```
+
+## 🌍 Multi-language Support
+
+- **Hebrew/RTL**: Full support for Hebrew text and right-to-left languages
+- **UTF-8**: End-to-end UTF-8 encoding
+- **Internationalization**: Support for multiple languages and locales
+
+## 🛡️ Robustness Features
+
+- **Error Handling**: Continue on partial failures, log per product, keep partial CSVs
+- **Anti-bot Mitigation**: Rotating user agents, configurable delays
+- **Fallback Parsing**: Multiple extraction strategies (CSS, XPath, embedded JSON)
+- **Validation**: Strip placeholders, ensure attribute consistency, guarantee required fields
+
+## 📈 Performance
+
+- **Parallel Processing**: Generate Parent/Variation CSVs in parallel
+- **Memory Management**: Buffer-based processing with automatic cleanup
+- **Batch Operations**: Process multiple products efficiently
+- **Storage Optimization**: Dual storage with smart cleanup intervals
+
+## 🔌 Extensibility
+
+### Adding New Site Adapters
+
+1. Extend the `BaseAdapter` class
+2. Implement `discoverProducts()` and `extractProduct()` methods
+3. Add site-specific logic for product discovery and extraction
+4. Configure selectors and transformations in recipe files
+
+### Custom Normalizers
+
+Extend the `NormalizationToolkit` with site-specific cleaning logic:
+
+```typescript
+export class CustomNormalizer extends NormalizationToolkit {
+  static customCleanup(text: string): string {
+    // Custom cleaning logic
+    return text;
   }
 }
 ```
 
-### GET /api/scrape/download/[jobId]/[type]
-Downloads generated CSV files (parent or variation).
+## 🧪 Testing
 
-## CSV Schema
+```bash
+# Run all tests
+npm test
 
-### PARENT_PRODUCTS.csv
-```
-post_title,post_name,post_status,sku,stock_status,images,tax:product_type,tax:product_cat,attribute:Color,attribute_data:Color,attribute:Size,attribute_data:Size
-```
+# Run tests in watch mode
+npm run test:watch
 
-### VARIATION_PRODUCTS.csv
-```
-parent_sku,sku,stock_status,regular_price,tax_class,images,meta:attribute_Color,meta:attribute_Size
+# Run specific test file
+npm test -- csv-generator.test.ts
 ```
 
-## Configuration
+## 📝 Logging
+
+The application uses Pino for structured logging with pretty-printed output in development.
+
+## 🚀 Deployment
+
+### Production Build
+
+```bash
+npm run build
+npm start
+```
 
 ### Environment Variables
-Create a `.env.local` file in the root directory:
 
-```env
-LOG_LEVEL=info
-NODE_ENV=development
+- `PORT`: Server port (default: 3000)
+- `NODE_ENV`: Environment (development/production)
+
+### Docker
+
+```dockerfile
+FROM node:18-alpine
+WORKDIR /app
+COPY package*.json ./
+RUN npm ci --only=production
+COPY dist ./dist
+EXPOSE 3000
+CMD ["npm", "start"]
 ```
 
-### Scraping Behavior
-- **Batch Processing**: Products are scraped in batches of 5 to avoid overwhelming servers
-- **Rate Limiting**: 1-second delay between batches
-- **Timeout**: 30 seconds per page request
-- **User Agent**: Modern Chrome user agent to avoid blocking
-
-## Production Deployment
-
-### Vercel (Recommended)
-1. Push your code to GitHub
-2. Connect your repository to Vercel
-3. Deploy automatically on push
-
-### Other Platforms
-- **Railway**: Good for Node.js applications
-- **Render**: Alternative to Heroku
-- **DigitalOcean App Platform**: Scalable container deployment
-
-### Required Production Setup
-1. **S3 Storage**: Configure S3-compatible storage for CSV files
-2. **Database**: Add PostgreSQL for job tracking (optional)
-3. **Redis**: Add Redis for job queuing (optional)
-4. **Environment Variables**: Set production environment variables
-
-## Testing
-
-Run the test suite:
-```bash
-npm test
-```
-
-Run tests in watch mode:
-```bash
-npm run test:watch
-```
-
-## Contributing
+## 🤝 Contributing
 
 1. Fork the repository
 2. Create a feature branch
 3. Make your changes
-4. Add tests if applicable
+4. Add tests
 5. Submit a pull request
 
-## License
+## 📄 License
 
-This project is licensed under the MIT License.
+MIT License - see LICENSE file for details.
 
-## Support
+## 🔗 Related
+
+- [WooCommerce Import Documentation](https://docs.woocommerce.com/document/product-csv-import-suite/)
+- [Cheerio Documentation](https://cheerio.js.org/)
+- [JSDOM Documentation](https://github.com/jsdom/jsdom)
+
+## 📞 Support
 
 For issues and questions:
-1. Check the existing issues
-2. Create a new issue with detailed information
-3. Include error logs and reproduction steps
-
-## Roadmap
-
-- [ ] Custom attribute mapping in UI
-- [ ] Proxy rotation for blocked domains
-- [ ] Scheduled scraping for periodic updates
-- [ ] Advanced filtering and search
-- [ ] Bulk URL import from file
-- [ ] Real-time progress updates
-- [ ] Export to other e-commerce platforms
+1. Check the documentation
+2. Search existing issues
+3. Create a new issue with detailed information
