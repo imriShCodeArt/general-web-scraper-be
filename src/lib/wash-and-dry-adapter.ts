@@ -5,7 +5,7 @@ import { ArchiveScraper, ArchiveAdapter } from './archive-scraper';
 import { HTTPClient } from './http-client';
 import * as cheerio from 'cheerio';
 
-const washAndDryAdapter: ArchiveAdapter = {
+export const washAndDryAdapter: ArchiveAdapter = {
   // Custom product link selectors for these Shopify sites
   productLinkSelectors: [
     // wash-and-dry.eu specific selectors (based on the actual HTML structure)
@@ -442,58 +442,136 @@ export const washDryMatsProductAdapter = {
     return '';
   },
 
-  // Enhanced price extraction
+  // Enhanced price extraction for wash-and-dry.eu
   extractRegularPrice: ($: any) => {
-    // Look for original price (crossed out)
+    console.log('[wash-and-dry] Starting regular price extraction...');
+    
+    // Look for original price (crossed out) - most reliable
     const priceSelectors = [
       '.original-price',
       '.price .original',
       '.price del',
-      '.price .strike',
-      '[data-original-price]',
-      'span:contains("Original price")'
+      '.price .crossed-out',
+      '.product-price .original',
+      '.product-price del',
+      'del .price',
+      '.price del .amount',
+      '.price del .woocommerce-Price-amount'
     ];
     
     for (const selector of priceSelectors) {
       const element = $(selector);
       if (element.length > 0) {
-        const price = element.text().trim();
-        if (price && price.includes('$')) {
-          const cleanPrice = price.replace(/[^\d.]/g, '');
-          if (cleanPrice && parseFloat(cleanPrice) > 0) {
-            return cleanPrice;
-          }
+        const priceText = element.text().trim();
+        const priceMatch = priceText.match(/€?(\d+(?:,\d+)?)/);
+        if (priceMatch) {
+          const price = priceMatch[1].replace(',', '.');
+          console.log(`[wash-and-dry] Found regular price: €${price}`);
+          return price;
         }
       }
     }
     
+    // Look for price range in variant options
+    const variantOptions = $('select option, .variant-option');
+    let lowestPrice: number | null = null;
+    let highestPrice: number | null = null;
+    
+    variantOptions.each((_: any, option: any) => {
+      const optionText = $(option).text().trim();
+      const priceMatch = optionText.match(/€?(\d+(?:,\d+)?)/);
+      if (priceMatch) {
+        const price = parseFloat(priceMatch[1].replace(',', '.'));
+        if (!lowestPrice || price < lowestPrice) {
+          lowestPrice = price;
+        }
+        if (!highestPrice || price > highestPrice) {
+          highestPrice = price;
+        }
+      }
+    });
+    
+    if (lowestPrice !== null && highestPrice !== null) {
+      if (lowestPrice === highestPrice) {
+        console.log(`[wash-and-dry] Found single price: €${lowestPrice}`);
+        return lowestPrice.toString();
+      } else {
+        console.log(`[wash-and-dry] Found price range: €${lowestPrice} - €${highestPrice}`);
+        return lowestPrice.toString(); // Return lowest price as regular price
+      }
+    }
+    
+    // Look for any price mention in the page
+    const priceElements = $('*:contains("€")');
+    if (priceElements.length > 0) {
+      for (const el of priceElements) {
+        const text = $(el).text();
+        const priceMatch = text.match(/€?(\d+(?:,\d+)?)/);
+        if (priceMatch) {
+          const price = priceMatch[1].replace(',', '.');
+          console.log(`[wash-and-dry] Found price in text: €${price}`);
+          return price;
+        }
+      }
+    }
+    
+    console.log('[wash-and-dry] No regular price found');
     return '';
   },
 
   extractSalePrice: ($: any) => {
+    console.log('[wash-and-dry] Starting sale price extraction...');
+    
     // Look for current/sale price
     const priceSelectors = [
       '.current-price',
       '.price .current',
       '.price .sale',
-      '[data-current-price]',
-      'span:contains("Current price")',
-      '.price:not(.original)'
+      '.product-price .current',
+      '.product-price .sale',
+      '.price .amount',
+      '.woocommerce-Price-amount',
+      '.product-price .amount'
     ];
     
     for (const selector of priceSelectors) {
       const element = $(selector);
       if (element.length > 0) {
-        const price = element.text().trim();
-        if (price && price.includes('$')) {
-          const cleanPrice = price.replace(/[^\d.]/g, '');
-          if (cleanPrice && parseFloat(cleanPrice) > 0) {
-            return cleanPrice;
-          }
+        const priceText = element.text().trim();
+        const priceMatch = priceText.match(/€?(\d+(?:,\d+)?)/);
+        if (priceMatch) {
+          const price = priceMatch[1].replace(',', '.');
+          console.log(`[wash-and-dry] Found sale price: €${price}`);
+          return price;
         }
       }
     }
     
+    // Look for price in variant selector (current selection)
+    const selectedVariant = $('select option:selected, .variant-option.selected, .variant-option.active');
+    if (selectedVariant.length > 0) {
+      const variantText = selectedVariant.text().trim();
+      const priceMatch = variantText.match(/€?(\d+(?:,\d+)?)/);
+      if (priceMatch) {
+        const price = priceMatch[1].replace(',', '.');
+        console.log(`[wash-and-dry] Found price in selected variant: €${price}`);
+        return price;
+      }
+    }
+    
+    // If no specific sale price found, try to get the first available price
+    const variantOptions = $('select option, .variant-option');
+    for (const option of variantOptions) {
+      const optionText = $(option).text().trim();
+      const priceMatch = optionText.match(/€?(\d+(?:,\d+)?)/);
+      if (priceMatch) {
+        const price = priceMatch[1].replace(',', '.');
+        console.log(`[wash-and-dry] Found price in variant option: €${price}`);
+        return price;
+      }
+    }
+    
+    console.log('[wash-and-dry] No sale price found');
     return '';
   },
 
@@ -538,36 +616,42 @@ export const washDryMatsProductAdapter = {
     return images;
   },
 
-  // Enhanced attribute extraction
+  // Enhanced attribute extraction for wash-and-dry.eu
   extractAttributes: ($: any) => {
     const attributes: { [key: string]: string[] } = {};
     
-    // Extract size information
-    const sizeElements = $('*:contains("Size:"), *:contains("size:"), *:contains("20"x"27.5"), *:contains("S68")');
+    console.log('[wash-and-dry] Starting enhanced attribute extraction...');
+    
+    // Extract size information with better patterns
+    const sizeElements = $('*:contains("Size:"), *:contains("size:"), *:contains("50x75cm"), *:contains("75x120cm"), *:contains("60x180cm"), *:contains("75x190cm"), *:contains("115x175cm")');
     if (sizeElements.length > 0) {
       const sizes: string[] = [];
       sizeElements.each((_: any, el: any) => {
         const text = $(el).text();
-        const sizeMatch = text.match(/(\d+(?:\.\d+)?"x\d+(?:\.\d+)?")/g);
+        // Look for size patterns like "50x75cm", "75x120cm", etc.
+        const sizeMatch = text.match(/(\d+(?:\.\d+)?"x\d+(?:\.\d+)?(?:cm|m)?)/g);
         if (sizeMatch) {
           sizes.push(...sizeMatch);
-        }
-        const codeMatch = text.match(/S\d+/g);
-        if (codeMatch) {
-          sizes.push(...codeMatch);
         }
       });
       if (sizes.length > 0) {
         attributes.Size = Array.from(new Set(sizes));
+        console.log(`[wash-and-dry] Extracted sizes: ${attributes.Size.join(', ')}`);
       }
     }
     
-    // Extract material information
-    const materialElements = $('*:contains("nylon"), *:contains("Nylon"), *:contains("rubber"), *:contains("Rubber")');
+    // Extract material information with better patterns
+    const materialElements = $('*:contains("Polyamid"), *:contains("polyamid"), *:contains("Nitrilgummi"), *:contains("nitrilgummi"), *:contains("nylon"), *:contains("Nylon"), *:contains("rubber"), *:contains("Rubber"), *:contains("100% Polyamid"), *:contains("100% Nitrilgummi")');
     if (materialElements.length > 0) {
       const materials: string[] = [];
       materialElements.each((_: any, el: any) => {
         const text = $(el).text();
+        if (text.includes('Polyamid') || text.includes('polyamid')) {
+          materials.push('100% Polyamid');
+        }
+        if (text.includes('Nitrilgummi') || text.includes('nitrilgummi')) {
+          materials.push('100% Nitrilgummi');
+        }
         if (text.includes('nylon') || text.includes('Nylon')) {
           materials.push('Nylon');
         }
@@ -577,60 +661,244 @@ export const washDryMatsProductAdapter = {
       });
       if (materials.length > 0) {
         attributes.Material = Array.from(new Set(materials));
+        console.log(`[wash-and-dry] Extracted materials: ${attributes.Material.join(', ')}`);
+      }
+    }
+    
+    // Extract dimensions information
+    const dimensionElements = $('*:contains("7 mm"), *:contains("7mm"), *:contains("10 mm"), *:contains("10mm"), *:contains("Gesamthöhe"), *:contains("Randbreite")');
+    if (dimensionElements.length > 0) {
+      const dimensions: string[] = [];
+      dimensionElements.each((_: any, el: any) => {
+        const text = $(el).text();
+        if (text.includes('7 mm') || text.includes('7mm')) {
+          dimensions.push('Height: 7mm');
+        }
+        if (text.includes('10 mm') || text.includes('10mm')) {
+          dimensions.push('Edge Width: 10mm');
+        }
+        if (text.includes('Gesamthöhe')) {
+          dimensions.push('Total Height: 7mm');
+        }
+        if (text.includes('Randbreite')) {
+          dimensions.push('Edge Width: 10mm');
+        }
+      });
+      if (dimensions.length > 0) {
+        attributes.Dimensions = Array.from(new Set(dimensions));
+        console.log(`[wash-and-dry] Extracted dimensions: ${attributes.Dimensions.join(', ')}`);
       }
     }
     
     // Extract warranty information
-    const warrantyElements = $('*:contains("5 Year"), *:contains("5 year"), *:contains("warranty")');
+    const warrantyElements = $('*:contains("5 Year"), *:contains("5 year"), *:contains("5 Jahre"), *:contains("5 jahre"), *:contains("warranty"), *:contains("Garantie"), *:contains("Hersteller-Garantie")');
     if (warrantyElements.length > 0) {
-      attributes.Warranty = ['5 Year Warranty'];
+      attributes.Warranty = ['5 Year Manufacturer Warranty'];
+      console.log('[wash-and-dry] Extracted warranty: 5 Year Manufacturer Warranty');
     }
     
-    // Extract features
+    // Extract features with better patterns
     const features: string[] = [];
-    const featureElements = $('*:contains("washable"), *:contains("Washable"), *:contains("machine wash"), *:contains("slip resistant")');
+    const featureElements = $('*:contains("washable"), *:contains("Washable"), *:contains("maschinenwaschbar"), *:contains("Maschinenwaschbar"), *:contains("slip resistant"), *:contains("rutschfest"), *:contains("Rutschfest"), *:contains("low profile"), *:contains("flach"), *:contains("Flach"), *:contains("trocknergeeignet"), *:contains("Trocknergeeignet")');
     featureElements.each((_: any, el: any) => {
       const text = $(el).text();
-      if (text.includes('washable') || text.includes('Washable')) {
-        features.push('Machine Washable');
+      if (text.includes('washable') || text.includes('Washable') || text.includes('maschinenwaschbar') || text.includes('Maschinenwaschbar')) {
+        features.push('Machine Washable up to 60°C');
       }
-      if (text.includes('slip resistant')) {
+      if (text.includes('slip resistant') || text.includes('rutschfest') || text.includes('Rutschfest')) {
         features.push('Slip Resistant');
       }
-      if (text.includes('low profile')) {
-        features.push('Low Profile');
+      if (text.includes('low profile') || text.includes('flach') || text.includes('Flach')) {
+        features.push('Low Profile (7mm height)');
+      }
+      if (text.includes('trocknergeeignet') || text.includes('Trocknergeeignet')) {
+        features.push('Tumble Dryer Safe');
       }
     });
+    
+    // Look for specific feature mentions
+    const specificFeatures = $('*:contains("PVC-frei"), *:contains("pvc-frei"), *:contains("Fußbodenheizungsgeeignet"), *:contains("fußbodenheizungsgeeignet"), *:contains("Licht-Echtheit"), *:contains("licht-echtheit")');
+    specificFeatures.each((_: any, el: any) => {
+      const text = $(el).text();
+      if (text.includes('PVC-frei') || text.includes('pvc-frei')) {
+        features.push('100% PVC-Free');
+      }
+      if (text.includes('Fußbodenheizungsgeeignet') || text.includes('fußbodenheizungsgeeignet')) {
+        features.push('Underfloor Heating Compatible');
+      }
+      if (text.includes('Licht-Echtheit') || text.includes('licht-echtheit')) {
+        features.push('Light Fastness');
+      }
+    });
+    
     if (features.length > 0) {
       attributes.Features = Array.from(new Set(features));
+      console.log(`[wash-and-dry] Extracted features: ${attributes.Features.join(', ')}`);
     }
     
+    // Extract usage areas
+    const usageElements = $('*:contains("Einsatzbereiche"), *:contains("einsatzbereiche"), *:contains("Hinter der Eingangstüre"), *:contains("Vor der Eingangstüre"), *:contains("Küche"), *:contains("Wohnzimmer"), *:contains("Hausflur"), *:contains("Schlafzimmer"), *:contains("Kinderzimmer")');
+    if (usageElements.length > 0) {
+      const usageAreas: string[] = [];
+      const usagePatterns = [
+        'Hinter der Eingangstüre',
+        'Vor der Eingangstüre im überdachten Außenbereich',
+        'Küche',
+        'Wohnzimmer',
+        'Hausflur',
+        'Schlafzimmer',
+        'Kinderzimmer',
+        'Terrassentüre',
+        'Kofferraum'
+      ];
+      
+      usagePatterns.forEach(area => {
+        if ($(`*:contains("${area}")`).length > 0) {
+          usageAreas.push(area);
+        }
+      });
+      
+      if (usageAreas.length > 0) {
+        attributes['Usage Areas'] = usageAreas;
+        console.log(`[wash-and-dry] Extracted usage areas: ${usageAreas.join(', ')}`);
+      }
+    }
+    
+    console.log(`[wash-and-dry] Final attributes:`, attributes);
     return attributes;
   },
 
-  // Enhanced variation extraction
+  // Enhanced variation extraction for wash-and-dry.eu
   extractVariations: ($: any) => {
     const variations: any[] = [];
     
-    // Look for size variants
-    const variantElements = $('*:contains("Choose a variant"), *:contains("Size:"), *:contains("S68")');
-    if (variantElements.length > 0) {
-      variantElements.each((_: any, el: any) => {
-        const text = $(el).text();
-        const sizeMatch = text.match(/(\d+(?:\.\d+)?"x\d+(?:\.\d+)?")/g);
-        const codeMatch = text.match(/S\d+/g);
+    console.log('[wash-and-dry] Starting enhanced variation extraction...');
+    
+    // Method 1: Look for Shopify variant selectors (most reliable)
+    const variantSelect = $('select[name*="Size"], select[name*="size"], .variant-selector, .product-options select');
+    if (variantSelect.length > 0) {
+      console.log('[wash-and-dry] Found variant selector, extracting options...');
+      
+      variantSelect.each((_: any, select: any) => {
+        const $select = $(select);
+        const options = $select.find('option');
         
-        if (sizeMatch && codeMatch) {
-          variations.push({
-            size: sizeMatch[0],
-            code: codeMatch[0],
-            price: '', // Will be filled by price extraction
-            sku: codeMatch[0]
-          });
-        }
+        options.each((_: any, option: any) => {
+          const $option = $(option);
+          const optionText = $option.text().trim();
+          const optionValue = $option.attr('value') || optionText;
+          
+          if (optionText && optionText !== 'Wählen Sie eine Variante' && optionText !== 'Choose a variant') {
+            // Parse size and price from option text (e.g., "50x75cm - €47,50")
+            const sizePriceMatch = optionText.match(/(\d+(?:\.\d+)?x\d+(?:\.\d+)?(?:cm|m)?)\s*-\s*€?(\d+(?:,\d+)?)/);
+            
+            if (sizePriceMatch) {
+              const size = sizePriceMatch[1];
+              const price = sizePriceMatch[2].replace(',', '.');
+              
+              variations.push({
+                size: size,
+                price: price,
+                sku: optionValue,
+                stock_status: 'instock',
+                regular_price: price,
+                meta: {
+                  attribute_size: size
+                }
+              });
+              
+              console.log(`[wash-and-dry] Added variation: ${size} - €${price}`);
+            } else {
+              // Fallback: just extract size if no price found
+              const sizeMatch = optionText.match(/(\d+(?:\.\d+)?x\d+(?:\.\d+)?(?:cm|m)?)/);
+              if (sizeMatch) {
+                variations.push({
+                  size: sizeMatch[1],
+                  price: '',
+                  sku: optionValue,
+                  stock_status: 'instock',
+                  regular_price: '',
+                  meta: {
+                    attribute_size: sizeMatch[1]
+                  }
+                });
+                
+                console.log(`[wash-and-dry] Added variation (no price): ${sizeMatch[1]}`);
+              }
+            }
+          }
+        });
       });
     }
     
+    // Method 2: Look for variant buttons or radio buttons
+    if (variations.length === 0) {
+      const variantButtons = $('input[type="radio"][name*="Size"], input[type="radio"][name*="size"], .variant-option input[type="radio"]');
+      if (variantButtons.length > 0) {
+        console.log('[wash-and-dry] Found variant radio buttons, extracting options...');
+        
+        variantButtons.each((_: any, button: any) => {
+          const $button = $(button);
+          const buttonText = $button.closest('label, .variant-option').text().trim();
+          const buttonValue = $button.attr('value') || buttonText;
+          
+          if (buttonText && buttonText !== 'Wählen Sie eine Variante') {
+            const sizePriceMatch = buttonText.match(/(\d+(?:\.\d+)?x\d+(?:\.\d+)?(?:cm|m)?)\s*-\s*€?(\d+(?:,\d+)?)/);
+            
+            if (sizePriceMatch) {
+              const size = sizePriceMatch[1];
+              const price = sizePriceMatch[2].replace(',', '.');
+              
+              variations.push({
+                size: size,
+                price: price,
+                sku: buttonValue,
+                stock_status: 'instock',
+                regular_price: price,
+                meta: {
+                  attribute_size: size
+                }
+              });
+            }
+          }
+        });
+      }
+    }
+    
+    // Method 3: Look for variant display elements (fallback)
+    if (variations.length === 0) {
+      const variantElements = $('*:contains("50x75cm"), *:contains("75x120cm"), *:contains("60x180cm"), *:contains("75x190cm"), *:contains("115x175cm")');
+      if (variantElements.length > 0) {
+        console.log('[wash-and-dry] Found variant elements, extracting sizes...');
+        
+        const sizePatterns = [
+          /50x75cm/,
+          /75x120cm/,
+          /60x180cm/,
+          /75x190cm/,
+          /115x175cm/
+        ];
+        
+        sizePatterns.forEach(pattern => {
+          const matchingElements = $(`*:contains("${pattern.source}")`);
+          if (matchingElements.length > 0) {
+            const size = pattern.source;
+            variations.push({
+              size: size,
+              price: '',
+              sku: size,
+              stock_status: 'instock',
+              regular_price: '',
+              meta: {
+                attribute_size: size
+              }
+            });
+          }
+        });
+      }
+    }
+    
+    console.log(`[wash-and-dry] Extracted ${variations.length} variations`);
     return variations;
   },
 
@@ -654,10 +922,22 @@ export const washDryMatsProductAdapter = {
 
 // Register the adapters for both sites
 export function setupWashAndDryAdapter(): void {
+  // Register with ArchiveScraper for archive page parsing
   ArchiveScraper.registerAdapter('wash-and-dry.eu', washAndDryAdapter);
   ArchiveScraper.registerAdapter('washdrymats.com', washDryMatsAdapter);
+  
+  // Register with ProductScraper for product page parsing
+  try {
+    const { ProductScraper } = require('./scraper');
+    ProductScraper.registerAdapter('wash-and-dry.eu', washAndDryAdapter);
+    ProductScraper.registerAdapter('washdrymats.com', washDryMatsAdapter);
+    console.log('✅ wash-and-dry.eu and washdrymats.com adapters registered with ProductScraper!');
+  } catch (error) {
+    console.warn('Could not register with ProductScraper:', error);
+  }
+  
   console.log('✅ wash-and-dry.eu and washdrymats.com adapters registered!');
-  console.log('Now when you scrape these sites, custom Shopify rules will be used.');
+  console.log('Now when you scrape these sites, custom Shopify rules will be used for both archive and product pages.');
 }
 
 // Usage:
