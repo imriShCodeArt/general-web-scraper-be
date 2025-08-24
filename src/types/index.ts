@@ -51,6 +51,7 @@ export interface SiteAdapter {
   discoverProducts(): AsyncIterable<string>;
   extractProduct(url: string): Promise<RawProduct>;
   getConfig(): RecipeConfig;
+  cleanup?(): Promise<void>;
 }
 
 // Recipe Configuration
@@ -170,6 +171,13 @@ export interface JobResult {
   productCount: number;
   variationCount: number;
   filename: string;
+  metadata?: {
+    siteUrl: string;
+    recipe: string;
+    categories: string[];
+  };
+  createdAt?: Date;
+  expiresAt?: Date;
 }
 
 // CSV Schemas
