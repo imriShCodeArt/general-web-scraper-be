@@ -1,6 +1,30 @@
 import * as cheerio from 'cheerio';
 import { Product, Variation } from '@/types';
 
+// Custom adapter for non-WooCommerce sites
+export type ProductScraperAdapter = {
+  // Override product type detection
+  getProductType?: ($: cheerio.CheerioAPI) => string;
+  // Override variation extraction
+  extractVariations?: ($: cheerio.CheerioAPI) => Variation[];
+  // Override attribute extraction
+  extractAttributes?: ($: cheerio.CheerioAPI) => { [key: string]: string[] };
+  // Override price extraction
+  extractRegularPrice?: ($: cheerio.CheerioAPI) => string;
+  extractSalePrice?: ($: cheerio.CheerioAPI) => string;
+  // Override image extraction
+  extractImages?: ($: cheerio.CheerioAPI) => string[];
+  // Override SKU extraction
+  extractSKU?: ($: cheerio.CheerioAPI) => string;
+  // Override category extraction
+  extractCategory?: ($: cheerio.CheerioAPI) => string;
+  // Override title extraction
+  extractTitle?: ($: cheerio.CheerioAPI) => string;
+  // Override description extraction
+  extractDescription?: ($: cheerio.CheerioAPI) => string;
+  extractShortDescription?: ($: cheerio.CheerioAPI) => string;
+};
+
 export class TableScraper {
   /**
    * Parse table page and extract product URLs
@@ -67,10 +91,70 @@ export class TableScraper {
 }
 
 export class ProductScraper {
+  // Adapter registry for non-WooCommerce sites
+  private static adapters: Array<{ test: (host: string) => boolean; adapter: ProductScraperAdapter }> = [];
+
+  /** Register an adapter for hosts matching pattern (string suffix or RegExp). */
+  static registerAdapter(pattern: string | RegExp, adapter: ProductScraperAdapter): void {
+    const tester = (host: string) => {
+      if (pattern instanceof RegExp) return pattern.test(host);
+      const needle = pattern.toLowerCase();
+      const hay = host.toLowerCase();
+      return hay === needle || hay.endsWith(`.${needle}`);
+    };
+    this.adapters.push({ test: tester, adapter });
+  }
+
+  /** Register washdrymats.com product adapter */
+  static registerWashDryMatsAdapter(): void {
+    try {
+      const { washDryMatsProductAdapter } = require('./wash-and-dry-adapter');
+      this.registerAdapter('washdrymats.com', washDryMatsProductAdapter);
+      console.log('✅ washdrymats.com product adapter registered successfully');
+    } catch (error) {
+      console.warn('Could not load washdrymats.com product adapter:', error);
+    }
+  }
+
+  /** Get adapter for a specific host (for testing) */
+  static getAdapter(host: string): ProductScraperAdapter | null {
+    const entry = this.adapters.find(a => a.test(host));
+    return entry ? entry.adapter : null;
+  }
+
+  /** Clear all adapters (useful for tests). */
+  static clearAdapters(): void {
+    this.adapters = [];
+  }
+
+  private static getAdapterForUrl(url: string): ProductScraperAdapter | null {
+    try {
+      const { host } = new URL(url);
+      const entry = this.adapters.find(a => a.test(host));
+      if (entry) {
+
+        return entry.adapter;
+      }
+      return null;
+    } catch {
+      return null;
+    }
+  }
+
   /**
    * Get product type (simple, variable, grouped, external)
    */
-  private static getProductType($: cheerio.CheerioAPI): string {
+  private static getProductType($: cheerio.CheerioAPI, adapter?: ProductScraperAdapter | null): string {
+    // Use adapter override first
+    if (adapter?.getProductType) {
+      try {
+        const result = adapter.getProductType($);
+        if (result) return result;
+      } catch (e) {
+        console.warn('Adapter.getProductType failed:', e);
+      }
+    }
+
     // Check body classes for product type
     const body = $('body');
     if (body.length > 0) {
@@ -106,22 +190,22 @@ export class ProductScraper {
    */
   static async scrapeProductPage(url: string, html: string): Promise<Partial<Product>> {
     const $ = cheerio.load(html);
+    const adapter = this.getAdapterForUrl(url);
     
     // Detect product type first
-    const productType = this.getProductType($);
-    console.log(`Detected product type: ${productType}`);
+    const productType = this.getProductType($, adapter);
     
     // Extract basic product information
-    const title = this.extractTitle($);
-    const description = this.extractDescription($);
-    const shortDescription = this.extractShortDescription($);
-    const category = this.extractCategory($);
-    const images = this.extractImages($);
-    const attributes = this.extractAttributes($);
-    const variations = this.extractVariations($);
-    const sku = this.extractSKU($);
-    const regularPrice = this.extractRegularPrice($);
-    const salePrice = this.extractSalePrice($);
+    const title = this.extractTitle($, adapter);
+    const description = this.extractDescription($, adapter);
+    const shortDescription = this.extractShortDescription($, adapter);
+    const category = this.extractCategory($, adapter);
+    const images = this.extractImages($, adapter);
+    const attributes = this.extractAttributes($, adapter);
+    const variations = this.extractVariations($, adapter);
+    const sku = this.extractSKU($, adapter);
+    const regularPrice = this.extractRegularPrice($, adapter);
+    const salePrice = this.extractSalePrice($, adapter);
     
     // Generate post_name (slug) from title
     const postName = this.generatePostName(title);
@@ -131,7 +215,6 @@ export class ProductScraper {
       variations.forEach(variation => {
         variation.parent_sku = sku;
       });
-      console.log(`Set parent SKU ${sku} for ${variations.length} variations`);
     }
     
     return {
@@ -159,7 +242,17 @@ export class ProductScraper {
   /**
    * Extract product title
    */
-  private static extractTitle($: cheerio.CheerioAPI): string {
+  private static extractTitle($: cheerio.CheerioAPI, adapter?: ProductScraperAdapter | null): string {
+    // Use adapter override first
+    if (adapter?.extractTitle) {
+      try {
+        const result = adapter.extractTitle($);
+        if (result) return result;
+      } catch (e) {
+        console.warn('Adapter.extractTitle failed:', e);
+      }
+    }
+
     // Try multiple selectors for product title
     const titleSelectors = [
       'h1.product_title',
@@ -181,20 +274,19 @@ export class ProductScraper {
       if (element.length > 0) {
         const title = element.first().text().trim();
         if (title) {
-          console.log(`Found title using selector "${selector}": ${title}`);
           return title;
         }
       }
     }
     
-    console.log('No title found');
+
     return '';
   }
   
   /**
    * Extract product description (full description)
    */
-  private static extractDescription($: cheerio.CheerioAPI): string {
+  private static extractDescription($: cheerio.CheerioAPI, adapter?: ProductScraperAdapter | null): string {
     // Try multiple selectors for full product description
     const descSelectors = [
       // WooCommerce specific selectors - based on test HTML structure
@@ -232,7 +324,6 @@ export class ProductScraper {
         }
         
         if (description) {
-          console.log(`Found full description using selector "${selector}": ${description.substring(0, 100)}...`);
           return description;
         }
       }
@@ -245,20 +336,19 @@ export class ProductScraper {
       if (paragraphs.length > 0) {
         const description = paragraphs.map((_, p) => $(p).text().trim()).get().join('\n\n');
         if (description) {
-          console.log(`Using product content paragraphs as description: ${description.substring(0, 100)}...`);
           return description;
         }
       }
     }
     
-    console.log('No full description found');
+
     return '';
   }
   
   /**
    * Extract short description
    */
-  private static extractShortDescription($: cheerio.CheerioAPI): string {
+  private static extractShortDescription($: cheerio.CheerioAPI, adapter?: ProductScraperAdapter | null): string {
     // Try multiple selectors for short product description
     const shortDescSelectors = [
       '.woocommerce-product-details__short-description',
@@ -281,7 +371,6 @@ export class ProductScraper {
       if (element.length > 0) {
         const shortDescription = element.first().text().trim();
         if (shortDescription) {
-          console.log(`Found short description using selector "${selector}": ${shortDescription.substring(0, 100)}...`);
           return shortDescription;
         }
       }
@@ -294,7 +383,6 @@ export class ProductScraper {
       if (firstParagraph.length > 0) {
         const shortDesc = firstParagraph.text().trim();
         if (shortDesc) {
-          console.log(`Using first paragraph as short description: ${shortDesc.substring(0, 100)}...`);
           return shortDesc;
         }
       }
@@ -308,20 +396,19 @@ export class ProductScraper {
         // Take the first 200 characters as a short description
         const shortDesc = textContent.substring(0, 200).trim();
         if (shortDesc.length > 20) { // Only use if it's substantial
-          console.log(`Using product content text as short description: ${shortDesc}...`);
           return shortDesc;
         }
       }
     }
     
-    console.log('No short description found');
+
     return '';
   }
   
   /**
    * Extract product category
    */
-  private static extractCategory($: cheerio.CheerioAPI): string {
+  private static extractCategory($: cheerio.CheerioAPI, adapter?: ProductScraperAdapter | null): string {
     const categories: Array<{name: string, source: string, priority: number}> = [];
     
     // Method 1: Extract from GTM data (most reliable, includes multiple category levels)
@@ -339,7 +426,7 @@ export class ProductScraper {
               source: 'GTM item_category2',
               priority: 1 // Highest priority - most specific category
             });
-            console.log(`Found child category from GTM data: ${parsed.item_category2}`);
+
           }
           
           if (parsed.item_category) {
@@ -348,7 +435,7 @@ export class ProductScraper {
               source: 'GTM item_category',
               priority: 2 // Medium priority - parent category
             });
-            console.log(`Found parent category from GTM data: ${parsed.item_category}`);
+
           }
           
           if (parsed.item_category3) {
@@ -357,11 +444,11 @@ export class ProductScraper {
               source: 'GTM item_category3',
               priority: 0 // Highest priority - most specific subcategory
             });
-            console.log(`Found subcategory from GTM data: ${parsed.item_category3}`);
+
           }
         }
       } catch (error) {
-        console.log('Failed to parse GTM data for category');
+
       }
     }
     
@@ -514,7 +601,7 @@ export class ProductScraper {
   /**
    * Extract product images
    */
-  private static extractImages($: cheerio.CheerioAPI): string[] {
+  private static extractImages($: cheerio.CheerioAPI, adapter?: ProductScraperAdapter | null): string[] {
     const images: string[] = [];
     
     // Try multiple selectors for product images, starting with most specific
@@ -636,7 +723,7 @@ export class ProductScraper {
   /**
    * Detect if this is a variable product
    */
-  private static isVariableProduct($: cheerio.CheerioAPI): boolean {
+  private static isVariableProduct($: cheerio.CheerioAPI, adapter?: ProductScraperAdapter | null): boolean {
     // Check body classes for product type
     const body = $('body');
     if (body.length > 0) {
@@ -682,10 +769,23 @@ export class ProductScraper {
   /**
    * Extract product attributes
    */
-  private static extractAttributes($: cheerio.CheerioAPI): Product['attributes'] {
+  private static extractAttributes($: cheerio.CheerioAPI, adapter?: ProductScraperAdapter | null): Product['attributes'] {
     const attributes: Product['attributes'] = {};
     
-    // Method 1: Extract from WooCommerce variation form (most reliable for variable products)
+    // Use adapter override first
+    if (adapter?.extractAttributes) {
+      try {
+        const result = adapter.extractAttributes($);
+        if (result && Object.keys(result).length > 0) {
+          console.log(`Adapter provided attributes: ${Object.keys(result).join(', ')}`);
+          return result;
+        }
+      } catch (e) {
+        console.warn('Adapter.extractAttributes failed:', e);
+      }
+    }
+    
+    // Extract attributes from variation form
     const variationForm = $('form.variations_form');
     if (variationForm.length > 0) {
       console.log('Extracting attributes from WooCommerce variation form...');
@@ -841,11 +941,24 @@ export class ProductScraper {
   /**
    * Extract product variations
    */
-  private static extractVariations($: cheerio.CheerioAPI): Variation[] {
+  private static extractVariations($: cheerio.CheerioAPI, adapter?: ProductScraperAdapter | null): Variation[] {
     const variations: Variation[] = [];
     
+    // Use adapter override first
+    if (adapter?.extractVariations) {
+      try {
+        const result = adapter.extractVariations($);
+        if (result && result.length > 0) {
+          console.log(`Adapter provided ${result.length} variations`);
+          return result;
+        }
+      } catch (e) {
+        console.warn('Adapter.extractVariations failed:', e);
+      }
+    }
+    
     // First check if this is actually a variable product
-    if (!this.isVariableProduct($)) {
+    if (!this.isVariableProduct($, adapter)) {
       console.log('Not a variable product, skipping variation extraction');
       return variations;
     }
@@ -1080,7 +1193,7 @@ export class ProductScraper {
   /**
    * Extract product SKU
    */
-  private static extractSKU($: cheerio.CheerioAPI): string {
+  private static extractSKU($: cheerio.CheerioAPI, adapter?: ProductScraperAdapter | null): string {
     // First, try to extract SKU from GTM data as it's most reliable
     const gtmInput = $('input[name="gtmkit_product_data"]');
     if (gtmInput.length > 0) {
@@ -1196,7 +1309,7 @@ export class ProductScraper {
   /**
    * Extract regular price
    */
-  private static extractRegularPrice($: cheerio.CheerioAPI): string {
+  private static extractRegularPrice($: cheerio.CheerioAPI, adapter?: ProductScraperAdapter | null): string {
     // First, try to extract price from GTM data as it's most reliable
     const gtmInput = $('input[name="gtmkit_product_data"]');
     if (gtmInput.length > 0) {
@@ -1305,7 +1418,7 @@ export class ProductScraper {
   /**
    * Extract sale price
    */
-  private static extractSalePrice($: cheerio.CheerioAPI): string {
+  private static extractSalePrice($: cheerio.CheerioAPI, adapter?: ProductScraperAdapter | null): string {
     // Try multiple selectors for sale price
     const salePriceSelectors = [
       '.sale-price .amount',

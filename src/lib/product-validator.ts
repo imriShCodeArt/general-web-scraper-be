@@ -49,13 +49,13 @@ export class ProductValidator {
       if (!p.category?.trim()) dec('category', 10, true);
       if (!p.description?.trim()) dec('description', 10, true);
       if (!p.shortDescription?.trim()) dec('shortDescription', 5, true);
-      if (!Array.isArray(p.images) || p.images.length === 0) dec('images', 15);
+      if (!p.images || !Array.isArray(p.images) || p.images.length === 0) dec('images', 15);
 
       const hasAttributes = p.attributes && Object.keys(p.attributes).length > 0;
       if (!hasAttributes) dec('attributes', 5, true);
 
       // Variation sanity
-      if (p.meta?.is_variable && (!Array.isArray(p.variations) || p.variations.length === 0)) {
+      if (p.meta?.is_variable && (!p.variations || !Array.isArray(p.variations) || p.variations.length === 0)) {
         dec('variations', 5, true);
       }
 

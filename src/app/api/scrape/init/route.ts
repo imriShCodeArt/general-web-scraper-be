@@ -2,11 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { ScrapingService } from '@/lib/scraping-service';
 import { csvStorage } from '@/lib/csv-storage';
 import { z } from 'zod';
-import pino from 'pino';
-import { jobLogger } from '@/lib/job-logger';
 import { Product } from '@/types';
-
-const logger = pino({ name: 'scrape-init-api' });
 
 // Validation schema for request body
 const ScrapeRequestSchema = z.object({
@@ -18,23 +14,20 @@ const ScrapeRequestSchema = z.object({
 
 export async function POST(request: NextRequest) {
 	const provisionalRequestId = crypto.randomUUID();
-	logger.info({ provisionalRequestId }, 'Starting archive scraping job');
 
 	try {
 		const body = await request.json();
 		const { archiveUrls, maxProductsPerArchive, requestId: clientRequestId } = ScrapeRequestSchema.parse(body);
 		const requestId = clientRequestId || provisionalRequestId;
 
-		logger.info({ requestId, archiveUrls, maxProductsPerArchive }, 'Validated request');
-
 		// Initialize scraping service
 		const scrapingService = new ScrapingService(requestId);
 		
+
 		// Start scraping
 		const result = await scrapingService.scrapeFromArchiveUrls(archiveUrls, maxProductsPerArchive, requestId);
 
 		if (!result.success) {
-			logger.error({ requestId, error: result.error }, 'Archive scraping failed');
 			return NextResponse.json(
 				{ 
 					success: false, 
@@ -47,7 +40,6 @@ export async function POST(request: NextRequest) {
 
 		// CSV generation and storage is now handled in the scraping service
 		const productCount = Array.isArray(result.data) ? result.data.length : (result.data as any)?.total_products || 0;
-		logger.info({ requestId, productCount }, 'Archive scraping completed, CSV data should be stored');
 		
 		// Get the scraped products for attribute editing
 		let scrapedProducts: Product[] = [];
@@ -62,20 +54,12 @@ export async function POST(request: NextRequest) {
 		// Verify that CSV data was stored
 		const storedJobInfo = csvStorage.getJobInfo(requestId);
 		if (storedJobInfo) {
-			logger.info({ requestId, storedJobInfo }, 'CSV data verified in storage');
 		} else {
-			logger.warn({ requestId }, 'CSV data not found in storage - this may cause download issues');
 		}
 	 
 		// Create download links
 		const parentFilename = `PARENT_PRODUCTS_${requestId}.csv`;
 		const variationFilename = `VARIATION_PRODUCTS_${requestId}.csv`;
-
-		logger.info({ 
-			requestId, 
-			productsCount: productCount,
-			processedArchives: result.processed_archives 
-		}, 'Archive scraping completed successfully');
 
 		// Include validation in response when available
 		const validation = !Array.isArray(result.data) ? (result.data as any)?.validation : undefined;
@@ -85,8 +69,10 @@ export async function POST(request: NextRequest) {
 			requestId,
 			data: {
 				total_products: productCount,
-				processed_archives: result.processed_archives,
+				processed_archives: result.processed_archives || result.total_archives || 0,
 				products: scrapedProducts, // Add products for attribute editing
+				// Add initial product count when available for early UI logging
+				initial_product_count: Array.isArray(result.data) ? undefined : (result.data as any)?.initial_product_count,
 				csv_files: {
 					parent_products: parentFilename,
 					variation_products: variationFilename,
@@ -98,12 +84,9 @@ export async function POST(request: NextRequest) {
 				},
 				validation
 			},
-			logs: jobLogger.getBuffer(requestId)
 		});
 
 	} catch (error) {
-		logger.error({ error }, 'API error');
-		
 		if (error instanceof z.ZodError) {
 			return NextResponse.json(
 				{ 

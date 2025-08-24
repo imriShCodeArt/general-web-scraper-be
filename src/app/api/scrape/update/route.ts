@@ -1,11 +1,11 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';
-import pino from 'pino';
+// logging removed
 import { Product } from '@/types';
 import { CSVGenerator } from '@/lib/csv-generator';
 import { csvStorage } from '@/lib/csv-storage';
 
-const logger = pino({ name: 'scrape-update-api' });
+// const logger = pino({ name: 'scrape-update-api' });
 
 const UpdateRequestSchema = z.object({
   requestId: z.string().uuid(),
@@ -17,7 +17,7 @@ export async function POST(request: NextRequest) {
     const body = await request.json();
     const { requestId, products } = UpdateRequestSchema.parse(body);
 
-    logger.info({ requestId, productsCount: Array.isArray(products) ? products.length : 0 }, 'Received attribute update payload');
+    // logging removed
 
     // Regenerate CSVs from edited products
     const typedProducts = products as Product[];
@@ -28,11 +28,11 @@ export async function POST(request: NextRequest) {
     const info = csvStorage.getJobInfo(requestId);
     await csvStorage.storeCSVData(requestId, typedProducts, parentProducts, variationProducts, { archiveTitle: info?.archiveTitleSlug });
 
-    logger.info({ requestId }, 'Updated CSVs stored successfully');
+    // logging removed
 
     return NextResponse.json({ success: true });
   } catch (error) {
-    logger.error({ error }, 'Failed to update CSVs with edited attributes');
+    // logging removed
     if (error instanceof z.ZodError) {
       return NextResponse.json({ success: false, error: 'Invalid request format', details: error.errors }, { status: 400 });
     }

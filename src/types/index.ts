@@ -41,7 +41,7 @@ export type Variation = {
 
 export type ScrapingJob = {
   id: string;
-  status: "pending" | "processing" | "completed" | "failed";
+  status: "pending" | "processing" | "paused" | "completed" | "failed" | "stopped";
   archive_urls: string[];
   max_products_per_archive: number;
   total_products: number;
@@ -53,6 +53,11 @@ export type ScrapingJob = {
     parent: string;
     variation: string;
   };
+  // Control properties
+  can_pause?: boolean;
+  can_resume?: boolean;
+  can_stop?: boolean;
+  is_paused?: boolean;
 };
 
 export type ArchivePage = {
@@ -75,6 +80,7 @@ export type ScrapingResult = {
       variation: string;
     };
     validation?: ProductValidationReport;
+    initial_product_count?: number;
   } | Product[];
   error?: string;
   total_archives: number;
