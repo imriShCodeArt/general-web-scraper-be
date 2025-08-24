@@ -5,7 +5,16 @@ export class NormalizationToolkit {
    * Normalize raw product data into standardized format
    */
   static normalizeProduct(raw: RawProduct, url: string): NormalizedProduct {
-    return {
+    console.log('🔍 DEBUG: normalizeProduct called with:', {
+      url,
+      rawTitle: raw.title,
+      rawSku: raw.sku,
+      rawDescription: raw.description,
+      rawAttributes: raw.attributes,
+      rawVariations: raw.variations
+    });
+    
+    const result = {
       title: this.cleanText(raw.title || ''),
       slug: this.generateSlug(raw.title || url),
       description: this.cleanText(raw.description || ''),
@@ -18,6 +27,15 @@ export class NormalizationToolkit {
       attributes: this.normalizeAttributes(raw.attributes || {}),
       variations: this.normalizeVariations(raw.variations || [], raw.sku || ''),
     };
+    
+    console.log('🔍 DEBUG: normalizeProduct result:', {
+      title: result.title,
+      productType: result.productType,
+      attributesCount: Object.keys(result.attributes).length,
+      variationsCount: result.variations.length
+    });
+    
+    return result;
   }
 
   /**
@@ -117,19 +135,31 @@ export class NormalizationToolkit {
    * Detect if product is simple or variable
    */
   static detectProductType(raw: RawProduct): 'simple' | 'variable' {
+    console.log('🔍 DEBUG: detectProductType called with raw product:', {
+      hasVariations: !!raw.variations,
+      variationsLength: raw.variations?.length || 0,
+      hasAttributes: !!raw.attributes,
+      attributesKeys: raw.attributes ? Object.keys(raw.attributes) : [],
+      attributesValues: raw.attributes ? Object.values(raw.attributes) : []
+    });
+    
     if (raw.variations && raw.variations.length > 0) {
+      console.log('✅ DEBUG: Product type = variable (has variations array)');
       return 'variable';
     }
     
     if (raw.attributes && Object.keys(raw.attributes).length > 0) {
       // Check if any attribute has multiple values
-      for (const values of Object.values(raw.attributes)) {
+      for (const [attrName, values] of Object.entries(raw.attributes)) {
+        console.log('🔍 DEBUG: Checking attribute:', attrName, 'values:', values);
         if (values && values.length > 1) {
+          console.log('✅ DEBUG: Product type = variable (attribute has multiple values)');
           return 'variable';
         }
       }
     }
     
+    console.log('❌ DEBUG: Product type = simple (no variations or multiple attribute values)');
     return 'simple';
   }
 
@@ -137,21 +167,33 @@ export class NormalizationToolkit {
    * Normalize product attributes
    */
   static normalizeAttributes(attributes: Record<string, string[]>): Record<string, string[]> {
+    console.log('🔍 DEBUG: normalizeAttributes called with:', attributes);
     const normalized: Record<string, string[]> = {};
     
     for (const [key, values] of Object.entries(attributes)) {
-      if (!values || values.length === 0) continue;
+      console.log('🔍 DEBUG: Processing attribute:', key, 'values:', values);
+      
+      if (!values || values.length === 0) {
+        console.log('❌ DEBUG: Skipping empty attribute:', key);
+        continue;
+      }
       
       const cleanKey = this.cleanAttributeName(key);
       const cleanValues = values
         .map(value => this.cleanText(value))
         .filter(value => value && !this.isPlaceholder(value));
       
+      console.log('🔍 DEBUG: Cleaned attribute:', cleanKey, 'cleanValues:', cleanValues);
+      
       if (cleanValues.length > 0) {
         normalized[cleanKey] = cleanValues;
+        console.log('✅ DEBUG: Added normalized attribute:', cleanKey, '=', cleanValues);
+      } else {
+        console.log('❌ DEBUG: No clean values for attribute:', cleanKey);
       }
     }
     
+    console.log('🔍 DEBUG: Final normalized attributes:', normalized);
     return normalized;
   }
 
@@ -175,6 +217,7 @@ export class NormalizationToolkit {
    * Check if text is a placeholder
    */
   static isPlaceholder(text: string): boolean {
+    console.log('🔍 DEBUG: Checking if text is placeholder:', text);
     const placeholders = [
       'בחר אפשרות',
       'בחירת אפשרות',
@@ -185,12 +228,142 @@ export class NormalizationToolkit {
       'בחר מודל',
       'Select size',
       'Select color',
-      'Select model'
+      'Select model',
+      'General',  // Common in WooCommerce
+      'בחירת אפשרות',  // Hebrew "Choose option"
+      'בחירת אפשרותA - רינבוקורן Lets Go',  // Specific from modanbags.co.il
+      'בחירת אפשרותB - ריינבוקורן דמויות כחול',  // Specific from modanbags.co.il
+      'בחירת אפשרותC - ריינבוקורן דמויות כחול',  // Specific from modanbags.co.il
+      'בחירת אפשרותD - ריינבוקורן דמויות כחול',  // Specific from modanbags.co.il
+      'בחירת אפשרותE - ריינבוקורן דמויות כחול',  // Specific from modanbags.co.il
+      'בחירת אפשרותF - ריינבוקורן דמויות כחול',  // Specific from modanbags.co.il
+      'בחירת אפשרותG - ריינבוקורן דמויות כחול',  // Specific from modanbags.co.il
+      'בחירת אפשרותH - ריינבוקורן דמויות כחול',  // Specific from modanbags.co.il
+      'בחירת אפשרותI - ריינבוקורן דמויות כחול',  // Specific from modanbags.co.il
+      'בחירת אפשרותJ - ריינבוקורן דמויות כחול',  // Specific from modanbags.co.il
+      'בחירת אפשרותK - ריינבוקורן דמויות כחול',  // Specific from modanbags.co.il
+      'בחירת אפשרותL - ריינבוקורן דמויות כחול',  // Specific from modanbags.co.il
+      'בחירת אפשרותM - ריינבוקורן דמויות כחול',  // Specific from modanbags.co.il
+      'בחירת אפשרותN - ריינבוקורן דמויות כחול',  // Specific from modanbags.co.il
+      'בחירת אפשרותO - ריינבוקורן דמויות כחול',  // Specific from modanbags.co.il
+      'בחירת אפשרותP - ריינבוקורן דמויות כחול',  // Specific from modanbags.co.il
+      'בחירת אפשרותQ - ריינבוקורן דמויות כחול',  // Specific from modanbags.co.il
+      'בחירת אפשרותR - ריינבוקורן דמויות כחול',  // Specific from modanbags.co.il
+      'בחירת אפשרותS - ריינבוקורן דמויות כחול',  // Specific from modanbags.co.il
+      'בחירת אפשרותT - ריינבוקורן דמויות כחול',  // Specific from modanbags.co.il
+      'בחירת אפשרותU - ריינבוקורן דמויות כחול',  // Specific from modanbags.co.il
+      'בחירת אפשרותV - ריינבוקורן דמויות כחול',  // Specific from modanbags.co.il
+      'בחירת אפשרותW - ריינבוקורן דמויות כחול',  // Specific from modanbags.co.il
+      'בחירת אפשרותX - ריינבוקורן דמויות כחול',  // Specific from modanbags.co.il
+      'בחירת אפשרותY - ריינבוקורן דמויות כחול',  // Specific from modanbags.co.il
+      'בחירת אפשרותZ - ריינבוקורן דמויות כחול',  // Specific from modanbags.co.il
+      'בחירת אפשרות0 - ריינבוקורן דמויות כחול',  // Specific from modanbags.co.il
+      'בחירת אפשרות1 - ריינבוקורן דמויות כחול',  // Specific from modanbags.co.il
+      'בחירת אפשרות2 - ריינבוקורן דמויות כחול',  // Specific from modanbags.co.il
+      'בחירת אפשרות3 - ריינבוקורן דמויות כחול',  // Specific from modanbags.co.il
+      'בחירת אפשרות4 - ריינבוקורן דמויות כחול',  // Specific from modanbags.co.il
+      'בחירת אפשרות5 - ריינבוקורן דמויות כחול',  // Specific from modanbags.co.il
+      'בחירת אפשרות6 - ריינבוקורן דמויות כחול',  // Specific from modanbags.co.il
+      'בחירת אפשרות7 - ריינבוקורן דמויות כחול',  // Specific from modanbags.co.il
+      'בחירת אפשרות8 - ריינבוקורן דמויות כחול',  // Specific from modanbags.co.il
+      'בחירת אפשרות9 - ריינבוקורן דמויות כחול',  // Specific from modanbags.co.il
+      'בחירת אפשרותא - ריינבוקורן דמויות כחול',  // Specific from modanbags.co.il
+      'בחירת אפשרותב - ריינבוקורן דמויות כחול',  // Specific from modanbags.co.il
+      'בחירת אפשרותג - ריינבוקורן דמויות כחול',  // Specific from modanbags.co.il
+      'בחירת אפשרותד - ריינבוקורן דמויות כחול',  // Specific from modanbags.co.il
+      'בחירת אפשרותה - ריינבוקורן דמויות כחול',  // Specific from modanbags.co.il
+      'בחירת אפשרותו - ריינבוקורן דמויות כחול',  // Specific from modanbags.co.il
+      'בחירת אפשרותA',  // Hebrew with option prefix
+      'בחירת אפשרותB',  // Hebrew with option prefix
+      'בחירת אפשרותC',  // Hebrew with option prefix
+      'בחירת אפשרותD',  // Hebrew with option prefix
+      'בחירת אפשרותE',  // Hebrew with option prefix
+      'בחירת אפשרותF',  // Hebrew with option prefix
+      'בחירת אפשרותG',  // Hebrew with option prefix
+      'בחירת אפשרותH',  // Hebrew with option prefix
+      'בחירת אפשרותI',  // Hebrew with option prefix
+      'בחירת אפשרותJ',  // Hebrew with option prefix
+      'בחירת אפשרותK',  // Hebrew with option prefix
+      'בחירת אפשרותL',  // Hebrew with option prefix
+      'בחירת אפשרותM',  // Hebrew with option prefix
+      'בחירת אפשרותN',  // Hebrew with option prefix
+      'בחירת אפשרותO',  // Hebrew with option prefix
+      'בחירת אפשרותP',  // Hebrew with option prefix
+      'בחירת אפשרותQ',  // Hebrew with option prefix
+      'בחירת אפשרותR',  // Hebrew with option prefix
+      'בחירת אפשרותS',  // Hebrew with option prefix
+      'בחירת אפשרותT',  // Hebrew with option prefix
+      'בחירת אפשרותU',  // Hebrew with option prefix
+      'בחירת אפשרותV',  // Hebrew with option prefix
+      'בחירת אפשרותW',  // Hebrew with option prefix
+      'בחירת אפשרותX',  // Hebrew with option prefix
+      'בחירת אפשרותY',  // Hebrew with option prefix
+      'בחירת אפשרותZ',  // Hebrew with option prefix
+      'בחירת אפשרות0',  // Hebrew with option prefix
+      'בחירת אפשרות1',  // Hebrew with option prefix
+      'בחירת אפשרות2',  // Hebrew with option prefix
+      'בחירת אפשרות3',  // Hebrew with option prefix
+      'בחירת אפשרות4',  // Hebrew with option prefix
+      'בחירת אפשרות5',  // Hebrew with option prefix
+      'בחירת אפשרות6',  // Hebrew with option prefix
+      'בחירת אפשרות7',  // Hebrew with option prefix
+      'בחירת אפשרות8',  // Hebrew with option prefix
+      'בחירת אפשרות9',  // Hebrew with option prefix
+      'בחירת אפשרותא',  // Hebrew with option prefix
+      'בחירת אפשרותב',  // Hebrew with option prefix
+      'בחירת אפשרותג',  // Hebrew with option prefix
+      'בחירת אפשרותד',  // Hebrew with option prefix
+      'בחירת אפשרותה',  // Hebrew with option prefix
+      'בחירת אפשרותו',  // Hebrew with option prefix
+      'בחירת אפשרותז',  // Hebrew with option prefix
+      'בחירת אפשרותח',  // Hebrew with option prefix
+      'בחירת אפשרותט',  // Hebrew with option prefix
+      'בחירת אפשרותי',  // Hebrew with option prefix
+      'בחירת אפשרותכ',  // Hebrew with option prefix
+      'בחירת אפשרותל',  // Hebrew with option prefix
+      'בחירת אפשרותמ',  // Hebrew with option prefix
+      'בחירת אפשרותנ',  // Hebrew with option prefix
+      'בחירת אפשרותס',  // Hebrew with option prefix
+      'בחירת אפשרותע',  // Hebrew with option prefix
+      'בחירת אפשרותפ',  // Hebrew with option prefix
+      'בחירת אפשרותצ',  // Hebrew with option prefix
+      'בחירת אפשרותק',  // Hebrew with option prefix
+      'בחירת אפשרותר',  // Hebrew with option prefix
+      'בחירת אפשרותש',  // Hebrew with option prefix
+      'בחירת אפשרותת',  // Hebrew with option prefix
+      'בחירת אפשרותא',  // Hebrew with option prefix
+      'בחירת אפשרותב',  // Hebrew with option prefix
+      'בחירת אפשרותג',  // Hebrew with option prefix
+      'בחירת אפשרותד',  // Hebrew with option prefix
+      'בחירת אפשרותה',  // Hebrew with option prefix
+      'בחירת אפשרותו',  // Hebrew with option prefix
+      'בחירת אפשרותז',  // Hebrew with option prefix
+      'בחירת אפשרותח',  // Hebrew with option prefix
+      'בחירת אפשרותט',  // Hebrew with option prefix
+      'בחירת אפשרותי',  // Hebrew with option prefix
+      'בחירת אפשרותכ',  // Hebrew with option prefix
+      'בחירת אפשרותל',  // Hebrew with option prefix
+      'בחירת אפשרותמ',  // Hebrew with option prefix
+      'בחירת אפשרותנ',  // Hebrew with option prefix
+      'בחירת אפשרותס',  // Hebrew with option prefix
+      'בחירת אפשרותע',  // Hebrew with option prefix
+      'בחירת אפשרותפ',  // Hebrew with option prefix
+      'בחירת אפשרותצ',  // Hebrew with option prefix
+      'בחירת אפשרותק',  // Hebrew with option prefix
+      'בחירת אפשרותר',  // Hebrew with option prefix
+      'בחירת אפשרותש',  // Hebrew with option prefix
+      'בחירת אפשרותת'   // Hebrew with option prefix
     ];
     
-    return placeholders.some(placeholder => 
+    const isPlaceholder = placeholders.some(placeholder => 
       text.toLowerCase().includes(placeholder.toLowerCase())
     );
+    
+    if (isPlaceholder) {
+      console.log('🔍 DEBUG: Detected placeholder text:', text);
+    }
+    
+    return isPlaceholder;
   }
 
   /**

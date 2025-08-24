@@ -1,16 +1,25 @@
 import { SiteAdapter, RawProduct, RecipeConfig } from '../types';
 import { HttpClient } from './http-client';
+import { PuppeteerHttpClient } from './puppeteer-http-client';
 import { JSDOM } from 'jsdom';
 
 export abstract class BaseAdapter implements SiteAdapter {
   protected httpClient: HttpClient;
+  protected puppeteerClient: PuppeteerHttpClient | null = null;
   protected config: RecipeConfig;
   protected baseUrl: string;
+  protected usePuppeteer: boolean;
 
   constructor(config: RecipeConfig, baseUrl: string) {
     this.config = config;
     this.baseUrl = baseUrl;
     this.httpClient = new HttpClient();
+    this.usePuppeteer = config.behavior?.useHeadlessBrowser === true;
+    
+    // Initialize Puppeteer if needed
+    if (this.usePuppeteer) {
+      this.puppeteerClient = new PuppeteerHttpClient();
+    }
   }
 
   /**
@@ -259,6 +268,36 @@ export abstract class BaseAdapter implements SiteAdapter {
     }
     
     return result;
+  }
+
+  /**
+   * Get DOM using the appropriate method (JSDOM or Puppeteer)
+   */
+  protected async getDom(url: string, options?: { waitForSelectors?: string[] }): Promise<JSDOM> {
+    // Smart Puppeteer usage: use it when explicitly enabled in recipe
+    const needsJavaScript = this.config.behavior?.useHeadlessBrowser === true;
+    
+    if (needsJavaScript && this.puppeteerClient) {
+      try {
+        console.log('🔍 DEBUG: Using Puppeteer for JavaScript execution:', url);
+        return await this.puppeteerClient.getDom(url, options);
+      } catch (error) {
+        console.warn('❌ DEBUG: Puppeteer failed, falling back to JSDOM:', error);
+        return await this.httpClient.getDom(url);
+      }
+    } else {
+      console.log('🔍 DEBUG: Using JSDOM (faster, no JavaScript execution):', url);
+      return await this.httpClient.getDom(url);
+    }
+  }
+
+  /**
+   * Clean up resources
+   */
+  async cleanup(): Promise<void> {
+    if (this.puppeteerClient) {
+      await this.puppeteerClient.close();
+    }
   }
 
   /**
