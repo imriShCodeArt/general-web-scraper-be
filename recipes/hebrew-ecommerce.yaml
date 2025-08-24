@@ -1,7 +1,7 @@
 name: "Hebrew E-commerce"
 description: "Recipe optimized for Hebrew/RTL e-commerce sites"
 version: "1.0.0"
-siteUrl: "https://hebrew-site.co.il"
+siteUrl: "*.co.il"
 
 selectors:
   # Core product fields with Hebrew-specific selectors
