@@ -17,6 +17,7 @@ export class ScrapingService {
   private logger: pino.Logger;
   private storage: StorageService;
   private recipeManager: RecipeManager;
+  private csvGenerator: CsvGenerator;
   private activeJobs = new Map<string, ScrapingJob>();
   private jobQueue: ScrapingJob[] = [];
   private isProcessing = false;
@@ -35,6 +36,22 @@ export class ScrapingService {
     
     this.storage = new StorageService();
     this.recipeManager = new RecipeManager();
+    this.csvGenerator = new CsvGenerator();
+  }
+
+  /**
+   * Normalize a raw product
+   */
+  private async normalizeProduct(rawProduct: any, url?: string): Promise<NormalizedProduct> {
+    return NormalizationToolkit.normalizeProduct(rawProduct, url || '');
+  }
+
+  /**
+   * Generate filename for CSV
+   */
+  private generateFilename(siteUrl: string, jobId: string): string {
+    const domain = new URL(siteUrl).hostname;
+    return `${domain}-${jobId}.csv`;
   }
 
   /**
@@ -112,79 +129,130 @@ export class ScrapingService {
   }
 
   /**
-   * Process a single scraping job
+   * Process a single job
    */
   private async processJob(job: ScrapingJob): Promise<void> {
     try {
-      this.logger.info(`Starting job ${job.id}`);
+      this.logger.info(`Starting job ${job.id} for ${job.metadata.siteUrl}`);
       
       job.status = 'running';
       job.startedAt = new Date();
 
-      // Create adapter based on recipe
-      const adapter = await this.createAdapter(job.metadata.recipe, job.metadata.siteUrl);
-      
-      // Discover products
-      const productUrls: string[] = [];
-      for await (const url of adapter.discoverProducts()) {
-        productUrls.push(url);
-        if (job.metadata.categories.length > 0) {
-          // Filter by categories if specified
-          // This is a simple implementation - could be enhanced
-          break;
-        }
+      // Get recipe configuration
+      const recipe = await this.recipeManager.getRecipe(job.metadata.recipe);
+      if (!recipe) {
+        throw new Error(`Recipe not found: ${job.metadata.recipe}`);
       }
 
-      job.totalProducts = productUrls.length;
-      this.logger.info(`Discovered ${productUrls.length} products for job ${job.id}`);
-
-      // Extract and normalize products
-      const normalizedProducts: NormalizedProduct[] = [];
+      // Create adapter
+      const adapter = await this.createAdapter(job.metadata.recipe, job.metadata.siteUrl);
       
-      for (let i = 0; i < productUrls.length; i++) {
-        try {
+      try {
+        // Discover products
+        const productUrls: string[] = [];
+        for await (const url of adapter.discoverProducts()) {
+          productUrls.push(url);
+        }
+
+        job.totalProducts = productUrls.length;
+        this.logger.info(`Discovered ${productUrls.length} products for job ${job.id}`);
+
+        if (productUrls.length === 0) {
+          throw new Error('No products found');
+        }
+
+        // Process products
+        const products: NormalizedProduct[] = [];
+        for (let i = 0; i < productUrls.length; i++) {
           const url = productUrls[i];
           if (!url) continue;
           
-          this.logger.debug(`Processing product ${i + 1}/${productUrls.length}: ${url}`);
-          
-          const rawProduct = await adapter.extractProduct(url);
-          const normalizedProduct = NormalizationToolkit.normalizeProduct(rawProduct, url);
-          
-          normalizedProducts.push(normalizedProduct);
-          job.processedProducts = i + 1;
-          
-          // Add small delay to be respectful
-          await this.delay(100);
-        } catch (error) {
-          const errorMsg = `Failed to process product ${productUrls[i]}: ${error}`;
-          job.errors.push(errorMsg);
-          this.logger.error(errorMsg);
+          try {
+            this.logger.info(`🔍 DEBUG: Processing product ${i + 1}/${productUrls.length}: ${url}`);
+            
+            const rawProduct = await adapter.extractProduct(url);
+            
+            this.logger.info(`🔍 DEBUG: Raw product data extracted:`, {
+              title: rawProduct.title?.substring(0, 50),
+              hasAttributes: Object.keys(rawProduct.attributes || {}).length > 0,
+              hasVariations: (rawProduct.variations || []).length > 0,
+              hasShortDescription: rawProduct.shortDescription,
+              hasStockStatus: rawProduct.stockStatus,
+              hasImages: (rawProduct.images || []).length > 0,
+              hasCategory: rawProduct.category
+            });
+
+            const normalizedProduct = await this.normalizeProduct(rawProduct, url);
+            
+            this.logger.info(`🔍 DEBUG: Normalized product:`, {
+              title: normalizedProduct.title?.substring(0, 50),
+              productType: normalizedProduct.productType,
+              hasVariations: normalizedProduct.variations.length > 0,
+              hasAttributes: Object.keys(normalizedProduct.attributes).length > 0
+            });
+
+            products.push(normalizedProduct);
+            job.processedProducts = i + 1;
+            
+            // Add delay between requests
+            if (recipe.behavior?.rateLimit) {
+              await this.delay(recipe.behavior.rateLimit);
+            }
+            
+          } catch (error) {
+            const errorMsg = `Failed to process product ${url}: ${error}`;
+            this.logger.error(errorMsg);
+            job.errors.push(errorMsg);
+          }
+        }
+
+        // Generate CSV files
+        const csvResult = await CsvGenerator.generateBothCsvs(products);
+        
+        this.logger.info('🔍 DEBUG: Product type detection results:', {
+          totalProducts: products.length,
+          productTypes: products.map(p => ({
+            title: p.title.substring(0, 50),
+            productType: p.productType,
+            variationsCount: p.variations.length,
+            attributesCount: Object.keys(p.attributes).length,
+            hasAttributes: Object.keys(p.attributes).length > 0,
+            attributes: p.attributes
+          })),
+          variationCsvLength: csvResult.variationCsv.length,
+          parentCsvLength: csvResult.parentCsv.length,
+          variationCount: csvResult.variationCount
+        });
+
+        // Store results
+        const result: JobResult = {
+          jobId: job.id,
+          parentCsv: csvResult.parentCsv,
+          variationCsv: csvResult.variationCsv,
+          productCount: products.length,
+          variationCount: csvResult.variationCount,
+          filename: this.generateFilename(job.metadata.siteUrl, job.id),
+          metadata: job.metadata,
+          createdAt: new Date(),
+          expiresAt: new Date(Date.now() + 24 * 60 * 60 * 1000), // 24 hours
+        };
+
+        await this.storage.storeJobResult(job.id, result);
+
+        // Mark job as completed
+        job.status = 'completed';
+        job.completedAt = new Date();
+        job.totalProducts = products.length;
+        job.processedProducts = products.length;
+
+        this.logger.info(`Job ${job.id} completed successfully. Processed ${products.length} products.`);
+
+      } finally {
+        // Clean up adapter resources (including Puppeteer)
+        if (adapter && typeof adapter.cleanup === 'function') {
+          await adapter.cleanup();
         }
       }
-
-      // Generate CSVs
-      this.logger.info(`Generating CSVs for job ${job.id}`);
-      const csvResult = await CsvGenerator.generateBothCsvs(normalizedProducts);
-      
-      // Create job result
-      const jobResult: JobResult = {
-        jobId: job.id,
-        parentCsv: csvResult.parentCsv,
-        variationCsv: csvResult.variationCsv,
-        productCount: csvResult.productCount,
-        variationCount: csvResult.variationCount,
-        filename: CsvGenerator.generateFilename(normalizedProducts, job.id),
-      };
-
-      // Store result
-      await this.storage.storeJobResult(job.id, jobResult);
-
-      // Mark job as completed
-      job.status = 'completed';
-      job.completedAt = new Date();
-
-      this.logger.info(`Completed job ${job.id}: ${csvResult.productCount} products, ${csvResult.variationCount} variations`);
 
     } catch (error) {
       this.logger.error(`Job ${job.id} failed:`, error);
@@ -192,6 +260,16 @@ export class ScrapingService {
       job.status = 'failed';
       job.completedAt = new Date();
       job.errors.push(`Job failed: ${error}`);
+
+      // Clean up adapter resources even on failure
+      try {
+        const adapter = await this.createAdapter(job.metadata.recipe, job.metadata.siteUrl);
+        if (adapter && typeof adapter.cleanup === 'function') {
+          await adapter.cleanup();
+        }
+      } catch (cleanupError) {
+        this.logger.warn(`Failed to cleanup adapter for failed job ${job.id}:`, cleanupError);
+      }
     }
   }
 
@@ -386,6 +464,30 @@ export class ScrapingService {
   }
 
   /**
+   * Clean up resources (including Puppeteer browsers)
+   */
+  async cleanup(): Promise<void> {
+    this.logger.info('Cleaning up ScrapingService resources...');
+    
+    // Cancel all active jobs
+    for (const [jobId, job] of this.activeJobs) {
+      if (job.status === 'running') {
+        try {
+          await this.cancelJob(jobId);
+        } catch (error) {
+          this.logger.warn(`Failed to cancel job ${jobId} during cleanup:`, error);
+        }
+      }
+    }
+    
+    // Clear queues
+    this.jobQueue = [];
+    this.activeJobs.clear();
+    
+    this.logger.info('ScrapingService cleanup completed');
+  }
+
+  /**
    * Utility function to add delay
    */
   private delay(ms: number): Promise<void> {
@@ -414,12 +516,17 @@ class GenericAdapter implements SiteAdapter {
   async extractProduct(url: string): Promise<any> {
     // This is a placeholder implementation
     // Real adapters would implement proper product extraction
-    return {
+    console.log('🔍 DEBUG: GenericAdapter.extractProduct called with URL:', url);
+    
+    const result = {
       title: 'Sample Product',
       sku: 'SAMPLE-001',
       description: 'Sample product description',
       price: '99.99',
       stockStatus: 'instock',
     };
+    
+    console.log('🔍 DEBUG: GenericAdapter.extractProduct returning:', result);
+    return result;
   }
 }
