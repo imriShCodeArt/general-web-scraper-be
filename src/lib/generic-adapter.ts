@@ -23,7 +23,7 @@ export class GenericAdapter extends BaseAdapter {
 
     while (currentUrl && pageCount < maxPages) {
       try {
-        const dom = await this.httpClient.getDom(currentUrl);
+        const dom = await this.getDom(currentUrl);
         
         // Extract product URLs from current page
         const productUrls = this.extractProductUrlsWithSelector(dom, productLinks);
@@ -60,13 +60,11 @@ export class GenericAdapter extends BaseAdapter {
    * Extract product data using the recipe configuration
    */
   async extractProduct(url: string): Promise<RawProduct> {
-    const dom = await this.httpClient.getDom(url);
+    // Get waitForSelectors from behavior if configured
+    const waitForSelectors = this.config.behavior?.waitForSelectors;
+    
+    const dom = await this.getDom(url, waitForSelectors ? { waitForSelectors } : {});
     const { selectors, transforms, fallbacks } = this.config;
-
-    // Wait for selectors if configured
-    if (this.config.behavior?.waitForSelectors) {
-      await this.waitForSelectors(dom, this.config.behavior.waitForSelectors);
-    }
 
     // Extract core product data
     const product: RawProduct = {
@@ -234,7 +232,7 @@ export class GenericAdapter extends BaseAdapter {
   }
 
   /**
-   * Extract variations using the configured selector
+   * Extract variations using the configured selector - improved for WooCommerce
    */
   protected extractVariations(dom: JSDOM, selector?: string | string[]): RawVariation[] {
     if (!selector) return [];
@@ -242,15 +240,56 @@ export class GenericAdapter extends BaseAdapter {
     const selectorArray = Array.isArray(selector) ? selector : [selector];
     const variations: RawVariation[] = [];
     
+    // First, try to extract variations from variation forms (WooCommerce style)
     for (const sel of selectorArray) {
       const variationElements = this.extractElements(dom, sel);
       
       if (variationElements.length > 0) {
+        console.log(`🔍 DEBUG: Found ${variationElements.length} variation elements with selector: ${sel}`);
+        
         for (const element of variationElements) {
+          // Look for variation options in select elements
+          const selectElements = element.querySelectorAll('select[name*="attribute"], select[class*="variation"], select[class*="attribute"]');
+          
+          if (selectElements.length > 0) {
+            console.log(`🔍 DEBUG: Found ${selectElements.length} variation select elements`);
+            
+            // Extract options from each select
+            for (const select of selectElements) {
+              const options = select.querySelectorAll('option[value]:not([value=""])');
+              const attributeName = select.getAttribute('name') || select.getAttribute('data-attribute') || 'Unknown';
+              
+              console.log(`🔍 DEBUG: Found ${options.length} options for attribute: ${attributeName}`);
+              
+              for (const option of options) {
+                const value = option.getAttribute('value');
+                const text = option.textContent?.trim();
+                
+                if (value && text && !this.isPlaceholderValue(text)) {
+                  // Create a variation for each option
+                  const baseSku = this.extractText(dom, '.sku, [data-sku], .product-sku') || 'SKU';
+                  const sku = `${baseSku}-${value}`;
+                  
+                  variations.push({
+                    sku,
+                    regularPrice: this.extractText(dom, '.price, [data-price], .product-price') || '',
+                    taxClass: '',
+                    stockStatus: 'instock',
+                    images: [],
+                    attributeAssignments: {
+                      [attributeName]: value
+                    },
+                  });
+                }
+              }
+            }
+          }
+          
+          // Also try traditional variation extraction
           const sku = element.querySelector('[data-sku], .sku, .product-sku')?.textContent?.trim();
           const price = element.querySelector('[data-price], .price, .product-price')?.textContent?.trim();
           
-          if (sku) {
+          if (sku && !variations.some(v => v.sku === sku)) {
             variations.push({
               sku,
               regularPrice: this.cleanPrice(price || ''),
@@ -265,6 +304,7 @@ export class GenericAdapter extends BaseAdapter {
       }
     }
     
+    console.log(`🔍 DEBUG: Extracted ${variations.length} variations total`);
     return variations;
   }
 
