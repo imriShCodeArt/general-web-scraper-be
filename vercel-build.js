@@ -10,53 +10,15 @@ console.log('🚀 Building Web Scraper Backend for Vercel...\n');
 const projectRoot = path.resolve(__dirname);
 console.log(`📁 Project root: ${projectRoot}`);
 
-// Step 1: Replace package.json with Vercel-specific version
-console.log('📦 Replacing package.json for Vercel deployment...');
-try {
-  const originalPackage = path.join(projectRoot, 'package.json');
-  const vercelPackage = path.join(projectRoot, 'vercel-package.json');
-  const backupPackage = path.join(projectRoot, 'package.json.backup');
-  
-  // Backup original package.json
-  if (fs.existsSync(originalPackage)) {
-    fs.copyFileSync(originalPackage, backupPackage);
-    console.log('✅ Original package.json backed up');
-  }
-  
-  // Replace with Vercel-specific package.json
-  if (fs.existsSync(vercelPackage)) {
-    fs.copyFileSync(vercelPackage, originalPackage);
-    console.log('✅ Package.json replaced with Vercel version');
-  } else {
-    console.error('❌ vercel-package.json not found');
-    process.exit(1);
-  }
-} catch (error) {
-  console.error('❌ Failed to replace package.json:', error);
-  process.exit(1);
-}
-
-// Step 2: Install dependencies using the new package.json
-console.log('📦 Installing dependencies...');
-try {
-  execSync('npm install', {
-    cwd: projectRoot,
-    stdio: 'inherit'
-  });
-  console.log('✅ Dependencies installed\n');
-} catch (error) {
-  console.error('❌ Failed to install dependencies');
-  process.exit(1);
-}
-
-// Step 3: Check if backend directory exists
+// Step 1: Build the backend first
+console.log('🔨 Building backend...');
 const backendPath = path.join(projectRoot, 'apps', 'backend');
 if (!fs.existsSync(backendPath)) {
   console.error('❌ Backend directory not found at apps/backend');
   process.exit(1);
 }
 
-// Step 4: Install backend-specific dependencies
+// Install backend dependencies
 console.log('📦 Installing backend dependencies...');
 try {
   execSync('npm install', {
@@ -69,8 +31,7 @@ try {
   process.exit(1);
 }
 
-// Step 5: Build the backend
-console.log('🔨 Building backend...');
+// Build the backend
 try {
   execSync('npm run build', {
     cwd: backendPath,
@@ -82,7 +43,7 @@ try {
   process.exit(1);
 }
 
-// Step 6: Verify build output
+// Step 2: Verify build output
 const distPath = path.join(backendPath, 'dist');
 if (!fs.existsSync(distPath)) {
   console.error('❌ Build output directory not found');
@@ -95,21 +56,40 @@ if (!fs.existsSync(indexFile)) {
   process.exit(1);
 }
 
-// Step 7: Restore original package.json
-console.log('📦 Restoring original package.json...');
+// Step 3: Prepare Vercel deployment directory
+console.log('📁 Preparing Vercel deployment directory...');
+const vercelDeployPath = path.join(projectRoot, 'vercel-deploy');
+if (!fs.existsSync(vercelDeployPath)) {
+  fs.mkdirSync(vercelDeployPath, { recursive: true });
+}
+
+// Copy the built backend to vercel-deploy
+const vercelBackendPath = path.join(vercelDeployPath, 'apps', 'backend', 'dist');
+fs.mkdirSync(vercelBackendPath, { recursive: true });
+
 try {
-  const backupPackage = path.join(projectRoot, 'package.json.backup');
-  const originalPackage = path.join(projectRoot, 'package.json');
+  // Copy all files from backend dist to vercel-deploy
+  const copyRecursive = (src, dest) => {
+    if (fs.statSync(src).isDirectory()) {
+      if (!fs.existsSync(dest)) {
+        fs.mkdirSync(dest, { recursive: true });
+      }
+      fs.readdirSync(src).forEach(file => {
+        copyRecursive(path.join(src, file), path.join(dest, file));
+      });
+    } else {
+      fs.copyFileSync(src, dest);
+    }
+  };
   
-  if (fs.existsSync(backupPackage)) {
-    fs.copyFileSync(backupPackage, originalPackage);
-    fs.unlinkSync(backupPackage);
-    console.log('✅ Original package.json restored');
-  }
+  copyRecursive(distPath, vercelBackendPath);
+  console.log('✅ Backend copied to vercel-deploy directory');
 } catch (error) {
-  console.warn('⚠️  Warning: Failed to restore original package.json:', error);
+  console.error('❌ Failed to copy backend to vercel-deploy:', error);
+  process.exit(1);
 }
 
 console.log('🎉 Vercel build completed successfully!');
 console.log(`📁 Build output: ${distPath}`);
+console.log(`📁 Vercel deployment: ${vercelDeployPath}`);
 console.log(`🚀 Entry point: ${indexFile}`);
