@@ -6,8 +6,7 @@ import {
   BookOpen, 
   Clock, 
   HardDrive, 
-  TrendingUp, 
-  AlertCircle,
+  TrendingUp,   AlertCircle,
   CheckCircle,
   XCircle
 } from 'lucide-react';
