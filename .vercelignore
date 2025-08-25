@@ -1,5 +1,6 @@
-# Exclude frontend (not needed for backend deployment)
+# Exclude frontend completely (not needed for backend deployment)
 apps/frontend/
+frontend/
 
 # Exclude configuration files not needed in production
 configs/
@@ -29,3 +30,20 @@ recipes/
 # Exclude Docker files
 Dockerfile*
 docker-compose*
+
+# Exclude build artifacts
+dist/
+build/
+
+# Exclude package files that might confuse Vercel
+apps/frontend/package.json
+apps/frontend/tsconfig.json
+apps/frontend/tsconfig.node.json
+
+# Keep only backend essentials
+!apps/backend/
+!apps/backend/src/
+!apps/backend/package.json
+!apps/backend/tsconfig.json
+!vercel-build.js
+!vercel-package.json
