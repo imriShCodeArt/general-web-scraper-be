@@ -1,237 +1,79 @@
-# Web Scraper v2
+# Web Scraper v2 - Universal E-commerce Scraper
 
-A universal web scraper with deterministic CSV outputs and WooCommerce compatibility.
+A powerful, universal web scraper with deterministic CSV outputs and WooCommerce compatibility.
 
-## 🎯 Features
-
-- **Universal**: Adaptable to any retail/catalog site (multi-language incl. Hebrew, RTL)
-- **Deterministic outputs**: Always emit WooCommerce-compatible CSVs (Parent + Variation) with correct linking and attributes
-- **Robust**: Survive messy markup, percent-encoding, HTML entities, odd dimension formats, duplicate/placeholder options
-- **Performant**: Batch, parallel generation, memory-safe storage and cleanup
-- **Configurable**: YAML/JSON recipes for site-specific selectors and transformations
-
-## 🏗️ Architecture
-
-### Core Components
-
-1. **Site Adapters**: Per-domain implementations for product discovery and extraction
-2. **Normalization Toolkit**: Text cleaning, attribute normalization, dimension parsing
-3. **CSV Generator**: WooCommerce-compatible Parent and Variation CSV generation
-4. **Storage Service**: Dual storage (in-memory + filesystem) with automatic cleanup
-5. **HTTP Client**: Robust web requests with rotating user agents and error handling
-6. **Scraping Service**: Job queue management and orchestration
-
-### Data Flow
+## 🏗️ Project Structure
 
 ```
-Discovery → Extraction → Normalization → Product Typing → CSV Mapping → Storage & Delivery
+general-web-scraper/
+├── 📁 apps/
+│   ├── 📁 backend/           # Node.js + TypeScript API
+│   └── 📁 frontend/          # React + Vite UI
+├── 📁 packages/              # Shared libraries
+│   ├── 📁 core/              # Core scraping logic
+│   ├── 📁 adapters/          # Site-specific adapters
+│   └── 📁 utils/             # Shared utilities
+├── 📁 configs/               # Configuration files
+│   ├── 📁 docker/            # Docker configurations
+│   ├── 📁 eslint/            # ESLint configurations
+│   └── 📁 typescript/        # TypeScript configurations
+├── 📁 docs/                  # Documentation
+├── 📁 scripts/               # Build and deployment scripts
+├── 📁 storage/               # Generated CSV files
+├── 📁 recipes/               # Scraping recipes
+└── 📁 tests/                 # Test files and fixtures
 ```
 
 ## 🚀 Quick Start
 
-### Prerequisites
-
-- Node.js 18+ 
-- npm or yarn
-
-### Installation
-
+### **Development**
 ```bash
-# Clone the repository
-git clone <your-repo>
-cd web-scraper-v2
-
-# Install dependencies
+# Install all dependencies
 npm install
 
-# Build the project
-npm run build
+# Start both services
+npm run dev:full
 
-# Start the server
-npm start
+# Or start individually
+npm run dev              # Backend only
+npm run frontend:dev     # Frontend only
 ```
 
-### Development
-
+### **Docker (Recommended)**
 ```bash
-# Start in development mode with auto-reload
-npm run dev
+# Production
+npm run docker:build
+npm run docker:up
 
-# Run tests
-npm test
-
-# Lint code
-npm run lint
+# Development
+npm run docker:dev
 ```
 
-## 📡 API Endpoints
+## 🛠️ Features
 
-### Scraping
+- **Universal Scraping**: Works with any website using configurable recipes
+- **Multi-Strategy**: Cheerio (fast) + Playwright (JavaScript-rendered)
+- **WooCommerce Ready**: Direct CSV import compatibility
+- **Recipe System**: YAML-based configuration for different sites
+- **Real-time Progress**: Live scraping progress tracking
+- **Data Validation**: Comprehensive product data validation
+- **CSV Generation**: Dual output (parent + variation products)
 
-- `POST /api/scrape/init` - Start a new scraping job
-- `GET /api/scrape/status/:jobId` - Get job status
-- `GET /api/scrape/jobs` - List all jobs
-- `POST /api/scrape/cancel/:jobId` - Cancel a job
-- `GET /api/scrape/download/:jobId/:type` - Download CSV files
+## 📚 Documentation
 
-### Storage
+- [API Reference](./docs/api.md)
+- [Recipe Configuration](./docs/recipes.md)
+- [Deployment Guide](./docs/deployment.md)
+- [Contributing](./docs/contributing.md)
 
-- `GET /api/storage/stats` - Get storage statistics
-- `DELETE /api/storage/clear` - Clear all storage
+## 🔧 Tech Stack
 
-### Health
-
-- `GET /health` - Health check endpoint
-
-## 🔧 Configuration
-
-### Recipe Format
-
-Recipes define how to extract data from specific sites:
-
-```yaml
-selectors:
-  title: "h1, .product-title, .title"
-  price: ".price, .product-price, [data-price]"
-  images: "img[src*='product'], .product-image img"
-  stock: ".stock, .availability, [data-stock]"
-  attributes: ".attributes, .product-options, .variations"
-  variations: ".variation, .product-variant, .option"
-
-transforms:
-  title: "Remove Brand -> Brand Name"
-  price: "Clean Currency -> [0-9.,]+"
-
-pagination:
-  pattern: "page={page}"
-  nextPage: ".next-page, .pagination-next"
-```
-
-## 📊 CSV Output
-
-### Parent Products CSV
-
-```
-ID, post_title, post_name, post_status, post_content, post_excerpt, 
-post_parent, menu_order, post_type, sku, stock_status, images, 
-tax:product_type, tax:product_cat, description, 
-attribute:Color, attribute_data:Color, attribute:Size, attribute_data:Size
-```
-
-### Variation CSV
-
-```
-ID, post_type, post_status, parent_sku, post_title, post_name, 
-post_content, post_excerpt, menu_order, sku, stock_status, 
-regular_price, tax_class, images, meta:attribute_Color, meta:attribute_Size
-```
-
-## 🌍 Multi-language Support
-
-- **Hebrew/RTL**: Full support for Hebrew text and right-to-left languages
-- **UTF-8**: End-to-end UTF-8 encoding
-- **Internationalization**: Support for multiple languages and locales
-
-## 🛡️ Robustness Features
-
-- **Error Handling**: Continue on partial failures, log per product, keep partial CSVs
-- **Anti-bot Mitigation**: Rotating user agents, configurable delays
-- **Fallback Parsing**: Multiple extraction strategies (CSS, XPath, embedded JSON)
-- **Validation**: Strip placeholders, ensure attribute consistency, guarantee required fields
-
-## 📈 Performance
-
-- **Parallel Processing**: Generate Parent/Variation CSVs in parallel
-- **Memory Management**: Buffer-based processing with automatic cleanup
-- **Batch Operations**: Process multiple products efficiently
-- **Storage Optimization**: Dual storage with smart cleanup intervals
-
-## 🔌 Extensibility
-
-### Adding New Site Adapters
-
-1. Extend the `BaseAdapter` class
-2. Implement `discoverProducts()` and `extractProduct()` methods
-3. Add site-specific logic for product discovery and extraction
-4. Configure selectors and transformations in recipe files
-
-### Custom Normalizers
-
-Extend the `NormalizationToolkit` with site-specific cleaning logic:
-
-```typescript
-export class CustomNormalizer extends NormalizationToolkit {
-  static customCleanup(text: string): string {
-    // Custom cleaning logic
-    return text;
-  }
-}
-```
-
-## 🧪 Testing
-
-```bash
-# Run all tests
-npm test
-
-# Run tests in watch mode
-npm run test:watch
-
-# Run specific test file
-npm test -- csv-generator.test.ts
-```
-
-## 📝 Logging
-
-The application uses Pino for structured logging with pretty-printed output in development.
-
-## 🚀 Deployment
-
-### Production Build
-
-```bash
-npm run build
-npm start
-```
-
-### Environment Variables
-
-- `PORT`: Server port (default: 3000)
-- `NODE_ENV`: Environment (development/production)
-
-### Docker
-
-```dockerfile
-FROM node:18-alpine
-WORKDIR /app
-COPY package*.json ./
-RUN npm ci --only=production
-COPY dist ./dist
-EXPOSE 3000
-CMD ["npm", "start"]
-```
-
-## 🤝 Contributing
-
-1. Fork the repository
-2. Create a feature branch
-3. Make your changes
-4. Add tests
-5. Submit a pull request
+- **Backend**: Node.js, Express, TypeScript, Puppeteer
+- **Frontend**: React, Vite, Tailwind CSS, Zustand
+- **Database**: File-based storage (CSV)
+- **Containerization**: Docker + Docker Compose
+- **Testing**: Jest, Playwright
 
 ## 📄 License
 
-MIT License - see LICENSE file for details.
-
-## 🔗 Related
-
-- [WooCommerce Import Documentation](https://docs.woocommerce.com/document/product-csv-import-suite/)
-- [Cheerio Documentation](https://cheerio.js.org/)
-- [JSDOM Documentation](https://github.com/jsdom/jsdom)
-
-## 📞 Support
-
-For issues and questions:
-1. Check the documentation
-2. Search existing issues
-3. Create a new issue with detailed information
+MIT License - see [LICENSE](./LICENSE) file for details.
