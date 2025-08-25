@@ -1,52 +1,40 @@
-# Web Scraper v2 - Universal E-commerce Scraper
+# General Web Scraper - Backend API
 
-A powerful, universal web scraper with deterministic CSV outputs and WooCommerce compatibility.
+A powerful, backend-only web scraper API with deterministic CSV outputs and WooCommerce compatibility.
 
 ## 🏗️ Project Structure
 
 ```
-general-web-scraper/
-├── 📁 apps/
-│   ├── 📁 backend/           # Node.js + TypeScript API
-│   └── 📁 frontend/          # React + Vite UI
-├── 📁 packages/              # Shared libraries
-│   ├── 📁 core/              # Core scraping logic
-│   ├── 📁 adapters/          # Site-specific adapters
-│   └── 📁 utils/             # Shared utilities
-├── 📁 configs/               # Configuration files
-│   ├── 📁 docker/            # Docker configurations
-│   ├── 📁 eslint/            # ESLint configurations
-│   └── 📁 typescript/        # TypeScript configurations
-├── 📁 docs/                  # Documentation
-├── 📁 scripts/               # Build and deployment scripts
+general-web-scraper-be/
+├── 📁 src/                   # TypeScript source code
+│   ├── 📁 lib/               # Core scraping libraries
+│   ├── 📁 app/               # API routes and middleware
+│   └── index.ts              # Main entry point
+├── 📁 dist/                  # Compiled JavaScript output
 ├── 📁 storage/               # Generated CSV files
-├── 📁 recipes/               # Scraping recipes
-└── 📁 tests/                 # Test files and fixtures
+├── 📁 recipes/               # Scraping recipes (YAML)
+├── 📁 node_modules/          # Dependencies
+├── 📄 package.json           # Project configuration
+├── 📄 tsconfig.json          # TypeScript configuration
+├── 📄 vercel.json            # Vercel deployment config
+└── 📄 vercel-build.js        # Custom build script
 ```
 
 ## 🚀 Quick Start
 
 ### **Development**
 ```bash
-# Install all dependencies
+# Install dependencies
 npm install
 
-# Start both services
-npm run dev:full
+# Start development server
+npm run dev
 
-# Or start individually
-npm run dev              # Backend only
-npm run frontend:dev     # Frontend only
-```
+# Build for production
+npm run build
 
-### **Docker (Recommended)**
-```bash
-# Production
-npm run docker:build
-npm run docker:up
-
-# Development
-npm run docker:dev
+# Start production server
+npm start
 ```
 
 ## 🛠️ Features
@@ -69,10 +57,10 @@ npm run docker:dev
 ## 🔧 Tech Stack
 
 - **Backend**: Node.js, Express, TypeScript, Puppeteer
-- **Frontend**: React, Vite, Tailwind CSS, Zustand
-- **Database**: File-based storage (CSV)
-- **Containerization**: Docker + Docker Compose
-- **Testing**: Jest, Playwright
+- **Storage**: File-based storage (CSV)
+- **Deployment**: Vercel serverless functions
+- **Testing**: Jest
+- **Build**: TypeScript compilation
 
 ## 📄 License
 

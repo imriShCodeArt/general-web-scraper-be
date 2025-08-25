@@ -1,12 +1,3 @@
-# Exclude frontend completely (not needed for backend deployment)
-apps/frontend/
-frontend/
-
-# Exclude configuration files not needed in production
-configs/
-scripts/
-docs/
-
 # Exclude development files
 *.md
 .git/
@@ -21,36 +12,18 @@ docs/
 
 # Exclude node_modules (will be installed by Vercel)
 node_modules/
-apps/*/node_modules/
 
 # Exclude storage and recipes (runtime data)
 storage/
 recipes/
 
-# Exclude Docker files
-Dockerfile*
-docker-compose*
-
 # Exclude build artifacts
 dist/
 build/
 
-# Exclude package files that might confuse Vercel
-apps/frontend/package.json
-apps/frontend/tsconfig.json
-apps/frontend/tsconfig.node.json
-
-# Exclude the original package.json during Vercel deployment
-package.json.backup
-
-# Exclude old Vercel files
-vercel-package.json
-vercel-entry.js
-
 # Keep only backend essentials and new Vercel deployment
-!apps/backend/
-!apps/backend/src/
-!apps/backend/package.json
-!apps/backend/tsconfig.json
+!src/
+!package.json
+!tsconfig.json
 !vercel-build.js
 !vercel-deploy/
