@@ -54,7 +54,7 @@ try {
 try {
   const tsconfigPath = path.join(backendPath, 'tsconfig.json');
   // Use npx to invoke local TypeScript consistently across platforms
-  const cmd = `npx --yes tsc -p "${tsconfigPath}"`;
+  const cmd = `npx --no-install tsc -p "${tsconfigPath}"`;
   execSync(cmd, {
     cwd: backendPath,
     stdio: 'inherit',
