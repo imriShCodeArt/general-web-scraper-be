@@ -68,6 +68,21 @@ app.get('/health', (req, res) => {
   res.json({ status: 'ok', timestamp: new Date().toISOString() });
 });
 
+// Root endpoint
+app.get('/', (req, res) => {
+  res.json({ 
+    message: 'Web Scraper v2 API', 
+    status: 'running',
+    timestamp: new Date().toISOString(),
+    endpoints: {
+      health: '/health',
+      recipes: '/api/recipes',
+      scrape: '/api/scrape/init',
+      storage: '/api/storage'
+    }
+  });
+});
+
 // Recipe management routes
 app.use('/api/recipes', recipeRoutes);
 
