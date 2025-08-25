@@ -140,16 +140,19 @@ const copyRecursive = (src, dest) => {
   }
 };
 
-// Copy the built frontend to vercel-deploy
-const vercelFrontendPath = path.join(vercelDeployPath, 'public');
-fs.mkdirSync(vercelFrontendPath, { recursive: true });
+// Copy the built frontend to the root (apps/frontend/dist)
+const vercelFrontendPath = path.join(projectRoot, 'apps', 'frontend', 'dist');
+// Ensure the directory exists (it should from the build)
+if (!fs.existsSync(vercelFrontendPath)) {
+  fs.mkdirSync(vercelFrontendPath, { recursive: true });
+}
 
 try {
-  // Copy all files from frontend dist to vercel-deploy/public
+  // Copy all files from frontend dist to apps/frontend/dist (overwrite with built version)
   copyRecursive(frontendDistPath, vercelFrontendPath);
-  console.log('✅ Frontend copied to vercel-deploy/public directory');
+  console.log('✅ Frontend copied to apps/frontend/dist directory');
 } catch (error) {
-  console.error('❌ Failed to copy frontend to vercel-deploy:', error);
+  console.error('❌ Failed to copy frontend to apps/frontend/dist:', error);
   process.exit(1);
 }
 
