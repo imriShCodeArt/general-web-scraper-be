@@ -1,0 +1,31 @@
+# Exclude frontend (not needed for backend deployment)
+apps/frontend/
+
+# Exclude configuration files not needed in production
+configs/
+scripts/
+docs/
+
+# Exclude development files
+*.md
+.git/
+.gitignore
+
+# Exclude test files
+**/*.test.ts
+**/*.spec.ts
+
+# Exclude source maps in production
+**/*.map
+
+# Exclude node_modules (will be installed by Vercel)
+node_modules/
+apps/*/node_modules/
+
+# Exclude storage and recipes (runtime data)
+storage/
+recipes/
+
+# Exclude Docker files
+Dockerfile*
+docker-compose*

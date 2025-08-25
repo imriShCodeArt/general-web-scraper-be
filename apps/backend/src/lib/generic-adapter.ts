@@ -161,7 +161,7 @@ export class GenericAdapter extends BaseAdapter {
   /**
    * Extract images using the configured selector
    */
-  protected extractImages(dom: JSDOM, selector: string | string[]): string[] {
+  protected override extractImages(dom: JSDOM, selector: string | string[]): string[] {
     const selectorArray = Array.isArray(selector) ? selector : [selector];
     
     for (const sel of selectorArray) {
@@ -185,7 +185,7 @@ export class GenericAdapter extends BaseAdapter {
   /**
    * Extract stock status using the configured selector
    */
-  protected extractStockStatus(dom: JSDOM, selector: string | string[]): string {
+  protected override extractStockStatus(dom: JSDOM, selector: string | string[]): string {
     const selectorArray = Array.isArray(selector) ? selector : [selector];
     
     for (const sel of selectorArray) {
@@ -201,7 +201,7 @@ export class GenericAdapter extends BaseAdapter {
   /**
    * Extract attributes using the configured selector
    */
-  protected extractAttributes(dom: JSDOM, selector: string | string[]): Record<string, string[]> {
+  protected override extractAttributes(dom: JSDOM, selector: string | string[]): Record<string, string[]> {
     const selectorArray = Array.isArray(selector) ? selector : [selector];
     const attributes: Record<string, string[]> = {};
     
@@ -234,7 +234,7 @@ export class GenericAdapter extends BaseAdapter {
   /**
    * Extract variations using the configured selector - improved for WooCommerce
    */
-  protected extractVariations(dom: JSDOM, selector?: string | string[]): RawVariation[] {
+  protected override extractVariations(dom: JSDOM, selector?: string | string[]): RawVariation[] {
     if (!selector) return [];
     
     const selectorArray = Array.isArray(selector) ? selector : [selector];
@@ -347,7 +347,7 @@ export class GenericAdapter extends BaseAdapter {
   /**
    * Apply transformations to text
    */
-  protected applyTransformations(text: string, transformations: string[]): string {
+  protected override applyTransformations(text: string, transformations: string[]): string {
     let result = text;
     
     for (const transform of transformations) {
