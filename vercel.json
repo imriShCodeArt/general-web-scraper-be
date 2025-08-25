@@ -1,11 +1,12 @@
 {
   "version": 2,
   "builds": [
-    { "src": "vercel-deploy/apps/backend/dist/index.js", "use": "@vercel/node" }
+    { "src": "vercel-deploy/apps/backend/dist/index.js", "use": "@vercel/node" },
+    { "src": "vercel-deploy/public/**", "use": "@vercel/static" }
   ],
   "routes": [
-    { "src": "/", "dest": "/" },
-    { "src": "/(.*)", "dest": "/" }
+    { "src": "/api/(.*)", "dest": "/vercel-deploy/apps/backend/dist/index.js" },
+    { "src": "/(.*)", "dest": "/vercel-deploy/public/$1" }
   ]
 }
 

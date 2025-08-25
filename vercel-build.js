@@ -4,13 +4,46 @@ const { execSync } = require('child_process');
 const path = require('path');
 const fs = require('fs');
 
-console.log('🚀 Building Web Scraper Backend for Vercel...\n');
+console.log('🚀 Building Web Scraper Frontend & Backend for Vercel...\n');
 
 // Ensure we're in the right directory
 const projectRoot = path.resolve(__dirname);
 console.log(`📁 Project root: ${projectRoot}`);
 
-// Step 1: Build the backend first
+// Step 1: Build the frontend first
+console.log('🔨 Building frontend...');
+const frontendPath = path.join(projectRoot, 'apps', 'frontend');
+if (!fs.existsSync(frontendPath)) {
+  console.error('❌ Frontend directory not found at apps/frontend');
+  process.exit(1);
+}
+
+// Install frontend dependencies
+console.log('📦 Installing frontend dependencies...');
+try {
+  execSync('npm install', {
+    cwd: frontendPath,
+    stdio: 'inherit'
+  });
+  console.log('✅ Frontend dependencies installed\n');
+} catch (error) {
+  console.error('❌ Failed to install frontend dependencies');
+  process.exit(1);
+}
+
+// Build the frontend
+try {
+  execSync('npm run build', {
+    cwd: frontendPath,
+    stdio: 'inherit'
+  });
+  console.log('✅ Frontend built successfully\n');
+} catch (error) {
+  console.error('❌ Failed to build frontend');
+  process.exit(1);
+}
+
+// Step 2: Build the backend
 console.log('🔨 Building backend...');
 const backendPath = path.join(projectRoot, 'apps', 'backend');
 if (!fs.existsSync(backendPath)) {
@@ -66,16 +99,23 @@ try {
   process.exit(1);
 }
 
-// Step 2: Verify build output
+// Step 3: Verify backend build output
 const distPath = path.join(backendPath, 'dist');
 if (!fs.existsSync(distPath)) {
-  console.error('❌ Build output directory not found');
+  console.error('❌ Backend build output directory not found');
   process.exit(1);
 }
 
 const indexFile = path.join(distPath, 'index.js');
 if (!fs.existsSync(indexFile)) {
-  console.error('❌ Main entry point not found at dist/index.js');
+  console.error('❌ Backend main entry point not found at dist/index.js');
+  process.exit(1);
+}
+
+// Verify frontend build output
+const frontendDistPath = path.join(frontendPath, 'dist');
+if (!fs.existsSync(frontendDistPath)) {
+  console.error('❌ Frontend build output directory not found');
   process.exit(1);
 }
 
@@ -86,25 +126,39 @@ if (!fs.existsSync(vercelDeployPath)) {
   fs.mkdirSync(vercelDeployPath, { recursive: true });
 }
 
+// Helper function to copy files recursively
+const copyRecursive = (src, dest) => {
+  if (fs.statSync(src).isDirectory()) {
+    if (!fs.existsSync(dest)) {
+      fs.mkdirSync(dest, { recursive: true });
+    }
+    fs.readdirSync(src).forEach(file => {
+      copyRecursive(path.join(src, file), path.join(dest, file));
+    });
+  } else {
+    fs.copyFileSync(src, dest);
+  }
+};
+
+// Copy the built frontend to vercel-deploy
+const vercelFrontendPath = path.join(vercelDeployPath, 'public');
+fs.mkdirSync(vercelFrontendPath, { recursive: true });
+
+try {
+  // Copy all files from frontend dist to vercel-deploy/public
+  copyRecursive(frontendDistPath, vercelFrontendPath);
+  console.log('✅ Frontend copied to vercel-deploy/public directory');
+} catch (error) {
+  console.error('❌ Failed to copy frontend to vercel-deploy:', error);
+  process.exit(1);
+}
+
 // Copy the built backend to vercel-deploy
 const vercelBackendPath = path.join(vercelDeployPath, 'apps', 'backend', 'dist');
 fs.mkdirSync(vercelBackendPath, { recursive: true });
 
 try {
   // Copy all files from backend dist to vercel-deploy
-  const copyRecursive = (src, dest) => {
-    if (fs.statSync(src).isDirectory()) {
-      if (!fs.existsSync(dest)) {
-        fs.mkdirSync(dest, { recursive: true });
-      }
-      fs.readdirSync(src).forEach(file => {
-        copyRecursive(path.join(src, file), path.join(dest, file));
-      });
-    } else {
-      fs.copyFileSync(src, dest);
-    }
-  };
-  
   copyRecursive(distPath, vercelBackendPath);
   console.log('✅ Backend copied to vercel-deploy directory');
 } catch (error) {
