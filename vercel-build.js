@@ -52,8 +52,9 @@ try {
 
 // Build the backend by invoking the TypeScript compiler directly to avoid recursive root builds
 try {
-  const tscPath = path.join(backendPath, 'node_modules', '.bin', process.platform === 'win32' ? 'tsc.cmd' : 'tsc');
-  const cmd = fs.existsSync(tscPath) ? `${tscPath} -p tsconfig.json` : 'npx tsc -p tsconfig.json';
+  const tsconfigPath = path.join(backendPath, 'tsconfig.json');
+  // Use npx to invoke local TypeScript consistently across platforms
+  const cmd = `npx --yes tsc -p "${tsconfigPath}"`;
   execSync(cmd, {
     cwd: backendPath,
     stdio: 'inherit',
