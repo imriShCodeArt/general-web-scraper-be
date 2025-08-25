@@ -34,6 +34,22 @@ try {
   process.exit(1);
 }
 
+// Ensure TypeScript is available locally (avoid "fake tsc" npx fallback)
+try {
+  const typescriptPkg = path.join(backendPath, 'node_modules', 'typescript');
+  if (!fs.existsSync(typescriptPkg)) {
+    console.log('🧩 TypeScript not found locally, installing as devDependency...');
+    execSync('npm install -D typescript', {
+      cwd: backendPath,
+      stdio: 'inherit',
+      env: { ...process.env, NODE_ENV: 'development', NPM_CONFIG_PRODUCTION: 'false' }
+    });
+  }
+} catch (error) {
+  console.error('❌ Failed to ensure local TypeScript is installed');
+  process.exit(1);
+}
+
 // Build the backend by invoking the TypeScript compiler directly to avoid recursive root builds
 try {
   const tscPath = path.join(backendPath, 'node_modules', '.bin', process.platform === 'win32' ? 'tsc.cmd' : 'tsc');
