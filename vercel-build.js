@@ -22,7 +22,7 @@ if (!fs.existsSync(backendPath)) {
 console.log('📦 Installing backend dependencies...');
 try {
   // Use npm ci when possible for clean reproducible installs
-  const installCmd = 'npm install --include=dev --omit=optional';
+  const installCmd = 'npm install --production=false --omit=optional';
   execSync(installCmd, {
     cwd: backendPath,
     stdio: 'inherit'
