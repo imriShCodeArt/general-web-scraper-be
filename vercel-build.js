@@ -21,7 +21,11 @@ if (!fs.existsSync(backendPath)) {
 // Install backend dependencies
 console.log('📦 Installing backend dependencies...');
 try {
-  execSync('npm install', {
+  // Use npm ci when possible for clean reproducible installs
+  const installCmd = fs.existsSync(path.join(backendPath, 'package-lock.json'))
+    ? 'npm ci --omit=optional'
+    : 'npm install --omit=optional';
+  execSync(installCmd, {
     cwd: backendPath,
     stdio: 'inherit'
   });
@@ -31,9 +35,10 @@ try {
   process.exit(1);
 }
 
-// Build the backend
+// Build the backend (call TypeScript directly to avoid workspace cross-talk)
 try {
-  execSync('npm run build', {
+  // Prefer local tsc via npx to avoid invoking any root scripts
+  execSync('npx tsc -p tsconfig.json', {
     cwd: backendPath,
     stdio: 'inherit'
   });
