@@ -22,10 +22,11 @@ if (!fs.existsSync(backendPath)) {
 console.log('📦 Installing backend dependencies...');
 try {
   // Use npm ci when possible for clean reproducible installs
-  const installCmd = 'npm install --production=false --omit=optional';
+  const installCmd = 'npm install --include=dev --omit=optional';
   execSync(installCmd, {
     cwd: backendPath,
-    stdio: 'inherit'
+    stdio: 'inherit',
+    env: { ...process.env, NODE_ENV: 'development', NPM_CONFIG_PRODUCTION: 'false' }
   });
   console.log('✅ Backend dependencies installed\n');
 } catch (error) {
@@ -39,7 +40,8 @@ try {
   const cmd = fs.existsSync(tscPath) ? `${tscPath} -p tsconfig.json` : 'npx tsc -p tsconfig.json';
   execSync(cmd, {
     cwd: backendPath,
-    stdio: 'inherit'
+    stdio: 'inherit',
+    env: { ...process.env, NODE_ENV: 'development', NPM_CONFIG_PRODUCTION: 'false' }
   });
   console.log('✅ Backend built successfully\n');
 } catch (error) {
