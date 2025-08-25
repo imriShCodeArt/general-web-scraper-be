@@ -7,7 +7,7 @@
     "apps/*"
   ],
   "scripts": {
-    "build": "npm run build --workspaces",
+    "build": "node vercel-build.js",
     "vercel-build": "node vercel-build.js",
     "dev": "npm run dev --workspace=@web-scraper/backend",
     "dev:frontend": "npm run dev --workspace=@web-scraper/frontend",

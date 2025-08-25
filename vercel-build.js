@@ -22,9 +22,7 @@ if (!fs.existsSync(backendPath)) {
 console.log('📦 Installing backend dependencies...');
 try {
   // Use npm ci when possible for clean reproducible installs
-  const installCmd = fs.existsSync(path.join(backendPath, 'package-lock.json'))
-    ? 'npm ci --omit=optional'
-    : 'npm install --omit=optional';
+  const installCmd = 'npm install --omit=optional';
   execSync(installCmd, {
     cwd: backendPath,
     stdio: 'inherit'
