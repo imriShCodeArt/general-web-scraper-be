@@ -210,9 +210,9 @@ export default function JobDetail() {
       console.error('❌ DEBUG: CSV download failed:', {
         type,
         error,
-        errorMessage: error.message,
-        errorStatus: error.response?.status,
-        errorData: error.response?.data
+        errorMessage: error instanceof Error ? error.message : String(error),
+        errorStatus: (error as any)?.response?.status,
+        errorData: (error as any)?.response?.data
       });
       
       if (type === 'variation') {
@@ -470,7 +470,7 @@ export default function JobDetail() {
                      metadata: storageData.metadata
                    });
                  }
-                 toast.info('Check console for debug info');
+                 toast('Check console for debug info');
                }}
                className="btn-warning flex items-center space-x-2"
                title="Debug: Check storage data in console"
