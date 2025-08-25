@@ -380,9 +380,7 @@ process.on('SIGTERM', async () => {
   process.exit(0);
 });
 
-// Start server
-app.listen(port, () => {
-  logger.info(`Server running on port ${port}`);
-});
+// Server startup is now handled in index.ts for Vercel compatibility
+// app.listen() is called there only for local development
 
 export default app;
