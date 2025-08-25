@@ -40,6 +40,9 @@ apps/frontend/package.json
 apps/frontend/tsconfig.json
 apps/frontend/tsconfig.node.json
 
+# Exclude the original package.json during Vercel deployment
+package.json.backup
+
 # Keep only backend essentials
 !apps/backend/
 !apps/backend/src/
@@ -47,3 +50,4 @@ apps/frontend/tsconfig.node.json
 !apps/backend/tsconfig.json
 !vercel-build.js
 !vercel-package.json
+!vercel-entry.js
