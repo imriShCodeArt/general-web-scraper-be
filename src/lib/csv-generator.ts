@@ -14,7 +14,7 @@ export class CsvGenerator {
     
     const csvData = uniqueProducts.map((product, index) => {
       const row: Record<string, string> = {
-        ID: (index + 1).toString(),
+        id: (index + 1).toString(),
         post_title: product.title,
         post_name: product.slug && product.slug.trim() !== '' ? product.slug : (product.sku ? product.sku.toLowerCase() : `product-${index + 1}`),
         post_status: 'publish',
@@ -82,7 +82,7 @@ export class CsvGenerator {
         console.log('✅ DEBUG: Product is variable, processing variations');
         for (const variation of product.variations) {
           const row: Record<string, string> = {
-            ID: variationId.toString(),
+            id: variationId.toString(),
             post_type: 'product_variation',
             post_status: 'publish',
             parent_sku: product.sku,
