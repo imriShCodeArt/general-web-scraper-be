@@ -33,11 +33,18 @@ export class CsvGenerator {
         sale_price: product.salePrice || '',
       };
 
-      // Add attributes
+      // Add attributes per Woo CSV Import Suite rules
+      // attribute:<Name> = pipe-separated values
+      // attribute_data:<Name> = position|visible|variation (use 0|1|1 for variable products, 0|1|0 for simple)
+      const isVariable = product.productType === 'variable';
+      let position = 0;
       for (const [attrName, attrValues] of Object.entries(product.attributes)) {
         const cleanName = this.cleanAttributeName(attrName);
-        row[`attribute:${cleanName}`] = attrValues.join(' | ');
-        row[`attribute_data:${cleanName}`] = '1 | 1'; // Visible flags
+        row[`attribute:${cleanName}`] = (attrValues || []).join(' | ');
+        const visible = 1;
+        const variation = isVariable ? 1 : 0;
+        row[`attribute_data:${cleanName}`] = `${position}|${visible}|${variation}`;
+        position++;
       }
 
       return row;
@@ -92,10 +99,10 @@ export class CsvGenerator {
             images: variation.images.join('|'),
           };
 
-          // Add attribute meta
+          // Add attribute values per variation using attribute:<Name> columns
           for (const [attrName, attrValue] of Object.entries(variation.attributeAssignments)) {
             const cleanName = this.cleanAttributeName(attrName);
-            row[`meta:attribute_${cleanName}`] = attrValue;
+            row[`attribute:${cleanName}`] = attrValue;
           }
 
           variationRows.push(row);

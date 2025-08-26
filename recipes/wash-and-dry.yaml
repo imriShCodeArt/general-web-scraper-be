@@ -1,7 +1,7 @@
 name: "Wash and Dry (Shopify)"
 description: "Recipe for wash-and-dry.eu collection and product pages (Shopify)"
 version: "1.0.0"
-siteUrl: "wash-and-dry.eu"
+siteUrl: "https://wash-and-dry.eu"
 
 selectors:
   # Core product fields (product page)
@@ -31,9 +31,18 @@ selectors:
     - ".product-meta__subtitle"
 
   images:
+    - ".product-gallery--loaded-image"
+    - ".product-gallery--media-thumbnail-img"
+    - ".product-gallery img"
+    - ".product-gallery [style*='background-image']"
+    - ".product__media-list img"
+    - ".product__media-item img"
+    - "picture source"
     - ".product__media img"
     - ".product-media img"
+    - "img[srcset*='products']"
     - "img[src*='cdn.shopify.com']"
+    - "img[src*='wash-and-dry.eu']"
 
   stock:
     - ".product__inventory"
@@ -76,20 +85,20 @@ transforms:
     - "trim: "
 
   price:
-    - "replace:[^\d.,]"
+    - "replace:[^\\d.,]"
     - "replace:,|."
 
   description:
     - "trim: \n\t"
-    - "replace:\s+ | "
+    - "replace:\\s+ | "
 
   attributes:
     Color:
-      - "replace:^\s+|\s+$"
-      - "replace:^\s*-\s*"
+      - "replace:^\\s+|\\s+$"
+      - "replace:^\\s*-\\s*"
     Size:
-      - "replace:^\s+|\s+$"
-      - "replace:^\s*-\s*"
+      - "replace:^\\s+|\\s+$"
+      - "replace:^\\s*-\\s*"
 
 behavior:
   # Wait for either collection grid or product title to be present
@@ -97,8 +106,15 @@ behavior:
     - ".product-grid"
     - ".collection__products"
     - "h1.product__title"
+    - ".product-gallery"
+    - ".product-gallery--viewer"
+    - ".product-gallery--loaded-image"
+    - ".product-gallery--media-thumbnail-img"
+    - ".product__media-list"
+    - ".product__media-item img"
+    - "picture source"
   scrollToLoad: true
-  useHeadlessBrowser: false
+  useHeadlessBrowser: true
   rateLimit: 150
   maxConcurrent: 6
 
@@ -117,7 +133,7 @@ validation:
   requiredFields:
     - "title"
     - "images"
-  priceFormat: "\d+(\.\d{2})?"
+  priceFormat: "\\d+(\\.\\d{2})?"
   skuFormat: "[A-Za-z0-9-_]+"
 
 

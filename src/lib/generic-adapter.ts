@@ -43,15 +43,38 @@ export class GenericAdapter extends BaseAdapter {
 
         // Follow pagination if configured
         if (pagination?.nextPage) {
-          const nextPageElement = dom.window.document.querySelector(pagination.nextPage);
-          if (nextPageElement) {
-            const nextPageUrl = nextPageElement.getAttribute('href');
-            if (nextPageUrl) {
-              currentUrl = this.resolveUrl(nextPageUrl);
-              pageCount++;
-            } else {
-              break;
+          const doc = dom.window.document;
+
+          // Support multiple potential selectors for "next" including <link rel="next">
+          const selectorCandidates: string[] = [
+            pagination.nextPage,
+            "a[rel='next']",
+            "link[rel='next']",
+            '.pagination__next',
+            '.pagination .next a',
+            '.pagination__item--next a',
+            "a[aria-label='Next']",
+            "a[aria-label='Weiter']",
+          ];
+
+          let nextPageHref: string | null = null;
+
+          for (const sel of selectorCandidates) {
+            const el = doc.querySelector(sel);
+            if (el) {
+              // If it's a <link> tag in <head>
+              if (el.tagName && el.tagName.toLowerCase() === 'link') {
+                nextPageHref = el.getAttribute('href');
+              } else {
+                nextPageHref = el.getAttribute('href');
+              }
+              if (nextPageHref) break;
             }
+          }
+
+          if (nextPageHref) {
+            currentUrl = this.resolveUrl(nextPageHref);
+            pageCount++;
           } else {
             break;
           }
@@ -231,7 +254,8 @@ export class GenericAdapter extends BaseAdapter {
         if (href) {
           const resolved = this.resolveUrl(href);
           // Accept only real product pages; exclude add-to-cart and category/archive links
-          const isProduct = /\/product\//.test(resolved);
+          // Support both singular and Shopify-style plural product paths
+          const isProduct = /(\/products\/|\/product\/)/.test(resolved);
           const isAddToCart = /[?&]add-to-cart=/.test(resolved);
           const isCategory = /\/product-category\//.test(resolved);
           if (isProduct && !isAddToCart && !isCategory && !seen.has(resolved)) {
@@ -251,20 +275,224 @@ export class GenericAdapter extends BaseAdapter {
    */
   protected override extractImages(dom: JSDOM, selector: string | string[]): string[] {
     const selectorArray = Array.isArray(selector) ? selector : [selector];
-    
-    for (const sel of selectorArray) {
-      const images = this.extractElements(dom, sel);
-      if (images.length > 0) {
-        return images
-          .map(img => {
-            const src = img.getAttribute('src') || img.getAttribute('data-src') || img.getAttribute('data-lazy-src');
-            if (src) {
-              return this.resolveUrl(src);
-            }
-            return null;
+
+    // Shopify-focused gallery detection
+    const doc = dom.window.document;
+    const galleryScopes = [
+      '.product__media',
+      '.product-media',
+      '.product__media-list',
+      '.product__gallery',
+      '[data-product-gallery]',
+    ];
+
+    // More lenient filtering - accept Shopify CDN and site-specific images
+    const productCdnFilter = (u: string) => {
+      // Accept Shopify CDN images
+      if (/cdn\.shopify\.com\/.+\/products\//.test(u)) return true;
+      // Accept wash-and-dry.eu domain images
+      if (/wash-and-dry\.eu.*\/files\//.test(u)) return true;
+      // Accept any https URL that looks like a product image
+      if (u.startsWith('https://') && /\.(jpg|jpeg|png|webp|gif)(\?|$)/i.test(u)) return true;
+      return false;
+    };
+    const notIconFilter = (u: string) => !/(icon|sprite|logo|favicon|placeholder)/i.test(u);
+
+    const getLargestFromSrcset = (srcset: string): string | null => {
+      try {
+        const parts = srcset.split(',').map(s => s.trim());
+        const candidates = parts
+          .map(p => {
+            const [url, size] = p.split(' ');
+            const width = size && size.endsWith('w') ? parseInt(size) : 0;
+            return { url, width };
           })
-          .filter((src): src is string => src !== null);
+          .filter(c => !!c.url);
+        if (candidates.length === 0) return null;
+        candidates.sort((a, b) => b.width - a.width);
+        return candidates[0].url || null;
+      } catch {
+        return null;
       }
+    };
+
+    // 0) Try LD+JSON Product images first
+    try {
+      const ldScripts = Array.from(doc.querySelectorAll("script[type='application/ld+json']"));
+      const ldImages: string[] = [];
+      for (const s of ldScripts) {
+        const raw = s.textContent?.trim();
+        if (!raw) continue;
+        let json: any;
+        try { json = JSON.parse(raw); } catch { continue; }
+        const products: any[] = [];
+        if (json && json['@type'] === 'Product') products.push(json);
+        if (Array.isArray(json)) products.push(...json.filter(j => j['@type'] === 'Product'));
+        if (Array.isArray(json['@graph'])) products.push(...json['@graph'].filter((g: any) => g['@type'] === 'Product'));
+        for (const p of products) {
+          if (p.image) {
+            if (typeof p.image === 'string') {
+              ldImages.push(p.image);
+            } else if (Array.isArray(p.image)) {
+              for (const im of p.image) if (typeof im === 'string') ldImages.push(im);
+            }
+          }
+        }
+      }
+      const filteredLd = ldImages.map(u => this.resolveUrl(u)).filter(productCdnFilter).filter(notIconFilter);
+      if (filteredLd.length > 0) {
+        if (process.env.SCRAPER_DEBUG === '1') {
+          console.log(`[extractImages] Found ${filteredLd.length} LD+JSON images, but continuing to check configured selectors`);
+        }
+        // Don't return immediately - continue to check configured selectors for more images
+      }
+    } catch {}
+
+    // 0b) Try Shopify Product JSON (script id starts with ProductJson)
+    try {
+      const productJsonScripts = Array.from(doc.querySelectorAll("script[id^='ProductJson']"));
+      const jsonImages: string[] = [];
+      for (const s of productJsonScripts) {
+        const raw = s.textContent?.trim();
+        if (!raw) continue;
+        let json: any;
+        try { json = JSON.parse(raw); } catch { continue; }
+        // Common Shopify product JSON: images: string[] or media: [{src|preview_image}]
+        if (Array.isArray(json?.images)) {
+          for (const u of json.images) if (typeof u === 'string') jsonImages.push(u);
+        }
+        if (Array.isArray(json?.media)) {
+          for (const m of json.media) {
+            const u = m?.src || m?.preview_image?.src || m?.image || m?.url;
+            if (typeof u === 'string') jsonImages.push(u);
+          }
+        }
+      }
+      const filteredJson = jsonImages.map(u => this.resolveUrl(u)).filter(productCdnFilter).filter(notIconFilter);
+      if (filteredJson.length > 0) {
+        if (process.env.SCRAPER_DEBUG === '1') {
+          console.log(`[extractImages] Found ${filteredJson.length} Shopify JSON images, but continuing to check configured selectors`);
+        }
+        // Don't return immediately - continue to check configured selectors for more images
+      }
+    } catch {}
+
+    const collectImagesFromScope = (scope: Element): string[] => {
+      const urls: string[] = [];
+      // Consider <img> and <source> inside <picture>
+      const imgNodes = scope.querySelectorAll('img, picture source');
+      imgNodes.forEach(n => {
+        let src: string | null = null;
+        const srcset = n.getAttribute('srcset') || n.getAttribute('data-srcset');
+        if (srcset) {
+          src = getLargestFromSrcset(srcset);
+        }
+        if (!src) {
+          src = n.getAttribute('data-image') || n.getAttribute('data-original-src') || n.getAttribute('data-src') || n.getAttribute('src');
+        }
+        if (src) {
+          urls.push(this.resolveUrl(src));
+        }
+      });
+      // Also extract background-image URLs
+      const bgNodes = scope.querySelectorAll("[style*='background-image']");
+      bgNodes.forEach(n => {
+        const style = (n as HTMLElement).getAttribute('style') || '';
+        const match = style.match(/background-image:\s*url\((['\"]?)([^)'\"]+)\1\)/i);
+        if (match && match[2]) {
+          urls.push(this.resolveUrl(match[2]));
+        }
+      });
+      return urls;
+    };
+
+    // 1) Try configured selectors FIRST (these are more reliable than gallery scopes)
+    for (const sel of selectorArray) {
+      const nodes = this.extractElements(dom, sel);
+      if (nodes.length > 0) {
+        const urls = nodes
+          .map(img => {
+            const srcset = img.getAttribute('srcset') || img.getAttribute('data-srcset');
+            if (srcset) {
+              const largest = getLargestFromSrcset(srcset);
+              if (largest) return this.resolveUrl(largest);
+            }
+            const src = img.getAttribute('data-image') || img.getAttribute('data-original-src') || img.getAttribute('data-src') || img.getAttribute('src');
+            return src ? this.resolveUrl(src) : null;
+          })
+          .filter((u): u is string => !!u)
+          .filter(productCdnFilter)
+          .filter(notIconFilter);
+        if (urls.length > 0) {
+          if (process.env.SCRAPER_DEBUG === '1') {
+            console.log(`[extractImages] Found ${urls.length} images from selector ${sel}`);
+          }
+          return Array.from(new Set(urls));
+        }
+      }
+    }
+
+    // 2) Try gallery scopes as fallback
+    for (const scopeSel of [...galleryScopes, '.product-gallery']) {
+      const scope = doc.querySelector(scopeSel);
+      if (scope) {
+        const urls = collectImagesFromScope(scope)
+          .filter(productCdnFilter)
+          .filter(notIconFilter);
+        if (urls.length > 0) {
+          if (process.env.SCRAPER_DEBUG === '1') {
+            console.log(`[extractImages] Found ${urls.length} images from gallery scope ${scopeSel}`);
+          }
+          return Array.from(new Set(urls));
+        }
+      }
+    }
+
+    // 1b) Try to parse <noscript> fallbacks which often contain plain <img>
+    const noscripts = Array.from(doc.querySelectorAll('noscript'));
+    for (const ns of noscripts) {
+      const html = ns.textContent || '';
+      if (!html || html.length < 10) continue;
+      try {
+        const frag = new dom.window.DOMParser().parseFromString(html, 'text/html');
+        const imgs = frag.querySelectorAll('img');
+        const urls = Array.from(imgs)
+          .map(im => im.getAttribute('src') || im.getAttribute('data-src'))
+          .filter((u): u is string => !!u)
+          .map(u => this.resolveUrl(u))
+          .filter(productCdnFilter)
+          .filter(notIconFilter);
+        if (urls.length > 0) return Array.from(new Set(urls));
+      } catch {}
+    }
+
+    // 2) Fallback to configured selectors but apply strict filtering
+    for (const sel of selectorArray) {
+      const nodes = this.extractElements(dom, sel);
+      if (nodes.length > 0) {
+        const urls = nodes
+          .map(img => {
+            const srcset = img.getAttribute('srcset') || img.getAttribute('data-srcset');
+            if (srcset) {
+              const largest = getLargestFromSrcset(srcset);
+              if (largest) return this.resolveUrl(largest);
+            }
+            const src = img.getAttribute('data-original-src') || img.getAttribute('data-src') || img.getAttribute('src');
+            return src ? this.resolveUrl(src) : null;
+          })
+          .filter((u): u is string => !!u)
+          .filter(productCdnFilter)
+          .filter(notIconFilter);
+        if (urls.length > 0) {
+          return Array.from(new Set(urls));
+        }
+      }
+    }
+
+    // 3) Last resort: OpenGraph image
+    const og = doc.querySelector("meta[property='og:image']")?.getAttribute('content');
+    if (og && productCdnFilter(og) && notIconFilter(og)) {
+      return [this.resolveUrl(og)];
     }
 
     return [];
@@ -327,6 +555,148 @@ export class GenericAdapter extends BaseAdapter {
     
     const selectorArray = Array.isArray(selector) ? selector : [selector];
     const variations: RawVariation[] = [];
+
+    // 0) Shopify: parse variants from Product JSON embedded in the page
+    try {
+      // Common Shopify script patterns - including the meta script pattern
+      const scriptCandidates = [
+        // Add the meta script pattern that contains variant data FIRST (most comprehensive)
+        ...Array.from(dom.window.document.querySelectorAll("script:not([id]):not([type])")),
+        ...Array.from(dom.window.document.querySelectorAll("script[id^='ProductJson']")),
+        ...Array.from(dom.window.document.querySelectorAll("script[type='application/ld+json']")),
+        ...Array.from(dom.window.document.querySelectorAll("script[type='application/json']")),
+      ] as HTMLScriptElement[];
+
+      for (const script of scriptCandidates) {
+        const raw = script.textContent?.trim();
+        if (!raw) continue;
+
+        // Try to find the meta script pattern: var meta = {...}
+        if (raw.includes('var meta =') && raw.includes('variants')) {
+          try {
+            // Extract the JSON part after "var meta ="
+            const metaMatch = raw.match(/var meta\s*=\s*({.*?});/s);
+            if (metaMatch && metaMatch[1]) {
+              const json = JSON.parse(metaMatch[1]);
+              
+              // Check if this has product variants
+              if (json?.product?.variants && Array.isArray(json.product.variants)) {
+                const variants = json.product.variants;
+                if (process.env.SCRAPER_DEBUG === '1') {
+                  console.log(`[extractVariations] Found ${variants.length} variants in meta script`);
+                }
+                
+                for (const v of variants) {
+                  const price = (v.price / 100).toString(); // Shopify prices are in cents
+                  const stockStatus = v.available === false ? 'outofstock' : 'instock';
+                  const images: string[] = [];
+                  
+                  // Extract variant-specific images if available
+                  if (v.featured_image && (v.featured_image.src || v.featured_image.url)) {
+                    images.push(v.featured_image.url || v.featured_image.src);
+                  }
+                  
+                  variations.push({
+                    sku: (v.sku || '').toString() || this.extractVariantSkuFromLinks(dom, v.id) || 'SKU',
+                    regularPrice: price,
+                    salePrice: '',
+                    taxClass: '',
+                    stockStatus,
+                    images,
+                    attributeAssignments: {
+                      Size: v.public_title || v.title || v.option1 || ''
+                    },
+                  });
+                }
+                
+                if (variations.length > 0) {
+                  console.log(`🔍 DEBUG: Extracted ${variations.length} variations from Shopify meta script`);
+                  return variations;
+                }
+              }
+            }
+          } catch (e) {
+            if (process.env.SCRAPER_DEBUG === '1') {
+              console.log('[extractVariations] Failed to parse meta script variants:', e);
+            }
+          }
+        }
+
+        let json: any;
+        try {
+          json = JSON.parse(raw);
+        } catch {
+          // Some themes wrap multiple JSON objects or arrays; try to find an object with variants
+          continue;
+        }
+
+        // Case A: Direct Shopify product JSON with variants
+        if (json && Array.isArray(json.variants)) {
+          const optionNames: string[] = Array.isArray(json.options)
+            ? json.options.map((o: any) => (typeof o === 'string' ? o : o?.name)).filter((n: any) => !!n)
+            : [];
+
+          for (const v of json.variants) {
+            const attributeAssignments: Record<string, string> = {};
+            const opts = [v.option1, v.option2, v.option3].filter((x: any) => typeof x === 'string');
+            for (let i = 0; i < opts.length; i++) {
+              const key = optionNames[i] || `option${i + 1}`;
+              attributeAssignments[key] = opts[i];
+            }
+
+            const price = (v.price ?? v.compare_at_price ?? '').toString();
+            const sale = (v.compare_at_price ?? '').toString();
+            const stockStatus = v.available === false ? 'outofstock' : 'instock';
+            const images: string[] = [];
+            if (v.featured_image && (v.featured_image.src || v.featured_image.url)) {
+              images.push(v.featured_image.url || v.featured_image.src);
+            }
+
+            variations.push({
+              // Try explicit SKU; fallback to variant URL query param SKU
+              sku: (v.sku || '').toString() || this.extractVariantSkuFromLinks(dom, v.id) || this.extractText(dom, '.sku, [data-sku], .product-sku') || 'SKU',
+              regularPrice: price,
+              salePrice: sale,
+              taxClass: '',
+              stockStatus,
+              images,
+              attributeAssignments,
+            });
+          }
+
+          if (variations.length > 0) {
+            console.log(`🔍 DEBUG: Extracted ${variations.length} variations from Shopify Product JSON`);
+            return variations;
+          }
+        }
+
+        // Case B: LD+JSON with Product/offers (can be single or array)
+        if (json && (json['@type'] === 'Product' || (Array.isArray(json['@graph']) && json['@graph'].some((g: any) => g['@type'] === 'Product')))) {
+          const productObj = Array.isArray(json['@graph']) ? json['@graph'].find((g: any) => g['@type'] === 'Product') : json;
+          const offers = productObj?.offers;
+          const offersArray = Array.isArray(offers) ? offers : offers ? [offers] : [];
+          for (const offer of offersArray) {
+            // LD+JSON lacks explicit option mapping; capture price/sku and leave attributes empty
+            const price = (offer.price ?? '').toString();
+            const stockStatus = /InStock/i.test(offer.availability || '') ? 'instock' : 'outofstock';
+            variations.push({
+              sku: (offer.sku || '').toString() || this.extractText(dom, '.sku, [data-sku], .product-sku') || 'SKU',
+              regularPrice: price,
+              taxClass: '',
+              stockStatus,
+              images: [],
+              attributeAssignments: {},
+            });
+          }
+          if (variations.length > 0) {
+            console.log(`🔍 DEBUG: Extracted ${variations.length} variations from LD+JSON offers`);
+            return variations;
+          }
+        }
+      }
+    } catch (e) {
+      console.warn('Failed to parse Shopify/LD+JSON variants:', e);
+    }
     
     // 1) WooCommerce: parse JSON from data-product_variations on form.variations_form
     const forms = dom.window.document.querySelectorAll('form.variations_form[data-product_variations]');
@@ -464,6 +834,24 @@ export class GenericAdapter extends BaseAdapter {
     
     console.log(`🔍 DEBUG: Extracted ${variations.length} variations total`);
     return variations;
+  }
+
+  /**
+   * Extract variant SKU from ?variant= links on the page
+   */
+  private extractVariantSkuFromLinks(dom: JSDOM, variantId?: string): string | '' {
+    try {
+      const anchors = dom.window.document.querySelectorAll('a[href*="?variant="]');
+      for (const a of Array.from(anchors)) {
+        const href = a.getAttribute('href') || '';
+        const u = new URL(href, this.baseUrl);
+        const v = u.searchParams.get('variant');
+        if (v && (!variantId || v === String(variantId))) {
+          return v;
+        }
+      }
+    } catch {}
+    return '';
   }
 
   /**

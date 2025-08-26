@@ -1,0 +1,1116 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Document</title>
+</head>
+
+<body>
+    <article class="content post wrap wccom-single-doc-content">
+        <nav id="breadcrumb" class="wccom-breadcrumb" aria-label="Breadcrumb"><span><span><a
+                        href="https://woocommerce.com/products/product-csv-import-suite/">Product CSV Import
+                        Suite</a></span> / <span><a
+                        href="https://woocommerce.com/document/product-csv-import-suite/">Documentation</a></span> /
+                <span class="breadcrumb_last" aria-current="page">Column Header Reference</span></span></nav>
+        <h1 id="doc-title" class="wccom-docs-title">Column Header Reference</h1>
+        <div class="entry">
+            <p>This documentation is for the premium Product CSV Import Suite extension. If you’re looking for
+                documentation about the default product importer built-in in WooCommerce, <a
+                    href="https://woocommerce.com/document/product-csv-importer-exporter/">see that documentation
+                    here</a>. </p>
+
+
+
+            <p>Here is an extensive list of column headers you can use in your CSV for all default product types in
+                WooCommerce. You can download <a
+                    href="https://woocommerce.com/wp-content/uploads/2017/09/woocommerce-sample-products.csv">a sample
+                    CSV file here</a>.</p>
+
+
+
+            <p class="woo-sc-box note"><strong>Please note</strong> column names are case sensitive and should be lower
+                case to match exactly.</p>
+
+
+
+            <header class="toc-header">
+                <h2 class="wp-block-heading" id="section-1"><a class="wccom-docs-anchor-links" href="#section-1">Default
+                        Column Headers<i class="fa-regular fa-link wccom-fa-icon wccom-fa-icon__size-regular"></i></a>
+                </h2><a class="wccom-docs-top-link" href="#doc-title" title="Back to top">↑ Back to top</a>
+            </header>
+
+
+
+            <figure class="wp-block-table is-style-regular has-small-font-size">
+                <table>
+                    <thead>
+                        <tr>
+                            <th><strong>Column</strong></th>
+                            <th><strong>Description</strong></th>
+                            <th><strong>Accepted values</strong></th>
+                            <th><strong>Example</strong></th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td><code>id</code></td>
+                            <td>Assigned by WordPress.</td>
+                            <td>N/A</td>
+                            <td>N/A</td>
+                        </tr>
+                        <tr>
+                            <td><code>tax:product_type</code></td>
+                            <td><b>Required</b>. Whether your product is Simple, Grouped, External, or Variable.</td>
+                            <td>simple / variable / grouped / external</td>
+                            <td>simple</td>
+                        </tr>
+                        <tr>
+                            <td><code>post_id</code></td>
+                            <td>Assigned by WordPress.</td>
+                            <td>N/A</td>
+                            <td>N/A</td>
+                        </tr>
+                        <tr>
+                            <td><code>post_type</code></td>
+                            <td>By default, this is product.</td>
+                            <td>product</td>
+                            <td>product</td>
+                        </tr>
+                        <tr>
+                            <td><code>menu_order</code></td>
+                            <td>Use this to sort your products.</td>
+                            <td>Numerical</td>
+                            <td>5</td>
+                        </tr>
+                        <tr>
+                            <td><code>post_status</code></td>
+                            <td>Choose whether your post should be published or not.</td>
+                            <td>draft / publish / pending / private / trash</td>
+                            <td>draft</td>
+                        </tr>
+                        <tr>
+                            <td><code>post_title</code></td>
+                            <td><b>Required</b>. Name of the product.</td>
+                            <td>Text</td>
+                            <td>Killer Heels</td>
+                        </tr>
+                        <tr>
+                            <td><code>post_name</code></td>
+                            <td>Use this to update the <a
+                                    href="https://woocommerce.com/document/custom-permalinks-for-woocommerce/#section-3">product
+                                    slug</a>, which forms part of the product’s permalink. </td>
+                            <td>Text</td>
+                            <td>hoodie_with_logo</td>
+                        </tr>
+                        <tr>
+                            <td><code>post_date</code></td>
+                            <td>Date/time from your WordPress admin. You only need to add a date if you don’t want to
+                                use the current date. If you’re updating products, leave this as the exported value
+                                unless you want to make the product appear more/less recent.</td>
+                            <td>mm/dd/yyyy<br>dd-mm-yyyy<br><a
+                                    href="http://www.php.net/manual/en/datetime.formats.date.php">More accepted date
+                                    formats</a></td>
+                            <td>01/02/2015<br>02-01-2015<em>*Both of these are January 2, 2015</em></td>
+                        </tr>
+                        <tr>
+                            <td><code>post_content</code></td>
+                            <td>Post content, normally a description of the product.</td>
+                            <td>Text</td>
+                            <td>Super high heels are all the rage. Look beautiful this season with a gorgeous pair of
+                                killer heels. Available in 5 colors!</td>
+                        </tr>
+                        <tr>
+                            <td><code>post_excerpt</code></td>
+                            <td>Short description of the product.</td>
+                            <td>Text</td>
+                            <td>This season’s latest heels!</td>
+                        </tr>
+                        <tr>
+                            <td><code>post_parent</code></td>
+                            <td><b>Use for variations</b>. Enter the ID of the parent product. <i>Note: Variables should
+                                    be imported in a separate spreadsheet.</i></td>
+                            <td>Post ID</td>
+                            <td>234</td>
+                        </tr>
+                        <tr>
+                            <td><code>post_password</code></td>
+                            <td>If your post is private, include the password.</td>
+                            <td>Text</td>
+                            <td>!MyAwesomePassw!</td>
+                        </tr>
+                        <tr>
+                            <td><code>visibility</code></td>
+                            <td>Choose visibility for your product.<br><a
+                                    href="https://woocommerce.com/document/managing-products/#section-3" target="_blank"
+                                    rel="noopener noreferrer">Learn more about product visibility</a>.</td>
+                            <td>visible / catalog / search / hidden</td>
+                            <td>visible</td>
+                        </tr>
+                        <tr>
+                            <td><code>sku</code></td>
+                            <td><b>Recommended</b>. SKU of the product. Must be unique.</td>
+                            <td>Text</td>
+                            <td>SH99786</td>
+                        </tr>
+                        <tr>
+                            <td><code>upsell_skus</code></td>
+                            <td>SKU(s) of the product to which you wish to upsell.</td>
+                            <td>Text – multiple skus separated by a “|” character.</td>
+                            <td>SKU1|SKU2</td>
+                        </tr>
+                        <tr>
+                            <td><code>upsell_ids</code></td>
+                            <td>ID of the product to which you wish to upsell.</td>
+                            <td>post ID – multiple IDs separated by a “|” character.</td>
+                            <td>236|569</td>
+                        </tr>
+                        <tr>
+                            <td><code>crosssell_skus</code></td>
+                            <td>SKU(s) of the product with which you wish to crosssell.</td>
+                            <td>Text – multiple skus separated by a “|” character.</td>
+                            <td>SKU1|SKU2</td>
+                        </tr>
+                        <tr>
+                            <td><code>crosssell_ids</code></td>
+                            <td>ID of the product that can be purchased with this product.</td>
+                            <td>post ID – multiple IDs separated by a “|” character.</td>
+                            <td>236|569</td>
+                        </tr>
+                        <tr>
+                            <td><code>featured</code></td>
+                            <td>Whether this product should be featured or not.</td>
+                            <td>yes/no</td>
+                            <td>yes</td>
+                        </tr>
+                        <tr>
+                            <td><code>downloadable</code></td>
+                            <td>Whether your product is downloadable or not.</td>
+                            <td>yes/no</td>
+                            <td>no</td>
+                        </tr>
+                        <tr>
+                            <td><code>virtual</code></td>
+                            <td>Whether your item is a non-physical object or not.</td>
+                            <td>yes/no</td>
+                            <td>no</td>
+                        </tr>
+                        <tr>
+                            <td><code>regular_price</code></td>
+                            <td><b>Required</b> <b>for all products except variable products.</b><br>Normal price of
+                                your product.</td>
+                            <td>Float (Decimal number)</td>
+                            <td>99.99</td>
+                        </tr>
+                        <tr>
+                            <td><code>sale_price</code></td>
+                            <td>Sale price of your product, if on sale.</td>
+                            <td>Float (Decimal number)</td>
+                            <td>69.99</td>
+                        </tr>
+                        <tr>
+                            <td><code>manage_stock</code></td>
+                            <td>Whether or not you are managing stock for the product.</td>
+                            <td>yes/no</td>
+                            <td>no</td>
+                        </tr>
+                        <tr>
+                            <td><code>stock</code></td>
+                            <td>Number of this item you have in stock. Can be relative to the value currently configured
+                                in the product.</td>
+                            <td>Numerical</td>
+                            <td>3<br>(+)10<br>(-)3</td>
+                        </tr>
+                        <tr>
+                            <td><code>stock_status</code></td>
+                            <td>Whether you have any in stock or not.</td>
+                            <td>instock / outofstock</td>
+                            <td>instock</td>
+                        </tr>
+                        <tr>
+                            <td><code>backorders</code></td>
+                            <td>Whether you’re accepting backorders.</td>
+                            <td>yes/no/ notify</td>
+                            <td>yes</td>
+                        </tr>
+                        <tr>
+                            <td><code>weight</code></td>
+                            <td>Weight of your product. Complete if you’re using weight-based shipping rules or a
+                                shipping method that pulls rates from an external service.<br>Use the same measurement
+                                unit set for your site.</td>
+                            <td>Numerical</td>
+                            <td>0.73</td>
+                        </tr>
+                        <tr>
+                            <td><code>length</code></td>
+                            <td>Length of your product. Use if you pull rates from an external service, such as
+                                USPS.<br>Use the same measurement unit set for your site.</td>
+                            <td>Numerical</td>
+                            <td>10.5</td>
+                        </tr>
+                        <tr>
+                            <td><code>width</code></td>
+                            <td>Width of your product. Use if you pull rates from an external service, such as
+                                USPS.<br>Use the same measurement unit set for your site.</td>
+                            <td>Numerical</td>
+                            <td>15</td>
+                        </tr>
+                        <tr>
+                            <td><code>height</code></td>
+                            <td>Height of your product. Use if you pull rates from an external service, such as
+                                USPS.<br>Use the same measurement unit setted in your site.</td>
+                            <td>Numerical</td>
+                            <td>8</td>
+                        </tr>
+                        <tr>
+                            <td><code>tax_status</code></td>
+                            <td>Use to determine whether your product is taxable or not.</td>
+                            <td>taxable / shipping / none</td>
+                            <td>taxable</td>
+                        </tr>
+                        <tr>
+                            <td><code>tax_class</code></td>
+                            <td>Tax class of your product.</td>
+                            <td>zero-rate, reduced-rate<br>Notice that you have to use the slug of the tax
+                                class.<br>Leave blank if the value should be <b>Standard Rate</b>.</td>
+                            <td>reduced-rate</td>
+                        </tr>
+                        <tr>
+                            <td><code>tax:product_shipping_class</code></td>
+                            <td>Product’s shipping class</td>
+                            <td>Allows you to set the <a
+                                    href="https://woocommerce.com/document/product-shipping-classes/" target="_blank"
+                                    rel="noopener noreferrer">Shipping Class</a> when uploading a product to your store.
+                            </td>
+                            <td>Class 1</td>
+                        </tr>
+                        <tr>
+                            <td><code>sale_price_dates_from</code></td>
+                            <td>Date from when your sale price is used.</td>
+                            <td>MM DD YYdd MM YY MM” / “DD” / “YYDD” / “MM” / “YY”<br><a
+                                    href="http://www.php.net/manual/en/datetime.formats.date.php">More accepted date
+                                    formats</a></td>
+                            <td>01/02/2013</td>
+                        </tr>
+                        <tr>
+                            <td><code>sale_price_dates_to</code></td>
+                            <td>Date when your sale ends for this product.</td>
+                            <td>MM DD YYdd MM YY MM” / “DD” / “YYDD” / “MM” / “YY”<br><a
+                                    href="http://www.php.net/manual/en/datetime.formats.date.php">More accepted date
+                                    formats</a></td>
+                            <td>01/04/2013</td>
+                        </tr>
+                        <tr>
+                            <td><code>images</code></td>
+                            <td>Import images. Use a pipe (“|”) to separate multiple images. <br><br>You can use public
+                                facing URLs for images, however, this may cause images to be duplicated in your media
+                                library when using the same image for multiple products.<br><br>When importing an image
+                                that is already uploaded to your site, enter the image’s file name as shown in the
+                                example <br><br>When only using an image’s file name, the importer will look in
+                                <code>wp-content/uploads/year/month</code> where <code>year/month</code> are the year
+                                and month in which the import is run. This means that the images should be uploaded to
+                                your media library in the same month you are running the import.<br><br>The first image
+                                listed is the main product image and will be used as the featured image.</td>
+                            <td>Text</td>
+                            <td>image1.jpg | image2.jpg | image3.jpg</td>
+                        </tr>
+                        <tr>
+                            <td><code>product_url</code></td>
+                            <td>Use if the product is sold on another site. Used by External/Affiliate products only.
+                            </td>
+                            <td>URL</td>
+                            <td>http://amazon.com/etc</td>
+                        </tr>
+                        <tr>
+                            <td><code>button_text</code></td>
+                            <td>Text that will appear on your “Add to cart” button. Used by External/Affiliate products
+                                only.</td>
+                            <td>Text</td>
+                            <td>Buy on Amazon!</td>
+                        </tr>
+                        <tr>
+                            <td><code>meta:_sold_individually</code></td>
+                            <td>Can the product only be sold on its own?</td>
+                            <td>yes/no</td>
+                            <td>no</td>
+                        </tr>
+                        <tr>
+                            <td><code>meta:total_sales</code></td>
+                            <td>Total sales for this product.</td>
+                            <td>Numerical</td>
+                            <td>56</td>
+                        </tr>
+                        <tr>
+                            <td><code>meta:_children</code></td>
+                            <td>Product ID’s of a grouped product’s children</td>
+                            <td>post ID’s in brackets – multiple IDs separated by a “,” character.</td>
+                            <td>[123, 124]</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </figure>
+
+
+
+            <header class="toc-header">
+                <h2 class="wp-block-heading" id="section-2"><a class="wccom-docs-anchor-links"
+                        href="#section-2">Downloadable &amp; Digital Products<i
+                            class="fa-regular fa-link wccom-fa-icon wccom-fa-icon__size-regular"></i></a> </h2><a
+                    class="wccom-docs-top-link" href="#doc-title" title="Back to top">↑ Back to top</a>
+            </header>
+
+
+
+            <p>Downloadable products are products that can be downloaded by customers after purchase. To learn more,
+                see:&nbsp;<a
+                    href="https://woocommerce.com/document/digitaldownloadable-product-handling/">Digital/Downloadable
+                    Product Handling</a>.</p>
+
+
+
+            <p>You can also import them. Be sure to import the files previously (if needed) and use these columns in the
+                CSV to import:</p>
+
+
+
+            <figure class="wp-block-table has-small-font-size">
+                <table>
+                    <thead>
+                        <tr>
+                            <th><strong>Column</strong></th>
+                            <th><strong>Description</strong></th>
+                            <th><strong>Accepted values</strong></th>
+                            <th><strong>Example</strong></th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td><code>downloadable_files</code></td>
+                            <td>File name(s) and file path(s) for your product.&nbsp;Use a pipe “|” to separate values.
+                            </td>
+                            <td>Filename::File-Path</td>
+                            <td>New::http://domain.com/wp-content/uploads/woocommerce_uploads/Issue45.pdf | Issue
+                                45::http://domain.com/wp-content/uploads/woocommerce_uploads/Issue45.pdf</td>
+                        </tr>
+                        <tr>
+                            <td><code>download_limit</code></td>
+                            <td>Maximum number of downloads for a product.</td>
+                            <td>Numerical</td>
+                            <td>2</td>
+                        </tr>
+                        <tr>
+                            <td><code>download_expiry</code></td>
+                            <td>Date on which the download expires.</td>
+                            <td>MM DD YYdd MM YY MM” / “DD” / “YYDD” / “MM” / “YY”<br><a
+                                    href="http://www.php.net/manual/en/datetime.formats.date.php">More accepted date
+                                    formats</a></td>
+                            <td>01/04/2013</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </figure>
+
+
+
+            <header class="toc-header">
+                <h2 class="wp-block-heading" id="section-3"><a class="wccom-docs-anchor-links"
+                        href="#section-3">Attributes Columns<i
+                            class="fa-regular fa-link wccom-fa-icon wccom-fa-icon__size-regular"></i></a> </h2><a
+                    class="wccom-docs-top-link" href="#doc-title" title="Back to top">↑ Back to top</a>
+            </header>
+
+
+
+            <p>These columns are used on <b>Variable Products,</b> but it’s possible to use some for other product
+                types.</p>
+
+
+
+            <p>View the differences between the attributes in the table below.</p>
+
+
+
+            <ul class="wp-block-list">
+                <li><b>Global attributes </b>use <b>pa_</b> before the attribute name and do NOT use spaces. They’ll be
+                    formatted automatically by the importer. Use dashes or underscores instead.</li>
+
+
+
+                <li><b>Local attributes</b> are not held to the same naming conventions.</li>
+            </ul>
+
+
+            <div class="woo-sc-box note  info "><strong>Note:</strong> If you’re unclear about how to use attribute
+                column headers, learn more about <b>Global attributes </b>and <b>Local attributes</b> via the <a
+                    href="https://woocommerce.com/document/managing-product-taxonomies/#section-6">Product Attributes
+                    Documentation</a>. </div>
+
+
+
+            <figure class="wp-block-table has-small-font-size">
+                <table>
+                    <thead>
+                        <tr>
+                            <th><strong>Column</strong></th>
+                            <th><strong>Columns Header Example</strong></th>
+                            <th><strong>Description</strong></th>
+                            <th><strong>Accepted values</strong></th>
+                            <th><strong>Example</strong></th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td><code>attribute:ATTRIBUTE NAME</code></td>
+                            <td>attribute: Hoodie Sizes</td>
+                            <td>Import local product attributes.</td>
+                            <td>Attribute 1 | Attribute 2 | Attribute 3</td>
+                            <td>Small|Medium|Large</td>
+                        </tr>
+                        <tr>
+                            <td><code>attribute_default:ATTRIBUTE NAME</code></td>
+                            <td>attribute_default: Hoodie Sizes</td>
+                            <td>Set the default value of the local attribute.<br>Used only by variable products.</td>
+                            <td>Text</td>
+                            <td>Medium</td>
+                        </tr>
+                        <tr>
+                            <td><code>attribute_data:ATTRIBUTE NAME</code></td>
+                            <td>attribute_data: Hoodie Sizes</td>
+                            <td>Used to order (numerical value) and display local attributes (1 for display, 0 for not
+                                display), and for variations (1 for used for variations, 0 for not used for
+                                variations).<br>The third value is used only by variable products and ignored by other
+                                product types.</td>
+                            <td>position | visible | variation</td>
+                            <td>3|0|1</td>
+                        </tr>
+                        <tr>
+                            <td><code>attribute:pa_ATTRIBUTE_NAME</code></td>
+                            <td>attribute: pa_color</td>
+                            <td>Import global product attributes.</td>
+                            <td>Attribute 1 | Attribute 2 | Attribute 3</td>
+                            <td>Red|Blue|Yellow</td>
+                        </tr>
+                        <tr>
+                            <td><code>attribute_default:pa_ATTRIBUTE_NAME</code></td>
+                            <td>attribute_default: pa_color</td>
+                            <td>Set the default value of the global attribute for the product.<br>Used only by variable
+                                products.</td>
+                            <td>Text</td>
+                            <td>Red</td>
+                        </tr>
+                        <tr>
+                            <td><code>attribute_data:pa_ATTRIBUTE_NAME</code></td>
+                            <td>attribute_data: pa_color</td>
+                            <td>Used to order (numerical value) and display global attributes (1 for display, 0 for not
+                                display), and for variations (1 for used for variations, 0 for not used for
+                                variations).<br>The third value is used only by variable products and ignored by other
+                                product types.</td>
+                            <td>position | visible | variation</td>
+                            <td>3|0|1</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </figure>
+
+
+
+            <header class="toc-header">
+                <h2 class="wp-block-heading" id="section-4"><a class="wccom-docs-anchor-links"
+                        href="#section-4">Creating New Columns<i
+                            class="fa-regular fa-link wccom-fa-icon wccom-fa-icon__size-regular"></i></a> </h2><a
+                    class="wccom-docs-top-link" href="#doc-title" title="Back to top">↑ Back to top</a>
+            </header>
+
+
+
+            <p>You may add as many columns as you like to add custom fields or taxonomies to products.</p>
+
+
+
+            <p>To do this, use the column headers <b>meta: </b>and <b>tax:</b></p>
+
+
+
+            <figure class="wp-block-table has-small-font-size">
+                <table>
+                    <thead>
+                        <tr>
+                            <th><strong>Column</strong></th>
+                            <th><strong>Columns Header Example</strong></th>
+                            <th><strong>Description</strong></th>
+                            <th><strong>Accepted values</strong></th>
+                            <th><strong>Example</strong></th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td><code>meta:CUSTOM FIELD NAME</code></td>
+                            <td>meta: Product Brand</td>
+                            <td>Import a custom field.</td>
+                            <td>Text</td>
+                            <td>Jimmy Choo</td>
+                        </tr>
+                        <tr>
+                            <td><code>tax:TAXONOMY_NAME</code></td>
+                            <td>tax:product_cat</td>
+                            <td>Import a taxonomy or custom taxonomy (e.g., product category).<br>Terms are separated by
+                                a “|”.<br>Hierarchical category terms are separated with a “&gt;”.</td>
+                            <td>Text</td>
+                            <td>Women|Women&gt;Shoes</td>
+                        </tr>
+                        <tr>
+                            <td>&nbsp;</td>
+                            <td>tax:product_tag</td>
+                            <td>Import a tag. Terms are separated by a “|”.</td>
+                            <td>Text</td>
+                            <td>Shoes|High Heels</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </figure>
+
+
+
+            <header class="toc-header">
+                <h2 class="wp-block-heading" id="section-5"><a class="wccom-docs-anchor-links" href="#section-5">Columns
+                        For Variations<i class="fa-regular fa-link wccom-fa-icon wccom-fa-icon__size-regular"></i></a>
+                </h2><a class="wccom-docs-top-link" href="#doc-title" title="Back to top">↑ Back to top</a>
+            </header>
+
+
+
+            <p>When <a
+                    href="https://woocommerce.com/document/product-csv-import-suite-importing-product-variations/">importing
+                    variable products</a>, you need to create a separate CSV for all variations.</p>
+
+
+
+            <figure class="wp-block-table has-small-font-size">
+                <table>
+                    <thead>
+                        <tr>
+                            <th><strong>Column</strong></th>
+                            <th><strong>Description</strong></th>
+                            <th><strong>Accepted values</strong></th>
+                            <th><strong>Example</strong></th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td><code>post_parent</code></td>
+                            <td>Parent product of the variation. This should be that product’s ID.</td>
+                            <td>Numerical</td>
+                            <td>273</td>
+                        </tr>
+                        <tr>
+                            <td><code>parent_sku</code></td>
+                            <td>Parent product of the variation. This should be that product’s SKU.</td>
+                            <td>Text</td>
+                            <td>SH9988</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </figure>
+
+
+
+            <p>One of two columns is <b>required</b> for each variation in the CSV, or the importer cannot create the
+                variations correctly.</p>
+
+
+
+            <p>In addition, you can use these columns:</p>
+
+
+
+            <figure class="wp-block-table has-small-font-size">
+                <table>
+                    <thead>
+                        <tr>
+                            <th><strong>Column</strong></th>
+                            <th><strong>Description</strong></th>
+                            <th><strong>Accepted values</strong></th>
+                            <th><strong>Example</strong></th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td><code>post_status</code></td>
+                            <td>Choose whether the variation should be published or not.</td>
+                            <td>draft / publish / pending / private</td>
+                            <td>draft</td>
+                        </tr>
+                        <tr>
+                            <td><code>sku</code></td>
+                            <td><b>Recommended</b>. The SKU of the variation. Must be unique.</td>
+                            <td>Text</td>
+                            <td>SH99786</td>
+                        </tr>
+                        <tr>
+                            <td><code>downloadable</code></td>
+                            <td>Whether the variation is a downloadable item or not.</td>
+                            <td>yes/no</td>
+                            <td>no</td>
+                        </tr>
+                        <tr>
+                            <td><code>virtual</code></td>
+                            <td>Whether your item’s variation is a non-physical object or not.</td>
+                            <td>yes/no</td>
+                            <td>no</td>
+                        </tr>
+                        <tr>
+                            <td><code>regular_price</code></td>
+                            <td><b>Required</b> <b>for all variations.</b><br>Normal price of your variation.</td>
+                            <td>Float (Decimal number)</td>
+                            <td>99.99</td>
+                        </tr>
+                        <tr>
+                            <td><code>sale_price</code></td>
+                            <td>Sale price of your variation, if it’s on sale.</td>
+                            <td>Float (Decimal number)</td>
+                            <td>69.99</td>
+                        </tr>
+                        <tr>
+                            <td><code>stock</code></td>
+                            <td>Number of this item’s variation you have in stock.</td>
+                            <td>Numerical</td>
+                            <td>3</td>
+                        </tr>
+                        <tr>
+                            <td><code>weight</code></td>
+                            <td>Weight of your variation. Complete if you are using weight based shipping rules, or a
+                                shipping method that pulls rates from an external service.<br>Use the same measurement
+                                unit set for your site.</td>
+                            <td>Numerical</td>
+                            <td>0.73</td>
+                        </tr>
+                        <tr>
+                            <td><code>length</code></td>
+                            <td>Length of your variation. Use if you pull rates from an external service, such as
+                                USPS.<br>Use the same measurement unit set for your site.</td>
+                            <td>Numerical</td>
+                            <td>10.5</td>
+                        </tr>
+                        <tr>
+                            <td><code>width</code></td>
+                            <td>Width of your variation. Use if you get rates from an external service such as
+                                USPS.<br>Use the same measurement unit setted in your site.</td>
+                            <td>Numerical</td>
+                            <td>15</td>
+                        </tr>
+                        <tr>
+                            <td><code>height</code></td>
+                            <td>Height of your variation. Use if you get rates from an external service such as
+                                USPS.<br>Use the same measurement unit setted in your site.</td>
+                            <td>Numerical</td>
+                            <td>8</td>
+                        </tr>
+                        <tr>
+                            <td><code>tax_status</code></td>
+                            <td>Use to determine whether your variation is taxable or not.</td>
+                            <td>taxable/ shipping/none</td>
+                            <td>taxable</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </figure>
+
+
+
+            <h2 class="wp-block-heading" id="h-columns-for-the-subscriptions-extension">Columns for the
+                Subscriptions&nbsp;Extension</h2>
+
+
+
+            <p>Do you need <a href="https://woocommerce.com/products/woocommerce-subscriptions/" target="_blank"
+                    rel="noopener noreferrer">Subscriptions</a>?</p>
+
+
+
+            <figure class="wp-block-table has-small-font-size">
+                <table>
+                    <thead>
+                        <tr>
+                            <th><strong>Column Header</strong></th>
+                            <th><strong>Description</strong></th>
+                            <th><strong>Accepted values</strong></th>
+                            <th><strong>Example</strong></th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td><code>tax:product_type</code></td>
+                            <td><strong>Required.</strong> Denotes whether a&nbsp;product is a simple or variable
+                                subscription.</td>
+                            <td>subscription / variable-subscription</td>
+                            <td>variable-subscription</td>
+                        </tr>
+                        <tr>
+                            <td><code>meta:_subscription_price</code></td>
+                            <td><strong>Required.</strong> The price of each subscription renewal.</td>
+                            <td>Numerical</td>
+                            <td>50</td>
+                        </tr>
+                        <tr>
+                            <td><code>meta:_subscription_period</code></td>
+                            <td><strong>Required.</strong> The time interval of the subscription&nbsp;product.</td>
+                            <td>day / week / month / year</td>
+                            <td>week</td>
+                        </tr>
+                        <tr>
+                            <td><code>meta:_subscription_period_interval</code></td>
+                            <td><strong>Required.</strong> The&nbsp;number of intervals between each renewal payment.
+                            </td>
+                            <td>Numerical</td>
+                            <td>2</td>
+                        </tr>
+                        <tr>
+                            <td><code>meta:_subscription_length</code></td>
+                            <td>The number of times the subscription will renew. For subscriptions that do not expire,
+                                specify “0”.</td>
+                            <td>Numerical</td>
+                            <td>0</td>
+                        </tr>
+                        <tr>
+                            <td><code>meta:_subscription_limit</code></td>
+                            <td>Limit customers to only one subscription of a certain product. Can be limited to
+                                one&nbsp;<strong>active</strong> subscription, <strong>any</strong> subscription or not
+                                limited.</td>
+                            <td>active / any / no</td>
+                            <td>no</td>
+                        </tr>
+                        <tr>
+                            <td><code>meta:_subscription_one_time_shipping</code></td>
+                            <td>Only charge shipping once on the initial order.</td>
+                            <td>yes/no</td>
+                            <td>no</td>
+                        </tr>
+                        <tr>
+                            <td><code>meta:_subscription_payment_sync_date</code></td>
+                            <td>Day of the&nbsp;week (Sun = 0, Mon = 1, Tue = 2, etc.), of the month (1 – 28), or a
+                                specific calendar day each year (e.g. Dec 8 = {“day”:”8″,”month”:”12″}).
+                                Note:&nbsp;synchronized subscriptions for&nbsp;day of the month can&nbsp;only be renewed
+                                on days 1 – 27, or on the last day of the month (28).</td>
+                            <td>Numerical / Array</td>
+                            <td>3</td>
+                        </tr>
+                        <tr>
+                            <td><code>meta:_subscription_sign_up_fee</code></td>
+                            <td>The cost of the sign up fee for the subscription.</td>
+                            <td>Numerical</td>
+                            <td>10</td>
+                        </tr>
+                        <tr>
+                            <td><code>meta:_subscription_trial_length</code></td>
+                            <td>The number&nbsp;of time intervals of the subscription trial.</td>
+                            <td>Numerical</td>
+                            <td>5</td>
+                        </tr>
+                        <tr>
+                            <td><code>meta:_subscription_trial_period</code></td>
+                            <td>The time interval of the subscription trial.</td>
+                            <td>day / week / month / year</td>
+                            <td>day</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </figure>
+
+
+
+            <h2 class="wp-block-heading" id="vendor">Column for the Product Vendor&nbsp;Extension</h2>
+
+
+
+            <p>Do you need <a href="https://woocommerce.com/products/product-vendors/" target="_blank"
+                    rel="noopener noreferrer">Product Vendors</a>?</p>
+
+
+
+            <figure class="wp-block-table has-small-font-size">
+                <table>
+                    <thead>
+                        <tr>
+                            <th><strong>Column Header</strong></th>
+                            <th><strong>Description</strong></th>
+                            <th><strong>Accepted values</strong></th>
+                            <th><strong>Example</strong></th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td><code>tax:wcpv_product_vendors</code></td>
+                            <td>Import a vendor for a product</td>
+                            <td>Text</td>
+                            <td>Bob Smith</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </figure>
+
+
+
+            <header class="toc-header">
+                <h2 class="wp-block-heading" id="section-8"><a class="wccom-docs-anchor-links" href="#section-8">Columns
+                        for the Google Product Feed Extension<i
+                            class="fa-regular fa-link wccom-fa-icon wccom-fa-icon__size-regular"></i></a> </h2><a
+                    class="wccom-docs-top-link" href="#doc-title" title="Back to top">↑ Back to top</a>
+            </header>
+
+
+
+            <p>Do you need <a href="https://woocommerce.com/products/google-product-feed/" target="_blank"
+                    rel="noopener noreferrer">Google Product Feed</a>?</p>
+
+
+
+            <figure class="wp-block-table has-small-font-size">
+                <table>
+                    <thead>
+                        <tr>
+                            <th><strong>Column Header</strong></th>
+                            <th><strong>Description</strong></th>
+                            <th><strong>Accepted Values</strong></th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td><code>gpf:availability</code></td>
+                            <td>Availability</td>
+                            <td>in stock, available for order, preorder</td>
+                        </tr>
+                        <tr>
+                            <td><code>gpf:condition</code></td>
+                            <td>Condition</td>
+                            <td>new, used, refurbished</td>
+                        </tr>
+                        <tr>
+                            <td><code>gpf:brand</code></td>
+                            <td>Brand</td>
+                            <td>Text</td>
+                        </tr>
+                        <tr>
+                            <td><code>gpf:product_type</code></td>
+                            <td>Product Type</td>
+                            <td>Text</td>
+                        </tr>
+                        <tr>
+                            <td><code>gpf:google_product_category</code></td>
+                            <td>Product category</td>
+                            <td>Text</td>
+                        </tr>
+                        <tr>
+                            <td><code>gpf:gtin</code></td>
+                            <td>GTIN (Global Trade Item Number)</td>
+                            <td>Text</td>
+                        </tr>
+                        <tr>
+                            <td><code>gpf:mpn</code></td>
+                            <td>MPN (Manufacturer Part Number)</td>
+                            <td>Text</td>
+                        </tr>
+                        <tr>
+                            <td><code>gpf:gender</code></td>
+                            <td>Gender</td>
+                            <td>male, female, unisex</td>
+                        </tr>
+                        <tr>
+                            <td><code>gpf:age_group</code></td>
+                            <td>Age group</td>
+                            <td>adult, kids</td>
+                        </tr>
+                        <tr>
+                            <td><code>gpf:color</code></td>
+                            <td>Color</td>
+                            <td>Text</td>
+                        </tr>
+                        <tr>
+                            <td><code>gpf:size</code></td>
+                            <td>Size</td>
+                            <td>Text</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </figure>
+
+
+
+            <header class="toc-header">
+                <h2 class="wp-block-heading" id="section-9"><a class="wccom-docs-anchor-links" href="#section-9">FAQ<i
+                            class="fa-regular fa-link wccom-fa-icon wccom-fa-icon__size-regular"></i></a> </h2><a
+                    class="wccom-docs-top-link" href="#doc-title" title="Back to top">↑ Back to top</a>
+            </header>
+
+
+
+            <header class="toc-header">
+                <h3 class="wp-block-heading" id="section-10"><a class="wccom-docs-anchor-links" href="#section-10">How
+                        do I figure out what column header to use?<i
+                            class="fa-regular fa-link wccom-fa-icon wccom-fa-icon__size-regular"></i></a> </h3><a
+                    class="wccom-docs-top-link" href="#doc-title" title="Back to top">↑ Back to top</a>
+            </header>
+
+
+
+            <p>If you need to know how to name a specific column, or you’re not sure about how to format it, we suggest
+                creating a product that&nbsp;includes everything you need for your products, then <a
+                    href="https://woocommerce.com/document/product-csv-import-suite-exporting-products-and-variations/">exporting
+                    it in a CSV</a> and see what column it uses.</p>
+        </div>
+
+        <div class="wccom-comp-docs-voting wccom-component wccom-component--is-rendered"
+            data-props="{&quot;docID&quot;:8733372}">
+            <div class="wccom-vote-buttons"><span>Was this guide helpful for you?</span>
+                <div class="wccom-vote-button wccom-docs-vote__up"><button class="wccom-vote-button__button"
+                        aria-label="Vote up"><i
+                            class="fa-regular wccom-vote-button__image vote-up fa-thumbs-up"></i></button></div>
+                <div class="wccom-vote-button wccom-docs-vote__down"><button class="wccom-vote-button__button"
+                        aria-label="Vote down"><i
+                            class="fa-regular wccom-vote-button__image vote-down fa-thumbs-down"></i></button></div>
+            </div>
+        </div>
+        <!-- Fetching cached results from meta key: `productsce2c01afebaf905c604a5efd406a09e1` -->
+        <div class="wccom-product-recommendations">
+            <h2 class="wccom-product-recommendations__title">Related Products</h2>
+
+
+            <div class="wccom-grid wccom-grid--two wccom-grid--hide-overflow">
+                <div class="wccom-card wccom-component wccom-card--product wccom-card--has-icon wccom-card--small">
+
+                    <header class="wccom-card__header">
+
+                        <img class="wccom-card__icon"
+                            src="https://woocommerce.com/wp-content/uploads/2013/04/Checkout_Field_Editor_icon-marketplace-160x160-1.png"
+                            alt="" loading="lazy">
+
+                        <div class="wccom-card__title-container">
+                            <h3 class="wccom-card__title wccom-card__title--has-link">
+                                <a class="wccom-card__title-link"
+                                    href="https://woocommerce.com/products/woocommerce-checkout-field-editor/"
+                                    data-tracks="product_card_click" data-tracks-product_id="184594">
+                                    Checkout Field Editor </a>
+                            </h3>
+
+                            <div class="wccom-card__vendor">
+                                by <a class="wccom-card__vendor-link"
+                                    href="https://woocommerce.com/vendor/woocommerce">Woo</a>
+                            </div>
+                        </div>
+                    </header>
+
+                    <div class="wccom-card__content">
+                        <p>Optimize your checkout process by adding, removing or editing fields to suit your needs.</p>
+
+                        <footer class="wccom-card-product__footer">
+                            <div class="wccom-card-product__footer-bottom-row">
+                                <div class="wccom-product-card">
+                                    <span class="wccom-product-card__price">
+                                        <span class="screen-reader-text">
+                                            Price $49 annually </span>
+                                        <span aria-hidden="true">
+                                            $49 </span>
+                                    </span>
+                                    <span class="wccom-product-card__period" aria-hidden="true">annually </span>
+                                </div>
+                                <div class="wccom-card-product__footer-reviews">
+
+                                    <div class="wccom-rating-summary">
+                                        <span class="screen-reader-text">
+                                            Rated 2.7 out of 5 stars </span>
+                                        <svg class="wccom-star wccom-rating-summary__star wccom-star__1" width="24"
+                                            height="24" viewBox="0 0 24 24" role="img" aria-hidden="true">
+                                            <!-- Background star (always grey) -->
+                                            <path
+                                                d="M11.6175 18.3126L17.4016 21.2832C17.9771 21.5788 18.6432 21.091 18.5352 20.4531L17.5256 14.4916L22.2421 9.44552C22.6687 8.98913 22.4178 8.24151 21.8023 8.13483L15.5158 7.04526L12.305 1.24251C12.006 0.702085 11.2291 0.702085 10.93 1.24251L7.71933 7.04526L1.43282 8.13483C0.817277 8.24151 0.566397 8.98913 0.992984 9.44552L5.70949 14.4916L4.69988 20.4531C4.59184 21.091 5.25798 21.5788 5.83352 21.2832L11.6175 18.3126Z"
+                                                fill="#dcdcde"></path>
+                                            <!-- Foreground star (yellow, clipped for half-star) -->
+                                            <path class="wccom-star__foreground--full"
+                                                d="M11.6175 18.3126L17.4016 21.2832C17.9771 21.5788 18.6432 21.091 18.5352 20.4531L17.5256 14.4916L22.2421 9.44552C22.6687 8.98913 22.4178 8.24151 21.8023 8.13483L15.5158 7.04526L12.305 1.24251C12.006 0.702085 11.2291 0.702085 10.93 1.24251L7.71933 7.04526L1.43282 8.13483C0.817277 8.24151 0.566397 8.98913 0.992984 9.44552L5.70949 14.4916L4.69988 20.4531C4.59184 21.091 5.25798 21.5788 5.83352 21.2832L11.6175 18.3126Z"
+                                                fill="#f0c930"></path>
+                                        </svg>
+                                        <span class="wccom-rating-summary__rating" aria-hidden="true">
+                                            2.7 </span>
+                                        <span class="wccom-rating-summary__review-count" aria-hidden="true">
+                                            (19)
+                                        </span>
+                                    </div>
+
+                                </div>
+                            </div>
+                        </footer>
+                    </div>
+                </div>
+                <div class="wccom-card wccom-component wccom-card--product wccom-card--has-icon wccom-card--small">
+
+                    <header class="wccom-card__header">
+
+                        <img class="wccom-card__icon"
+                            src="https://woocommerce.com/wp-content/uploads/2020/02/recaptcha.jpg" alt=""
+                            loading="lazy">
+
+                        <div class="wccom-card__title-container">
+                            <h3 class="wccom-card__title wccom-card__title--has-link">
+                                <a class="wccom-card__title-link"
+                                    href="https://woocommerce.com/products/recaptcha-for-woocommerce/"
+                                    data-tracks="product_card_click" data-tracks-product_id="5347485">
+                                    reCaptcha Integration </a>
+                            </h3>
+
+                            <div class="wccom-card__vendor">
+                                by <a class="wccom-card__vendor-link"
+                                    href="https://woocommerce.com/vendor/i13-web-solution">I13 Web Solution</a>
+                            </div>
+                        </div>
+                    </header>
+
+                    <div class="wccom-card__content">
+                        <p>Protect your eCommerce store from malicious and automated attacks by using reCaptcha for
+                            WooCommerce.</p>
+
+                        <footer class="wccom-card-product__footer">
+                            <div class="wccom-card-product__footer-bottom-row">
+                                <div class="wccom-product-card">
+                                    <span class="wccom-product-card__price">
+                                        <span class="screen-reader-text">
+                                            Price $29 annually </span>
+                                        <span aria-hidden="true">
+                                            $29 </span>
+                                    </span>
+                                    <span class="wccom-product-card__period" aria-hidden="true">annually </span>
+                                </div>
+                                <div class="wccom-card-product__footer-reviews">
+
+                                    <div class="wccom-rating-summary">
+                                        <span class="screen-reader-text">
+                                            Rated 3.6 out of 5 stars </span>
+                                        <svg class="wccom-star wccom-rating-summary__star wccom-star__1" width="24"
+                                            height="24" viewBox="0 0 24 24" role="img" aria-hidden="true">
+                                            <!-- Background star (always grey) -->
+                                            <path
+                                                d="M11.6175 18.3126L17.4016 21.2832C17.9771 21.5788 18.6432 21.091 18.5352 20.4531L17.5256 14.4916L22.2421 9.44552C22.6687 8.98913 22.4178 8.24151 21.8023 8.13483L15.5158 7.04526L12.305 1.24251C12.006 0.702085 11.2291 0.702085 10.93 1.24251L7.71933 7.04526L1.43282 8.13483C0.817277 8.24151 0.566397 8.98913 0.992984 9.44552L5.70949 14.4916L4.69988 20.4531C4.59184 21.091 5.25798 21.5788 5.83352 21.2832L11.6175 18.3126Z"
+                                                fill="#dcdcde"></path>
+                                            <!-- Foreground star (yellow, clipped for half-star) -->
+                                            <path class="wccom-star__foreground--full"
+                                                d="M11.6175 18.3126L17.4016 21.2832C17.9771 21.5788 18.6432 21.091 18.5352 20.4531L17.5256 14.4916L22.2421 9.44552C22.6687 8.98913 22.4178 8.24151 21.8023 8.13483L15.5158 7.04526L12.305 1.24251C12.006 0.702085 11.2291 0.702085 10.93 1.24251L7.71933 7.04526L1.43282 8.13483C0.817277 8.24151 0.566397 8.98913 0.992984 9.44552L5.70949 14.4916L4.69988 20.4531C4.59184 21.091 5.25798 21.5788 5.83352 21.2832L11.6175 18.3126Z"
+                                                fill="#f0c930"></path>
+                                        </svg>
+                                        <span class="wccom-rating-summary__rating" aria-hidden="true">
+                                            3.6 </span>
+                                        <span class="wccom-rating-summary__review-count" aria-hidden="true">
+                                            (36)
+                                        </span>
+                                    </div>
+
+                                </div>
+                            </div>
+                        </footer>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <!-- Deployment #17 visibility blocked --><!-- Deployment #19 visibility blocked --><!-- Deployment #15 visibility blocked --><!-- Deployment #16 visibility blocked --><!-- Deployment #18 visibility blocked -->
+    </article>
+</body>
+
+</html>
