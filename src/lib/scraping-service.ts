@@ -120,6 +120,7 @@ export class ScrapingService {
           siteUrl: request.siteUrl,
           recipe: request.recipe,
           categories: request.options?.categories || [],
+          options: request.options, // Store the full options object for maxProducts access
         },
       };
 
@@ -186,20 +187,28 @@ export class ScrapingService {
       const adapter = await this.createAdapter(job.metadata.recipe, job.metadata.siteUrl);
       
       try {
-        // Discover products
+        // Discover products with optional limit
         const productUrls: string[] = [];
+        const maxProducts = job.metadata.options?.maxProducts;
+        
         for await (const url of adapter.discoverProducts()) {
           productUrls.push(url);
+          
+          // Stop discovering if we've reached the limit
+          if (maxProducts && productUrls.length >= maxProducts) {
+            this.logger.info(`Reached product limit of ${maxProducts}, stopping discovery`);
+            break;
+          }
         }
 
         job.totalProducts = productUrls.length;
-        this.logger.info(`Discovered ${productUrls.length} products for job ${job.id}`);
+        this.logger.info(`Discovered ${productUrls.length} products for job ${job.id}${maxProducts ? ` (limited to ${maxProducts})` : ''}`);
 
         if (productUrls.length === 0) {
           throw new Error('No products found');
         }
 
-        // Process products with concurrent processing
+        // Process products with concurrent processing (respecting maxProducts limit)
         const products: NormalizedProduct[] = [];
         const maxConcurrent = recipe.behavior?.maxConcurrent || 5; // Default to 5 concurrent
         const rateLimit = recipe.behavior?.rateLimit || 200; // Reduced default delay

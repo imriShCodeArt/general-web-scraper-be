@@ -47,33 +47,58 @@ export class PuppeteerHttpClient {
       // Set user agent to avoid detection
       await page.setUserAgent('Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36');
       
-      // Performance optimizations
+      // Performance optimizations (allow images/styles; block heavy fonts/media)
       await page.setRequestInterception(true);
       page.on('request', (req) => {
-        // Block unnecessary resources for faster loading
-        if (['image', 'stylesheet', 'font', 'media'].includes(req.resourceType())) {
-          req.abort();
-        } else {
-          req.continue();
+        const type = req.resourceType();
+        if (['font', 'media'].includes(type)) {
+          return req.abort();
         }
+        return req.continue();
       });
       
-      // Navigate to the page with faster settings
+      // Navigate to the page with more reliable readiness
       await page.goto(url, { 
-        waitUntil: 'domcontentloaded', // Faster than networkidle2
-        timeout: 10000 // Reduced timeout from 15000
+        waitUntil: 'networkidle2',
+        timeout: 30000
       });
 
-      // Smart selector waiting - only wait for essential selectors
+      // Smart selector waiting
       if (options?.waitForSelectors && options.waitForSelectors.length > 0) {
-        const essentialSelectors = options.waitForSelectors.slice(0, 3); // Only wait for first 3 selectors
-        for (const selector of essentialSelectors) {
+        for (const selector of options.waitForSelectors) {
           try {
-            await page.waitForSelector(selector, { timeout: 3000 }); // Reduced from 5000
+            await page.waitForSelector(selector, { timeout: 10000 });
           } catch (error) {
             console.warn(`Selector ${selector} not found within timeout`);
           }
         }
+      }
+
+      // Explicit wait for common Shopify gallery containers
+      try {
+        await page.waitForSelector('.product-gallery, .product__media-list, .product__media-item img, picture source', { timeout: 10000 });
+      } catch {}
+
+      // Scroll to trigger lazy loading of images
+      await page.evaluate(() => {
+        window.scrollTo(0, document.body.scrollHeight);
+        window.scrollTo(0, 0);
+      });
+      
+      // Wait for images to load after scrolling
+      await new Promise(resolve => setTimeout(resolve, 1000));
+
+      // Extra: dump selector counts when debugging
+      if (process.env.SCRAPER_DEBUG === '1') {
+        const counts = await page.evaluate(() => ({
+          gallery: document.querySelectorAll('.product-gallery').length,
+          mediaList: document.querySelectorAll('.product__media-list').length,
+          mediaItemImg: document.querySelectorAll('.product__media-item img').length,
+          pictureSrc: document.querySelectorAll('picture source').length,
+          imgTotal: document.querySelectorAll('img').length,
+        }));
+        // eslint-disable-next-line no-console
+        console.log('[puppeteer] selector counts', counts);
       }
 
       // Wait for variations to load (WooCommerce specific) - optimized for speed
@@ -83,7 +108,23 @@ export class PuppeteerHttpClient {
       const html = await page.content();
       
       // Create JSDOM from the rendered HTML
-      return new JSDOM(html, { url });
+      const dom = new JSDOM(html, { url });
+
+      // Optional HTML snapshot when debugging
+      if (process.env.SCRAPER_DEBUG === '1') {
+        try {
+          const { writeFileSync, mkdirSync, existsSync } = await import('fs');
+          if (!existsSync('./debug')) mkdirSync('./debug');
+          const ts = Date.now();
+          writeFileSync(`./debug/page-${ts}.html`, html);
+          // eslint-disable-next-line no-console
+          console.log(`[puppeteer] HTML snapshot saved: debug/page-${ts}.html`);
+        } catch (e) {
+          console.warn('Failed to write HTML snapshot', e);
+        }
+      }
+
+      return dom;
       
     } finally {
       await page.close();

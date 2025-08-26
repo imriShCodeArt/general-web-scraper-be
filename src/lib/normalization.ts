@@ -33,6 +33,16 @@ export class NormalizationToolkit {
       sourceUrl: url,
       confidence: 0.8, // Default confidence score
     };
+
+    // Ensure parent SKU is unique and not equal to any variation SKU
+    if (result.productType === 'variable' && result.variations.length > 0) {
+      const variationSkus = new Set(result.variations.map(v => v.sku));
+      if (variationSkus.has(result.sku)) {
+        const base = result.sku || this.generateSku(url);
+        // Append a suffix to make the parent SKU distinct
+        result.sku = this.cleanSku(`${base}-PARENT`);
+      }
+    }
     
     console.log('🔍 DEBUG: normalizeProduct result:', {
       title: result.title,
