@@ -13,6 +13,22 @@ export class CsvGenerator {
     console.log(`🔍 DEBUG: Deduplicated from ${products.length} to ${uniqueProducts.length} products`);
     
     const csvData = uniqueProducts.map((product, index) => {
+      // Build attributes from product.attributes plus union of variation attributeAssignments
+      const aggregatedAttributes: Record<string, string[]> = {};
+      // Seed from normalized product.attributes
+      for (const [key, vals] of Object.entries(product.attributes || {})) {
+        const values = Array.from(new Set((vals || []).filter(Boolean)));
+        aggregatedAttributes[key] = values;
+      }
+      // Merge from variations
+      for (const v of product.variations || []) {
+        for (const [key, val] of Object.entries(v.attributeAssignments || {})) {
+          const existing = aggregatedAttributes[key] || [];
+          if (val && !existing.includes(val)) existing.push(val);
+          aggregatedAttributes[key] = existing;
+        }
+      }
+
       const row: Record<string, string> = {
         id: (index + 1).toString(),
         post_title: product.title,
@@ -24,26 +40,42 @@ export class CsvGenerator {
         menu_order: '0',
         post_type: 'product',
         sku: product.sku,
-        stock_status: product.stockStatus,
+        stock_status: product.stock_status || product.stockStatus,
         images: product.images.join('|'),
         'tax:product_type': product.productType,
         'tax:product_cat': product.category,
         description: product.description,
         regular_price: product.regularPrice || '',
         sale_price: product.salePrice || '',
-      };
+      } as any;
 
       // Add attributes per Woo CSV Import Suite rules
       // attribute:<Name> = pipe-separated values
-      // attribute_data:<Name> = position|visible|variation (use 0|1|1 for variable products, 0|1|0 for simple)
+      // attribute_default:<Name> = default value (variable products)
+      // attribute_data:<Name> = position|visible|variation (variation flag only for variable products)
       const isVariable = product.productType === 'variable';
       let position = 0;
-      for (const [attrName, attrValues] of Object.entries(product.attributes)) {
-        const cleanName = this.cleanAttributeName(attrName);
-        row[`attribute:${cleanName}`] = (attrValues || []).join(' | ');
+      const firstVariation = (product.variations || [])[0];
+
+      for (const [rawName, values] of Object.entries(aggregatedAttributes)) {
+        // Preserve global attribute prefix 'pa_' when present, otherwise use cleaned local name
+        const isGlobal = /^pa_/i.test(rawName);
+        const cleanLocal = this.cleanAttributeName(rawName);
+        const headerName = isGlobal ? `pa_${cleanLocal.toLowerCase()}` : cleanLocal;
+
+        row[`attribute:${headerName}`] = (values || []).join(' | ');
         const visible = 1;
         const variation = isVariable ? 1 : 0;
-        row[`attribute_data:${cleanName}`] = `${position}|${visible}|${variation}`;
+        row[`attribute_data:${headerName}`] = `${position}|${visible}|${variation}`;
+
+        // Default attribute per first variation when variable
+        if (isVariable && firstVariation && firstVariation.attributeAssignments) {
+          const fv = firstVariation.attributeAssignments[rawName] || firstVariation.attributeAssignments[cleanLocal] || firstVariation.attributeAssignments[headerName] || '';
+          if (fv) {
+            row[`attribute_default:${headerName}`] = fv;
+          }
+        }
+
         position++;
       }
 
@@ -100,9 +132,11 @@ export class CsvGenerator {
           };
 
           // Add attribute values per variation using attribute:<Name> columns
-          for (const [attrName, attrValue] of Object.entries(variation.attributeAssignments)) {
-            const cleanName = this.cleanAttributeName(attrName);
-            row[`attribute:${cleanName}`] = attrValue;
+          for (const [rawName, attrValue] of Object.entries(variation.attributeAssignments)) {
+            const isGlobal = /^pa_/i.test(rawName);
+            const cleanLocal = this.cleanAttributeName(rawName);
+            const headerName = isGlobal ? `pa_${cleanLocal.toLowerCase()}` : cleanLocal;
+            row[`attribute:${headerName}`] = attrValue;
           }
 
           variationRows.push(row);
