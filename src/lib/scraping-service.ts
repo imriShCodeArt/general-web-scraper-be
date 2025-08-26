@@ -4,13 +4,15 @@ import {
   ScrapingRequest, 
   NormalizedProduct, 
   JobResult,
-  ApiResponse 
+  ApiResponse,
+  ScrapingError
 } from '../types';
 import { SiteAdapter } from '../types';
 import { NormalizationToolkit } from './normalization';
 import { CsvGenerator } from './csv-generator';
 import { StorageService } from './storage';
 import { RecipeManager } from './recipe-manager';
+import { ErrorFactory, ErrorCodes } from './error-handler';
 import pino from 'pino';
 
 export class ScrapingService {
@@ -21,6 +23,45 @@ export class ScrapingService {
   private activeJobs = new Map<string, ScrapingJob>();
   private jobQueue: ScrapingJob[] = [];
   private isProcessing = false;
+  private performanceMetrics = {
+    totalJobs: 0,
+    totalProducts: 0,
+    averageTimePerProduct: 0,
+    totalProcessingTime: 0
+  };
+
+  /**
+   * Helper method to create ApiResponse objects with required fields
+   */
+  private createApiResponse<T, E = string>(
+    success: boolean, 
+    data?: T, 
+    error?: E, 
+    message?: string
+  ): ApiResponse<T, E> {
+    return {
+      success,
+      data,
+      error,
+      message,
+      timestamp: new Date(),
+      requestId: randomUUID()
+    };
+  }
+
+  /**
+   * Helper method to create success ApiResponse objects
+   */
+  private createSuccessResponse<T>(data: T, message?: string): ApiResponse<T, string> {
+    return this.createApiResponse(true, data, '', message);
+  }
+
+  /**
+   * Helper method to create error ApiResponse objects
+   */
+  private createErrorResponse<E>(error: E, message?: string): ApiResponse<any, E> {
+    return this.createApiResponse(false, undefined, error, message);
+  }
 
   constructor() {
     this.logger = pino({
@@ -61,10 +102,9 @@ export class ScrapingService {
     try {
       // Validate request
       if (!request.siteUrl || !request.recipe) {
-        return {
-          success: false,
-          error: 'Missing required fields: siteUrl and recipe',
-        };
+        return this.createErrorResponse(
+          'Missing required fields: siteUrl and recipe'
+        );
       }
 
       // Create job
@@ -94,17 +134,15 @@ export class ScrapingService {
         this.processQueue();
       }
 
-      return {
-        success: true,
-        data: { jobId },
-        message: 'Scraping job created successfully',
-      };
+      return this.createSuccessResponse(
+        { jobId }, 
+        'Scraping job created successfully'
+      );
     } catch (error) {
       this.logger.error('Failed to start scraping job:', error);
-      return {
-        success: false,
-        error: `Failed to start scraping job: ${error}`,
-      };
+      return this.createErrorResponse(
+        `Failed to start scraping job: ${error}`
+      );
     }
   }
 
@@ -161,48 +199,72 @@ export class ScrapingService {
           throw new Error('No products found');
         }
 
-        // Process products
+        // Process products with concurrent processing
         const products: NormalizedProduct[] = [];
-        for (let i = 0; i < productUrls.length; i++) {
-          const url = productUrls[i];
-          if (!url) continue;
-          
-          try {
-            this.logger.info(`🔍 DEBUG: Processing product ${i + 1}/${productUrls.length}: ${url}`);
-            
-            const rawProduct = await adapter.extractProduct(url);
-            
-            this.logger.info(`🔍 DEBUG: Raw product data extracted:`, {
-              title: rawProduct.title?.substring(0, 50),
-              hasAttributes: Object.keys(rawProduct.attributes || {}).length > 0,
-              hasVariations: (rawProduct.variations || []).length > 0,
-              hasShortDescription: rawProduct.shortDescription,
-              hasStockStatus: rawProduct.stockStatus,
-              hasImages: (rawProduct.images || []).length > 0,
-              hasCategory: rawProduct.category
-            });
+        const maxConcurrent = recipe.behavior?.maxConcurrent || 5; // Default to 5 concurrent
+        const rateLimit = recipe.behavior?.rateLimit || 200; // Reduced default delay
+        
+        this.logger.info(`Processing ${productUrls.length} products with ${maxConcurrent} concurrent workers and ${rateLimit}ms rate limit`);
 
-            const normalizedProduct = await this.normalizeProduct(rawProduct, url);
+        // Process products in batches for better performance
+        for (let i = 0; i < productUrls.length; i += maxConcurrent) {
+          const batch = productUrls.slice(i, i + maxConcurrent);
+          const batchPromises = batch.map(async (url, batchIndex) => {
+            if (!url) return null;
             
-            this.logger.info(`🔍 DEBUG: Normalized product:`, {
-              title: normalizedProduct.title?.substring(0, 50),
-              productType: normalizedProduct.productType,
-              hasVariations: normalizedProduct.variations.length > 0,
-              hasAttributes: Object.keys(normalizedProduct.attributes).length > 0
-            });
+            const globalIndex = i + batchIndex;
+            try {
+              this.logger.info(`🔍 DEBUG: Processing product ${globalIndex + 1}/${productUrls.length}: ${url}`);
+              
+              const startTime = Date.now();
+              const rawProduct = await adapter.extractProduct(url);
+              const extractionTime = Date.now() - startTime;
+              
+              this.logger.info(`🔍 DEBUG: Raw product data extracted in ${extractionTime}ms:`, {
+                title: rawProduct.title?.substring(0, 50),
+                hasAttributes: Object.keys(rawProduct.attributes || {}).length > 0,
+                hasVariations: (rawProduct.variations || []).length > 0,
+                hasShortDescription: rawProduct.shortDescription,
+                hasStockStatus: rawProduct.stockStatus,
+                hasImages: (rawProduct.images || []).length > 0,
+                hasCategory: rawProduct.category
+              });
 
-            products.push(normalizedProduct);
-            job.processedProducts = i + 1;
-            
-            // Add delay between requests
-            if (recipe.behavior?.rateLimit) {
-              await this.delay(recipe.behavior.rateLimit);
+              const normalizedProduct = await this.normalizeProduct(rawProduct, url);
+              
+              this.logger.info(`🔍 DEBUG: Normalized product:`, {
+                title: normalizedProduct.title?.substring(0, 50),
+                productType: normalizedProduct.productType,
+                hasVariations: normalizedProduct.variations.length > 0,
+                hasAttributes: Object.keys(normalizedProduct.attributes).length > 0
+              });
+
+              job.processedProducts = globalIndex + 1;
+              return normalizedProduct;
+              
+            } catch (error) {
+              const errorMsg = `Failed to process product ${url}: ${error}`;
+              this.logger.error(errorMsg);
+              const scrapingError = ErrorFactory.createScrapingError(
+                errorMsg,
+                ErrorCodes.PRODUCT_NOT_FOUND,
+                true
+              );
+              job.errors.push(scrapingError);
+              return null;
             }
-            
-          } catch (error) {
-            const errorMsg = `Failed to process product ${url}: ${error}`;
-            this.logger.error(errorMsg);
-            job.errors.push(errorMsg);
+          });
+
+          // Wait for batch to complete
+          const batchResults = await Promise.all(batchPromises);
+          const validProducts = batchResults.filter(p => p !== null) as NormalizedProduct[];
+          products.push(...validProducts);
+
+          // Add minimal delay between batches (not between individual products)
+          if (i + maxConcurrent < productUrls.length && rateLimit > 0) {
+            const delayTime = Math.min(rateLimit, 500); // Cap delay at 500ms
+            this.logger.info(`⏱️ Waiting ${delayTime}ms before next batch...`);
+            await this.delay(delayTime);
           }
         }
 
@@ -242,10 +304,21 @@ export class ScrapingService {
         // Mark job as completed
         job.status = 'completed';
         job.completedAt = new Date();
-        job.totalProducts = products.length;
+        // totalProducts should remain as the total discovered, not just successful ones
         job.processedProducts = products.length;
 
-        this.logger.info(`Job ${job.id} completed successfully. Processed ${products.length} products.`);
+        // Update performance metrics
+        const jobDuration = job.completedAt.getTime() - job.startedAt!.getTime();
+        this.performanceMetrics.totalJobs++;
+        this.performanceMetrics.totalProducts += products.length;
+        this.performanceMetrics.totalProcessingTime += jobDuration;
+        this.performanceMetrics.averageTimePerProduct = 
+          this.performanceMetrics.totalProducts > 0 
+            ? this.performanceMetrics.totalProcessingTime / this.performanceMetrics.totalProducts
+            : 0;
+
+        this.logger.info(`Job ${job.id} completed successfully. Processed ${products.length} products in ${jobDuration}ms.`);
+        this.logger.info(`Performance Metrics - Avg: ${this.performanceMetrics.averageTimePerProduct.toFixed(2)}ms/product, Total: ${this.performanceMetrics.totalProducts} products`);
 
       } finally {
         // Clean up adapter resources (including Puppeteer)
@@ -259,7 +332,12 @@ export class ScrapingService {
       
       job.status = 'failed';
       job.completedAt = new Date();
-      job.errors.push(`Job failed: ${error}`);
+      const scrapingError = ErrorFactory.createScrapingError(
+        `Job failed: ${error}`,
+        ErrorCodes.RECIPE_ERROR,
+        false
+      );
+      job.errors.push(scrapingError);
 
       // Clean up adapter resources even on failure
       try {
@@ -304,21 +382,14 @@ export class ScrapingService {
     try {
       const job = this.activeJobs.get(jobId);
       if (!job) {
-        return {
-          success: false,
-          error: 'Job not found',
-        };
+        return this.createErrorResponse('Job not found');
       }
 
-      return {
-        success: true,
-        data: job,
-      };
+      return this.createSuccessResponse(job);
     } catch (error) {
-      return {
-        success: false,
-        error: `Failed to get job status: ${error}`,
-      };
+      return this.createErrorResponse(
+        `Failed to get job status: ${error}`
+      );
     }
   }
 
@@ -328,15 +399,11 @@ export class ScrapingService {
   async getAllJobs(): Promise<ApiResponse<ScrapingJob[]>> {
     try {
       const jobs = Array.from(this.activeJobs.values());
-      return {
-        success: true,
-        data: jobs,
-      };
+      return this.createSuccessResponse(jobs);
     } catch (error) {
-      return {
-        success: false,
-        error: `Failed to get jobs: ${error}`,
-      };
+      return this.createErrorResponse(
+        `Failed to get jobs: ${error}`
+      );
     }
   }
 
@@ -346,15 +413,11 @@ export class ScrapingService {
   async listRecipes(): Promise<ApiResponse<string[]>> {
     try {
       const recipes = await this.recipeManager.listRecipes();
-      return {
-        success: true,
-        data: recipes,
-      };
+      return this.createSuccessResponse(recipes);
     } catch (error) {
-      return {
-        success: false,
-        error: `Failed to list recipes: ${error}`,
-      };
+      return this.createErrorResponse(
+        `Failed to list recipes: ${error}`
+      );
     }
   }
 
@@ -364,15 +427,11 @@ export class ScrapingService {
   async getRecipe(recipeName: string): Promise<ApiResponse<any>> {
     try {
       const recipe = await this.recipeManager.getRecipe(recipeName);
-      return {
-        success: true,
-        data: recipe,
-      };
+      return this.createSuccessResponse(recipe);
     } catch (error) {
-      return {
-        success: false,
-        error: `Failed to get recipe: ${error}`,
-      };
+      return this.createErrorResponse(
+        `Failed to get recipe: ${error}`
+      );
     }
   }
 
@@ -383,21 +442,14 @@ export class ScrapingService {
     try {
       const recipe = await this.recipeManager.getRecipeBySiteUrl(siteUrl);
       if (recipe) {
-        return {
-          success: true,
-          data: recipe,
-        };
+        return this.createSuccessResponse(recipe);
       } else {
-        return {
-          success: false,
-          error: 'No recipe found for this site',
-        };
+        return this.createErrorResponse('No recipe found for this site');
       }
     } catch (error) {
-      return {
-        success: false,
-        error: `Failed to get recipe for site: ${error}`,
-      };
+      return this.createErrorResponse(
+        `Failed to get recipe for site: ${error}`
+      );
     }
   }
 
@@ -408,17 +460,11 @@ export class ScrapingService {
     try {
       const job = this.activeJobs.get(jobId);
       if (!job) {
-        return {
-          success: false,
-          error: 'Job not found',
-        };
+        return this.createErrorResponse('Job not found');
       }
 
       if (job.status === 'completed' || job.status === 'failed') {
-        return {
-          success: false,
-          error: 'Cannot cancel completed or failed job',
-        };
+        return this.createErrorResponse('Cannot cancel completed or failed job');
       }
 
       // Remove from queue if pending
@@ -430,18 +476,21 @@ export class ScrapingService {
       // Mark as cancelled
       job.status = 'failed';
       job.completedAt = new Date();
-      job.errors.push('Job cancelled by user');
+      const scrapingError = ErrorFactory.createScrapingError(
+        'Job cancelled by user',
+        ErrorCodes.UNKNOWN_ERROR,
+        false
+      );
+      job.errors.push(scrapingError);
 
-      return {
-        success: true,
-        data: { cancelled: true },
-        message: 'Job cancelled successfully',
-      };
+      return this.createSuccessResponse(
+        { cancelled: true }, 
+        'Job cancelled successfully'
+      );
     } catch (error) {
-      return {
-        success: false,
-        error: `Failed to cancel job: ${error}`,
-      };
+      return this.createErrorResponse(
+        `Failed to cancel job: ${error}`
+      );
     }
   }
 
@@ -451,15 +500,29 @@ export class ScrapingService {
   async getStorageStats(): Promise<ApiResponse<any>> {
     try {
       const stats = await this.storage.getStorageStats();
-      return {
-        success: true,
-        data: stats,
-      };
+      return this.createSuccessResponse(stats);
     } catch (error) {
-      return {
-        success: false,
-        error: `Failed to get storage stats: ${error}`,
-      };
+      return this.createErrorResponse(
+        `Failed to get storage stats: ${error}`
+      );
+    }
+  }
+
+  /**
+   * Get performance metrics
+   */
+  async getPerformanceMetrics(): Promise<ApiResponse<any>> {
+    try {
+      return this.createSuccessResponse({
+        ...this.performanceMetrics,
+        currentActiveJobs: this.activeJobs.size,
+        queueLength: this.jobQueue.length,
+        isProcessing: this.isProcessing
+      });
+    } catch (error) {
+      return this.createErrorResponse(
+        `Failed to get performance metrics: ${error}`
+      );
     }
   }
 
@@ -528,5 +591,11 @@ class GenericAdapter implements SiteAdapter {
     
     console.log('🔍 DEBUG: GenericAdapter.extractProduct returning:', result);
     return result;
+  }
+
+  validateProduct(product: any): any[] {
+    // This is a placeholder implementation
+    // Real adapters would implement proper product validation
+    return [];
   }
 }

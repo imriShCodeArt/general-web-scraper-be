@@ -14,18 +14,24 @@ export class NormalizationToolkit {
       rawVariations: raw.variations
     });
     
-    const result = {
+    const result: NormalizedProduct = {
+      id: raw.id || this.generateSku(url),
       title: this.cleanText(raw.title || ''),
       slug: this.generateSlug(raw.title || url),
       description: this.cleanText(raw.description || ''),
       shortDescription: this.cleanText(raw.shortDescription || ''),
       sku: this.cleanSku(raw.sku || this.generateSku(url)),
       stockStatus: this.normalizeStockStatus(raw.stockStatus),
-      images: this.normalizeImages(raw.images || []),
+      images: this.normalizeImages((raw.images || []).filter((img): img is string => img !== undefined)),
       category: this.cleanText(raw.category || 'Uncategorized'),
       productType: this.detectProductType(raw),
-      attributes: this.normalizeAttributes(raw.attributes || {}),
+      attributes: this.normalizeAttributes((raw.attributes || {} as Record<string, (string | undefined)[]>)),
       variations: this.normalizeVariations(raw.variations || [], raw.sku || ''),
+      regularPrice: this.cleanText(raw.price || ''),
+      salePrice: this.cleanText(raw.salePrice || ''),
+      normalizedAt: new Date(),
+      sourceUrl: url,
+      confidence: 0.8, // Default confidence score
     };
     
     console.log('🔍 DEBUG: normalizeProduct result:', {
@@ -92,11 +98,17 @@ export class NormalizationToolkit {
    * Generate slug from title
    */
   static generateSlug(title: string): string {
-    return title
+    // Preserve Unicode letters/numbers (incl. Hebrew), strip punctuation, collapse spaces -> dashes
+    const unicodeSlug = title
+      .trim()
       .toLowerCase()
-      .replace(/[^a-z0-9\s-]/g, '')
+      .normalize('NFKC')
+      .replace(/[^\p{L}\p{N}\s-]+/gu, '')
       .replace(/\s+/g, '-')
-      .trim();
+      .replace(/-+/g, '-')
+      .replace(/^-|-$/g, '');
+
+    return unicodeSlug;
   }
 
   /**
@@ -132,7 +144,7 @@ export class NormalizationToolkit {
   }
 
   /**
-   * Detect if product is simple or variable
+   * Detect product type (simple vs variable)
    */
   static detectProductType(raw: RawProduct): 'simple' | 'variable' {
     console.log('🔍 DEBUG: detectProductType called with raw product:', {
@@ -143,30 +155,26 @@ export class NormalizationToolkit {
       attributesValues: raw.attributes ? Object.values(raw.attributes) : []
     });
     
+    // If we already have parsed variations (e.g., from WooCommerce JSON), treat as variable
     if (raw.variations && raw.variations.length > 0) {
-      console.log('✅ DEBUG: Product type = variable (has variations array)');
+      console.log('✅ DEBUG: Product type = variable (has parsed variations)');
       return 'variable';
     }
     
+    // Don't mark as variable just because of multiple attribute values
     if (raw.attributes && Object.keys(raw.attributes).length > 0) {
-      // Check if any attribute has multiple values
-      for (const [attrName, values] of Object.entries(raw.attributes)) {
-        console.log('🔍 DEBUG: Checking attribute:', attrName, 'values:', values);
-        if (values && values.length > 1) {
-          console.log('✅ DEBUG: Product type = variable (attribute has multiple values)');
-          return 'variable';
-        }
-      }
+      console.log('ℹ️ DEBUG: Product has attributes but no variations - treating as simple');
+      return 'simple';
     }
     
-    console.log('❌ DEBUG: Product type = simple (no variations or multiple attribute values)');
+    console.log('❌ DEBUG: Product type = simple (no variations or attributes)');
     return 'simple';
   }
 
   /**
    * Normalize product attributes
    */
-  static normalizeAttributes(attributes: Record<string, string[]>): Record<string, string[]> {
+  static normalizeAttributes(attributes: Record<string, (string | undefined)[]>): Record<string, string[]> {
     console.log('🔍 DEBUG: normalizeAttributes called with:', attributes);
     const normalized: Record<string, string[]> = {};
     
@@ -180,6 +188,7 @@ export class NormalizationToolkit {
       
       const cleanKey = this.cleanAttributeName(key);
       const cleanValues = values
+        .filter((value): value is string => value !== undefined)
         .map(value => this.cleanText(value))
         .filter(value => value && !this.isPlaceholder(value));
       
