@@ -154,6 +154,20 @@ app.get('/api/scrape/jobs', async (req, res) => {
   }
 });
 
+// Get performance metrics
+app.get('/api/scrape/performance', async (req, res) => {
+  try {
+    const result = await scrapingService.getPerformanceMetrics();
+    return res.json(result);
+  } catch (error) {
+    logger.error('Failed to get performance metrics:', error);
+    return res.status(500).json({
+      success: false,
+      error: 'Internal server error',
+    });
+  }
+});
+
 // Cancel job
 app.post('/api/scrape/cancel/:jobId', async (req, res) => {
   try {

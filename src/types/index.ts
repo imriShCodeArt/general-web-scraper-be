@@ -1,60 +1,89 @@
 import { z } from 'zod';
 
-// Core Product Types
-export interface NormalizedProduct {
-  title: string;
-  slug: string;
-  description: string;
-  shortDescription: string;
-  sku: string;
-  stockStatus: 'instock' | 'outofstock';
-  images: string[];
-  category: string;
-  productType: 'simple' | 'variable';
-  attributes: Record<string, string[]>;
+// Enhanced Error Types
+export interface ScrapingError extends Error {
+  code: string;
+  context?: Record<string, any>;
+  retryable: boolean;
+  timestamp: Date;
+}
+
+export interface ValidationError extends Error {
+  field: string;
+  value: any;
+  expected: any;
+}
+
+// Enhanced Result Types with Generics
+export type Result<T, E = ScrapingError> = 
+  | { success: true; data: T }
+  | { success: false; error: E };
+
+export type AsyncResult<T, E = ScrapingError> = Promise<Result<T, E>>;
+
+// Enhanced Product Types with Generics
+export interface BaseProduct<T = string> {
+  id: T;
+  title: T;
+  slug: T;
+  description: T;
+  shortDescription: T;
+  sku: T;
+  stockStatus: T;
+  images: T[];
+  category: T;
+  productType: T;
+  attributes: Record<string, T[]>;
   variations: ProductVariation[];
+  regularPrice?: T;
+  salePrice?: T;
+  metadata?: Record<string, any>;
+}
+
+export interface NormalizedProduct extends BaseProduct<string> {
+  // Additional normalized fields
+  normalizedAt: Date;
+  sourceUrl: string;
+  confidence: number; // 0-1 confidence score
+}
+
+// Override the variations field to use RawVariation instead of ProductVariation
+export interface RawProduct extends Omit<BaseProduct<string | undefined>, 'variations'> {
+  variations: RawVariation[];
+  price?: string;
+  salePrice?: string;
 }
 
 export interface ProductVariation {
   sku: string;
   regularPrice: string;
+  salePrice?: string;
   taxClass: string;
   stockStatus: 'instock' | 'outofstock';
   images: string[];
   attributeAssignments: Record<string, string>;
 }
 
-export interface RawProduct {
-  title?: string;
-  slug?: string;
-  description?: string;
-  shortDescription?: string | undefined;
-  sku?: string;
-  stockStatus?: string;
-  images?: string[];
-  category?: string | undefined;
-  attributes?: Record<string, string[]>;
-  variations?: RawVariation[];
-}
-
 export interface RawVariation {
   sku?: string;
   regularPrice?: string;
+  salePrice?: string;
   taxClass?: string;
   stockStatus?: string;
   images?: string[];
   attributeAssignments?: Record<string, string>;
 }
 
-// Adapter Interface
-export interface SiteAdapter {
+// Enhanced Adapter Interface with Generics
+export interface SiteAdapter<T = RawProduct> {
   discoverProducts(): AsyncIterable<string>;
-  extractProduct(url: string): Promise<RawProduct>;
+  extractProduct(url: string): Promise<T>;
   getConfig(): RecipeConfig;
   cleanup?(): Promise<void>;
+  validateProduct(product: T): ValidationError[];
 }
 
-// Recipe Configuration
+// Enhanced Recipe Configuration with Validation
 export interface RecipeConfig {
   // Basic site information
   name: string;
@@ -71,6 +100,7 @@ export interface RecipeConfig {
     stock: string | string[];
     sku: string | string[];
     description: string | string[];
+    descriptionFallbacks?: string[];
     shortDescription?: string | string[];
     category?: string | string[];
     
@@ -106,6 +136,9 @@ export interface RecipeConfig {
     useHeadlessBrowser?: boolean;
     rateLimit?: number; // ms between requests
     maxConcurrent?: number;
+    retryAttempts?: number;
+    retryDelay?: number;
+    timeout?: number;
   };
   
   // Fallback strategies
@@ -125,6 +158,8 @@ export interface RecipeConfig {
     requiredFields?: string[];
     priceFormat?: string; // regex pattern
     skuFormat?: string; // regex pattern
+    minDescriptionLength?: number;
+    maxTitleLength?: number;
   };
 }
 
@@ -147,20 +182,26 @@ export interface RecipeLoader {
   validateRecipe(recipe: RecipeConfig): boolean;
 }
 
-// Job Management
-export interface ScrapingJob {
+// Enhanced Job Management with Generics
+export interface ScrapingJob<T = any> {
   id: string;
-  status: 'pending' | 'running' | 'completed' | 'failed';
+  status: 'pending' | 'running' | 'completed' | 'failed' | 'cancelled';
   createdAt: Date;
   startedAt?: Date;
   completedAt?: Date;
   totalProducts: number;
   processedProducts: number;
-  errors: string[];
+  errors: ScrapingError[];
   metadata: {
     siteUrl: string;
     recipe: string;
     categories: string[];
+    options?: T;
+  };
+  progress?: {
+    currentStep: string;
+    stepProgress: number;
+    estimatedTimeRemaining?: number;
   };
 }
 
@@ -197,6 +238,8 @@ export const ParentCsvSchema = z.object({
   'tax:product_type': z.string(),
   'tax:product_cat': z.string(),
   description: z.string(),
+  regular_price: z.string(),
+  sale_price: z.string(),
 });
 
 export const VariationCsvSchema = z.object({
@@ -212,34 +255,83 @@ export const VariationCsvSchema = z.object({
   sku: z.string(),
   stock_status: z.string(),
   regular_price: z.string(),
+  sale_price: z.string(),
   tax_class: z.string(),
   images: z.string(),
 });
 
-// API Response Types
-export interface ApiResponse<T> {
+// Enhanced API Response Types with Generics
+export interface ApiResponse<T = any, E = string> {
   success: boolean;
   data?: T;
-  error?: string;
+  error?: E;
   message?: string;
+  timestamp: Date;
+  requestId: string;
 }
 
-export interface ScrapingRequest {
+// Enhanced Scraping Request with Generics
+export interface ScrapingRequest<T = any> {
   siteUrl: string;
   recipe: string;
-  options?: {
+  options?: T & {
     maxProducts?: number;
     categories?: string[];
     enableEnrichment?: boolean;
+    retryOnFailure?: boolean;
+    maxRetries?: number;
   };
 }
 
-// Storage Types
-export interface StorageEntry {
+// Dependency Injection Container Interface
+export interface DIContainer {
+  register<T>(token: string, implementation: T): void;
+  resolve<T>(token: string): T;
+  has(token: string): boolean;
+  clear(): void;
+}
+
+// Service Interface for DI
+export interface Service {
+  readonly name: string;
+  initialize?(): Promise<void>;
+  destroy?(): Promise<void>;
+}
+
+// Enhanced Storage Types with Generics
+export interface StorageEntry<T = any> {
   jobId: string;
   parentCsv: string;
   variationCsv: string;
   metadata: JobResult;
   createdAt: Date;
   expiresAt: Date;
+  tags?: string[];
+  customData?: T;
+}
+
+// Retry Configuration
+export interface RetryConfig {
+  maxAttempts: number;
+  baseDelay: number;
+  maxDelay: number;
+  backoffMultiplier: number;
+  retryableErrors: string[];
+}
+
+// Rate Limiting Configuration
+export interface RateLimitConfig {
+  requestsPerSecond: number;
+  burstSize: number;
+  windowMs: number;
+}
+
+// Performance Metrics with Generics
+export interface PerformanceMetrics<T = any> {
+  totalJobs: number;
+  totalProducts: number;
+  averageTimePerProduct: number;
+  totalProcessingTime: number;
+  customMetrics?: T;
+  lastUpdated: Date;
 }

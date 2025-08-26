@@ -1,4 +1,4 @@
-import { SiteAdapter, RawProduct, RecipeConfig } from '../types';
+import { SiteAdapter, RawProduct, RecipeConfig, ValidationError } from '../types';
 import { HttpClient } from './http-client';
 import { PuppeteerHttpClient } from './puppeteer-http-client';
 import { JSDOM } from 'jsdom';
@@ -33,11 +33,43 @@ export abstract class BaseAdapter implements SiteAdapter {
   abstract extractProduct(url: string): Promise<RawProduct>;
 
   /**
+   * Abstract method to validate product data
+   */
+  abstract validateProduct(product: RawProduct): ValidationError[];
+
+  /**
    * Common method to extract text content using CSS selector
    */
   protected extractText(dom: JSDOM, selector: string): string {
     const element = dom.window.document.querySelector(selector);
-    return element?.textContent?.trim() || '';
+    if (!element) return '';
+    
+    // For description fields, try to get all text content including multiple paragraphs
+    if (selector.includes('description') || selector.includes('content') || selector.includes('p')) {
+      // Get all text nodes and paragraph content
+      const textContent = element.textContent?.trim() || '';
+      const innerHTML = element.innerHTML || '';
+      
+      // If we have HTML content, try to extract meaningful text
+      if (innerHTML.includes('<p>') || innerHTML.includes('<br>')) {
+        // Extract text from paragraphs and line breaks
+        const paragraphs = element.querySelectorAll('p, br + *, div');
+        if (paragraphs.length > 0) {
+          const paragraphTexts = Array.from(paragraphs)
+            .map(p => p.textContent?.trim())
+            .filter(text => text && text.length > 10) // Filter out very short text
+            .join('\n\n');
+          
+          if (paragraphTexts) {
+            return paragraphTexts;
+          }
+        }
+      }
+      
+      return textContent;
+    }
+    
+    return element.textContent?.trim() || '';
   }
 
   /**

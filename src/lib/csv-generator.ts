@@ -8,11 +8,15 @@ export class CsvGenerator {
   static async generateParentCsv(products: NormalizedProduct[]): Promise<string> {
     console.log('🔍 DEBUG: generateParentCsv called with products:', products.length);
     
-    const csvData = products.map((product, index) => {
+    // Deduplicate products by SKU to prevent CSV duplicates
+    const uniqueProducts = this.deduplicateProducts(products);
+    console.log(`🔍 DEBUG: Deduplicated from ${products.length} to ${uniqueProducts.length} products`);
+    
+    const csvData = uniqueProducts.map((product, index) => {
       const row: Record<string, string> = {
         ID: (index + 1).toString(),
         post_title: product.title,
-        post_name: product.slug,
+        post_name: product.slug && product.slug.trim() !== '' ? product.slug : (product.sku ? product.sku.toLowerCase() : `product-${index + 1}`),
         post_status: 'publish',
         post_content: product.description,
         post_excerpt: product.shortDescription,
@@ -25,6 +29,8 @@ export class CsvGenerator {
         'tax:product_type': product.productType,
         'tax:product_cat': product.category,
         description: product.description,
+        regular_price: product.regularPrice || '',
+        sale_price: product.salePrice || '',
       };
 
       // Add attributes
@@ -81,6 +87,7 @@ export class CsvGenerator {
             sku: variation.sku,
             stock_status: variation.stockStatus,
             regular_price: variation.regularPrice,
+            sale_price: variation.salePrice || '',
             tax_class: variation.taxClass,
             images: variation.images.join('|'),
           };
@@ -163,6 +170,32 @@ export class CsvGenerator {
       .replace(/[^a-zA-Z0-9\s]/g, '')
       .replace(/\s+/g, '_')
       .toLowerCase();
+  }
+
+  /**
+   * Deduplicate products based on SKU and title
+   */
+  private static deduplicateProducts(products: NormalizedProduct[]): NormalizedProduct[] {
+    const seen = new Map<string, NormalizedProduct>();
+    const uniqueProducts: NormalizedProduct[] = [];
+
+    for (const product of products) {
+      if (!product.sku || !product.title) {
+        console.warn('⚠️ DEBUG: Skipping product without SKU or title:', product);
+        continue;
+      }
+      
+      const key = `${product.sku}-${product.title}`;
+      if (!seen.has(key)) {
+        seen.set(key, product);
+        uniqueProducts.push(product);
+        console.log(`✅ DEBUG: Added unique product: ${product.sku} - ${product.title.substring(0, 50)}`);
+      } else {
+        console.log(`⚠️ DEBUG: Skipping duplicate product: ${product.sku} - ${product.title.substring(0, 50)}`);
+      }
+    }
+
+    return uniqueProducts;
   }
 
   /**

@@ -47,24 +47,36 @@ export class PuppeteerHttpClient {
       // Set user agent to avoid detection
       await page.setUserAgent('Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36');
       
+      // Performance optimizations
+      await page.setRequestInterception(true);
+      page.on('request', (req) => {
+        // Block unnecessary resources for faster loading
+        if (['image', 'stylesheet', 'font', 'media'].includes(req.resourceType())) {
+          req.abort();
+        } else {
+          req.continue();
+        }
+      });
+      
       // Navigate to the page with faster settings
       await page.goto(url, { 
         waitUntil: 'domcontentloaded', // Faster than networkidle2
-        timeout: 15000 // Reduced timeout
+        timeout: 10000 // Reduced timeout from 15000
       });
 
-      // Wait for specific selectors if provided (with shorter timeout)
+      // Smart selector waiting - only wait for essential selectors
       if (options?.waitForSelectors && options.waitForSelectors.length > 0) {
-        for (const selector of options.waitForSelectors) {
+        const essentialSelectors = options.waitForSelectors.slice(0, 3); // Only wait for first 3 selectors
+        for (const selector of essentialSelectors) {
           try {
-            await page.waitForSelector(selector, { timeout: 5000 }); // Reduced timeout
+            await page.waitForSelector(selector, { timeout: 3000 }); // Reduced from 5000
           } catch (error) {
             console.warn(`Selector ${selector} not found within timeout`);
           }
         }
       }
 
-      // Wait for variations to load (WooCommerce specific) - faster
+      // Wait for variations to load (WooCommerce specific) - optimized for speed
       await this.waitForWooCommerceVariations(page);
 
       // Get the final HTML after JavaScript execution
@@ -94,10 +106,10 @@ export class PuppeteerHttpClient {
         await page.waitForFunction(() => {
           const forms = document.querySelectorAll('.variations_form, .woocommerce-variations');
           return forms.length > 0;
-        }, { timeout: 3000 }); // Much shorter timeout
+        }, { timeout: 2000 }); // Reduced from 3000
         
         // Minimal wait for dynamic content
-        await new Promise(resolve => setTimeout(resolve, 500));
+        await new Promise(resolve => setTimeout(resolve, 200)); // Reduced from 500
       }
       
     } catch (error) {

@@ -111,8 +111,8 @@ behavior:
     - ".product-price"
   scrollToLoad: false
   useHeadlessBrowser: false
-  rateLimit: 1000
-  maxConcurrent: 3
+  rateLimit: 100  # Reduced from 1000ms to 100ms for faster processing
+  maxConcurrent: 8  # Increased from 3 to 8 for better concurrent processing
 
 fallbacks:
   title:
