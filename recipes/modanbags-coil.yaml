@@ -192,32 +192,7 @@ selectors:
     - ".woocommerce-variations .variations"
   
   variations:
-    - ".variations_form"
-    - ".product-variations"
-    - ".woocommerce-variations"
-    - ".woocommerce-variation-add-to-cart"
     - "form.variations_form"
-    - ".product form"
-    - ".variations"
-    - ".product-options"
-    - "select[name*='attribute']"
-    - ".woocommerce-variation-add-to-cart .variations"
-    - ".variations select"
-    - ".product-attributes select"
-    - ".product-options select"
-    - "select[class*='variation']"
-    - "select[class*='attribute']"
-    - "form[class*='variations']"
-    - "form[class*='woocommerce']"
-    - ".variations_form"
-    - ".woocommerce-variations"
-    - ".variations_form .variations"
-    - ".woocommerce-variations .variations"
-    - ".variations_form select"
-    - ".woocommerce-variations select"
-    - "select[name*='attribute_pa_']"
-    - "select[name*='attribute_']"
-    - "select[name*='pa_']"
   
   # Additional variation detection selectors
   variationForm:
@@ -233,20 +208,7 @@ selectors:
     - ".woocommerce-variations .variations"
   
   variationSelects:
-    - "select[name*='attribute_pa_']"
-    - "select[name*='attribute_']"
-    - "select[name*='pa_']"
-    - "select[class*='variation']"
-    - "select[class*='attribute']"
-    - ".variations select"
-    - ".woocommerce-variations select"
-    - ".variations_form select"
-    - ".product-options select"
-    - ".product-attributes select"
-    - "select[name='attribute_pa_general']"
-    - "select[name='attribute_pa_color']"
-    - "select[name='attribute_pa_size']"
-    - "select[name='attribute_pa_material']"
+    - ".variations_form select[name*='attribute_']"
   
   variationOptions:
     - "select[name='attribute_pa_general'] option"
@@ -393,30 +355,11 @@ behavior:
   waitForSelectors:
     - "h1"
     - ".price"
-    - ".product_title"
-    - ".product-price"
-    - ".variations_form"
-    - ".woocommerce-variations"
-    - "form[class*='variations']"
-    - "select[name*='attribute']"
-    - "[data-variation]"
-    - "[data-attribute]"
-    - "[data-product_variations]"
-    - ".variation"
-    - ".product-variation"
-    - ".woocommerce-variation"
+    - ".woocommerce-product-gallery__image img"
   scrollToLoad: false
-  useHeadlessBrowser: true  # Enable Puppeteer for variation detection
-  rateLimit: 200  # Reduced from 1000ms to 200ms for faster processing
-  maxConcurrent: 5  # Increased from 1 to 5 for concurrent processing
-  waitForVariations: true  # Wait for variations on product pages
-  waitForDynamicContent: true
-  waitForJavaScript: true
-  waitForVariationForm: true
-  waitForVariationSelects: true
-  waitForVariationOptions: true
-  waitForVariationValues: true
-  waitForWooCommerceVariations: true
+  useHeadlessBrowser: false
+  rateLimit: 150
+  maxConcurrent: 6
 
 fallbacks:
   title:
