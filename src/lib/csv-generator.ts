@@ -1,56 +1,83 @@
 import { writeToBuffer } from 'fast-csv';
 import { NormalizedProduct, ProductVariation } from '../types';
+import { debug } from './logger';
 
 export class CsvGenerator {
   /**
    * Generate Parent CSV for WooCommerce import
    */
   static async generateParentCsv(products: NormalizedProduct[]): Promise<string> {
-    console.log('🔍 DEBUG: generateParentCsv called with products:', products.length);
+    debug('🔍 DEBUG: generateParentCsv called with products:', products.length);
     
     // Deduplicate products by SKU to prevent CSV duplicates
     const uniqueProducts = this.deduplicateProducts(products);
-    console.log(`🔍 DEBUG: Deduplicated from ${products.length} to ${uniqueProducts.length} products`);
+    debug(`🔍 DEBUG: Deduplicated from ${products.length} to ${uniqueProducts.length} products`);
     
     const csvData = uniqueProducts.map((product, index) => {
+      // Build attributes from product.attributes plus union of variation attributeAssignments
+      const aggregatedAttributes: Record<string, string[]> = {};
+      // Seed from normalized product.attributes
+      for (const [key, vals] of Object.entries(product.attributes || {})) {
+        const values = Array.from(new Set((vals || []).filter(Boolean)));
+        aggregatedAttributes[key] = values;
+      }
+      // Merge from variations
+      for (const v of product.variations || []) {
+        for (const [key, val] of Object.entries(v.attributeAssignments || {})) {
+          const existing = aggregatedAttributes[key] || [];
+          if (val && !existing.includes(val)) existing.push(val);
+          aggregatedAttributes[key] = existing;
+        }
+      }
+
       const row: Record<string, string> = {
-        ID: (index + 1).toString(),
         post_title: product.title,
         post_name: product.slug && product.slug.trim() !== '' ? product.slug : (product.sku ? product.sku.toLowerCase() : `product-${index + 1}`),
         post_status: 'publish',
-        post_content: product.description,
-        post_excerpt: product.shortDescription,
-        post_parent: '0',
-        menu_order: '0',
-        post_type: 'product',
         sku: product.sku,
-        stock_status: product.stockStatus,
+        stock_status: (product as any).stock_status || product.stockStatus,
         images: product.images.join('|'),
         'tax:product_type': product.productType,
         'tax:product_cat': product.category,
-        description: product.description,
-        regular_price: product.regularPrice || '',
-        sale_price: product.salePrice || '',
-      };
+      } as any;
 
       // Add attributes per Woo CSV Import Suite rules
       // attribute:<Name> = pipe-separated values
-      // attribute_data:<Name> = position|visible|variation (use 0|1|1 for variable products, 0|1|0 for simple)
+      // attribute_default:<Name> = default value (variable products)
+      // attribute_data:<Name> = position|visible|variation (variation flag only for variable products)
       const isVariable = product.productType === 'variable';
       let position = 0;
-      for (const [attrName, attrValues] of Object.entries(product.attributes)) {
-        const cleanName = this.cleanAttributeName(attrName);
-        row[`attribute:${cleanName}`] = (attrValues || []).join(' | ');
+      const firstVariation = (product.variations || [])[0];
+
+      for (const [rawName, values] of Object.entries(aggregatedAttributes)) {
+        const displayName = this.attributeDisplayName(rawName);
+        const headerName = displayName; // use local attribute naming like in examples (e.g., Color, Size)
+
+        row[`attribute:${headerName}`] = (values || []).join(' | ');
         const visible = 1;
-        const variation = isVariable ? 1 : 0;
-        row[`attribute_data:${cleanName}`] = `${position}|${visible}|${variation}`;
+        const isTaxonomy = /^pa_/i.test(rawName) ? 1 : 0;
+        const inVariations = isVariable ? 1 : 0;
+        // position|visible|is_taxonomy|in_variations
+        row[`attribute_data:${headerName}`] = `${position}|${visible}|${isTaxonomy}|${inVariations}`;
+
+        // Default attribute per first variation when variable
+        if (isVariable && firstVariation && firstVariation.attributeAssignments) {
+          const fv = firstVariation.attributeAssignments[rawName]
+            || firstVariation.attributeAssignments[this.cleanAttributeName(rawName)]
+            || firstVariation.attributeAssignments[`pa_${this.cleanAttributeName(rawName)}`]
+            || '';
+          if (fv) {
+            row[`attribute_default:${headerName}`] = fv;
+          }
+        }
+
         position++;
       }
 
       return row;
     });
 
-    console.log('🔍 DEBUG: generateParentCsv completed, rows:', csvData.length);
+    debug('🔍 DEBUG: generateParentCsv completed, rows:', csvData.length);
     
     return new Promise((resolve, reject) => {
       writeToBuffer(csvData, { headers: true })
@@ -64,13 +91,14 @@ export class CsvGenerator {
    */
   static async generateVariationCsv(products: NormalizedProduct[]): Promise<string> {
     const variationRows: Record<string, string>[] = [];
+    const attributeHeadersSet = new Set<string>();
     let variationId = 1;
 
     // DEBUG: Log what we're processing
-    console.log('🔍 DEBUG: generateVariationCsv called with products:', products.length);
+    debug('🔍 DEBUG: generateVariationCsv called with products:', products.length);
     
     for (const product of products) {
-      console.log('🔍 DEBUG: Processing product for variations:', {
+      debug('🔍 DEBUG: Processing product for variations:', {
         title: product.title.substring(0, 50),
         productType: product.productType,
         variationsCount: product.variations.length,
@@ -79,53 +107,77 @@ export class CsvGenerator {
       });
       
       if (product.productType === 'variable' && product.variations.length > 0) {
-        console.log('✅ DEBUG: Product is variable, processing variations');
+        // Collect attribute header names from product + variations
+        const aggregatedAttributes: Record<string, string[]> = {};
+        for (const [key, vals] of Object.entries(product.attributes || {})) {
+          aggregatedAttributes[key] = Array.from(new Set((vals || []).filter(Boolean)));
+        }
+        for (const v of product.variations || []) {
+          for (const k of Object.keys(v.attributeAssignments || {})) {
+            const list = aggregatedAttributes[k] || [];
+            aggregatedAttributes[k] = list;
+          }
+        }
+        for (const rawName of Object.keys(aggregatedAttributes)) {
+          const displayName = this.attributeDisplayName(rawName);
+          attributeHeadersSet.add(`meta:attribute_${displayName}`);
+        }
+        debug('✅ DEBUG: Product is variable, processing variations');
         for (const variation of product.variations) {
           const row: Record<string, string> = {
-            ID: variationId.toString(),
-            post_type: 'product_variation',
-            post_status: 'publish',
             parent_sku: product.sku,
-            post_title: product.title, // Same as parent
-            post_name: `${product.slug}-${variation.sku}`,
-            post_content: product.description,
-            post_excerpt: product.shortDescription,
-            menu_order: '0',
             sku: variation.sku,
             stock_status: variation.stockStatus,
             regular_price: variation.regularPrice,
-            sale_price: variation.salePrice || '',
-            tax_class: variation.taxClass,
-            images: variation.images.join('|'),
+            tax_class: variation.taxClass || 'parent',
+            images: ((variation.images[0] || product.images[0] || '') as string).toString(),
           };
 
-          // Add attribute values per variation using attribute:<Name> columns
-          for (const [attrName, attrValue] of Object.entries(variation.attributeAssignments)) {
-            const cleanName = this.cleanAttributeName(attrName);
-            row[`attribute:${cleanName}`] = attrValue;
+          // Add attribute values per variation using meta:attribute_Name columns as in examples
+          const assignments = variation.attributeAssignments || {};
+          // Ensure all known attribute headers exist on this row (fill missing as empty)
+          for (const header of attributeHeadersSet) {
+            row[header] = row[header] || '';
+          }
+          for (const [rawName, attrValue] of Object.entries(assignments)) {
+            const displayName = this.attributeDisplayName(rawName);
+            const header = `meta:attribute_${displayName}`;
+            row[header] = attrValue;
           }
 
           variationRows.push(row);
           variationId++;
         }
       } else {
-        console.log('❌ DEBUG: Product is NOT variable or has no variations:', {
+        debug('❌ DEBUG: Product is NOT variable or has no variations:', {
           productType: product.productType,
           variationsCount: product.variations.length
         });
       }
     }
 
-    console.log('🔍 DEBUG: Final variation rows count:', variationRows.length);
+    debug('🔍 DEBUG: Final variation rows count:', variationRows.length);
     
     if (variationRows.length === 0) {
       return '';
     }
 
-    console.log('🔍 DEBUG: generateVariationCsv completed, rows:', variationRows.length);
-    
+    // Build stable headers: base columns + any dynamic meta:attribute_* columns discovered across products
+    const baseHeaders = [
+      'parent_sku',
+      'sku',
+      'stock_status',
+      'regular_price',
+      'tax_class',
+      'images',
+    ];
+    const dynamicHeaders = Array.from(attributeHeadersSet).sort();
+    const headers = [...baseHeaders, ...dynamicHeaders];
+
+    debug('🔍 DEBUG: generateVariationCsv completed, rows:', variationRows.length, 'headers:', headers);
+
     return new Promise((resolve, reject) => {
-      writeToBuffer(variationRows, { headers: true })
+      writeToBuffer(variationRows, { headers })
         .then(buffer => resolve(buffer.toString()))
         .catch(reject);
     });
@@ -140,7 +192,7 @@ export class CsvGenerator {
     productCount: number;
     variationCount: number;
   }> {
-    console.log('🔍 DEBUG: generateBothCsvs called with products:', products.length);
+    debug('🔍 DEBUG: generateBothCsvs called with products:', products.length);
     
     const [parentCsv, variationCsv] = await Promise.all([
       this.generateParentCsv(products),
@@ -151,7 +203,7 @@ export class CsvGenerator {
       .filter(p => p.productType === 'variable')
       .reduce((sum, p) => sum + p.variations.length, 0);
 
-    console.log('🔍 DEBUG: generateBothCsvs results:', {
+    debug('🔍 DEBUG: generateBothCsvs results:', {
       productCount: products.length,
       variationCount,
       parentCsvLength: parentCsv.length,
@@ -177,6 +229,18 @@ export class CsvGenerator {
       .replace(/[^a-zA-Z0-9\s]/g, '')
       .replace(/\s+/g, '_')
       .toLowerCase();
+  }
+
+  /**
+   * Turn raw attribute keys into display names like in examples (Color, Size)
+   */
+  private static attributeDisplayName(rawName: string): string {
+    const withoutPrefix = rawName.replace(/^pa_/i, '');
+    const cleaned = withoutPrefix
+      .replace(/[_\-]+/g, ' ')
+      .trim()
+      .toLowerCase();
+    return cleaned.replace(/\b\w/g, c => c.toUpperCase());
   }
 
   /**

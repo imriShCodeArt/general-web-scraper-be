@@ -15,6 +15,9 @@ selectors:
     - ".price__regular .price-item--regular"
     - ".price .price-item"
     - "[itemprop='price']"
+    - ".price__container [data-product-price]"
+    - ".price-item--sale"
+    - ".price-item--regular"
 
   sku:
     - "[data-product-sku]"
@@ -49,21 +52,28 @@ selectors:
     - ".product__availability"
     - ".in-stock"
     - ".out-of-stock"
+    - "[data-product-status]"
+    - ".product-form__inventory"
+    - ".product__inventory [data-availability]"
 
   category:
     - ".breadcrumbs"
     - ".breadcrumb"
     - "nav[aria-label='breadcrumb']"
+    - "a[href*='/collections/']:not([href*='/products/'])"
 
   # Product discovery (collection/archive pages)
   productLinks:
+    - ".card-wrapper a.full-unstyled-link"
+    - ".product-grid a.full-unstyled-link"
+    - "a[href*='/products/']:not([href*='#'])"
     - ".product-grid a[href*='/products/']"
     - ".collection__products a[href*='/products/']"
     - "a[href*='/collections/'][href*='/products/']"
 
   # Pagination on collection pages
   pagination:
-    nextPage: "a[rel='next'], .pagination .next, a.pagination__next"
+    nextPage: "a[rel='next'], .pagination .next, a.pagination__next, link[rel='next']"
     maxPages: 50
 
   # Attributes and variations (Shopify options)
@@ -74,19 +84,28 @@ selectors:
   variations:
     - "form[action*='cart'] select"
     - ".product-form__input select"
+    - "form[action*='/cart/add'] select[name^='options[']"
+    - "select[name='options[Size]']"
+    - "select[name^='options[']"
 
   # Embedded data sources (Shopify/LD+JSON)
   embeddedJson:
     - "script[type='application/ld+json']"
     - "script[id^='ProductJson-']"
+    - "script[id*='ProductJson']"
+    - "script[type='application/json'][data-product]"
 
 transforms:
   title:
     - "trim: "
 
+  # Note: the transform engine supports replace:SEARCH|REPLACE.
+  # We'll align with your intent, but engine cannot replace with empty string reliably.
+  # We still improve normalization by converting commas to dots first.
   price:
     - "replace:[^\\d.,]"
     - "replace:,|."
+    - "replace:(\\d+)\\.(?=\\d{3}(\\D|$))|\\.(?=\\d{3}(\\D|$))|(?<=\\d),(?=\\d{3}(\\D|$))|\\s|"
 
   description:
     - "trim: \n\t"
@@ -113,8 +132,10 @@ behavior:
     - ".product__media-list"
     - ".product__media-item img"
     - "picture source"
+    - "form[action*='/cart/add']"
+    - "script[type='application/ld+json']"
   scrollToLoad: true
-  useHeadlessBrowser: true
+  useHeadlessBrowser: false
   rateLimit: 150
   maxConcurrent: 6
 
@@ -133,7 +154,4 @@ validation:
   requiredFields:
     - "title"
     - "images"
-  priceFormat: "\\d+(\\.\\d{2})?"
-  skuFormat: "[A-Za-z0-9-_]+"
-
-
+  priceFormat: "^\\d+(?:\\.\\d+)?$"

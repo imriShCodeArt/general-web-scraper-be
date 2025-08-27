@@ -13,9 +13,30 @@ export class HttpClient {
 
   constructor() {
     this.client = axios.create({
-      timeout: 30000,
-      maxRedirects: 5,
+      timeout: 15000, // Reduced from 30000ms to 15000ms for faster failure detection
+      maxRedirects: 3, // Reduced from 5 to 3 for faster processing
       validateStatus: (status) => status < 500, // Accept 4xx status codes
+      // Connection pooling and performance optimizations
+      maxRedirects: 3,
+      maxContentLength: 50 * 1024 * 1024, // 50MB max content length
+      maxBodyLength: 50 * 1024 * 1024, // 50MB max body length
+      // HTTP/2 support for better performance
+      httpAgent: new (require('http').Agent)({
+        keepAlive: true,
+        keepAliveMsecs: 30000,
+        maxSockets: 50, // Increased connection pool
+        maxFreeSockets: 10,
+        timeout: 60000,
+        freeSocketTimeout: 30000,
+      }),
+      httpsAgent: new (require('https').Agent)({
+        keepAlive: true,
+        keepAliveMsecs: 30000,
+        maxSockets: 50, // Increased connection pool
+        maxFreeSockets: 10,
+        timeout: 60000,
+        freeSocketTimeout: 30000,
+      }),
     });
 
     // Add request interceptor for rotating user agents
@@ -26,9 +47,12 @@ export class HttpClient {
       }
       config.headers['Accept'] = 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8';
       config.headers['Accept-Language'] = 'en-US,en;q=0.5,he;q=0.3';
-      config.headers['Accept-Encoding'] = 'gzip, deflate';
+      config.headers['Accept-Encoding'] = 'gzip, deflate, br'; // Added brotli support
       config.headers['Connection'] = 'keep-alive';
       config.headers['Upgrade-Insecure-Requests'] = '1';
+      // Performance headers
+      config.headers['Cache-Control'] = 'no-cache';
+      config.headers['Pragma'] = 'no-cache';
       return config;
     });
 

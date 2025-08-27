@@ -65,7 +65,7 @@ export class ScrapingService {
 
   constructor() {
     this.logger = pino({
-      level: 'info',
+      level: process.env.LOG_LEVEL || 'warn',
       transport: {
         target: 'pino-pretty',
         options: {
@@ -208,28 +208,35 @@ export class ScrapingService {
           throw new Error('No products found');
         }
 
-        // Process products with concurrent processing (respecting maxProducts limit)
+        // Enhanced concurrent processing with optimized settings
         const products: NormalizedProduct[] = [];
-        const maxConcurrent = recipe.behavior?.maxConcurrent || 5; // Default to 5 concurrent
-        const rateLimit = recipe.behavior?.rateLimit || 200; // Reduced default delay
+        const maxConcurrent = Math.min(
+          recipe.behavior?.maxConcurrent || 10, // Increased default from 5 to 10
+          productUrls.length // Don't exceed the number of products
+        );
+        const rateLimit = Math.max(recipe.behavior?.rateLimit || 50, 10); // Reduced default from 200ms to 50ms, minimum 10ms
         
         this.logger.info(`Processing ${productUrls.length} products with ${maxConcurrent} concurrent workers and ${rateLimit}ms rate limit`);
 
-        // Process products in batches for better performance
-        for (let i = 0; i < productUrls.length; i += maxConcurrent) {
-          const batch = productUrls.slice(i, i + maxConcurrent);
+        // Process products in optimized batches with connection pooling
+        const batchSize = maxConcurrent;
+        for (let i = 0; i < productUrls.length; i += batchSize) {
+          const batch = productUrls.slice(i, i + batchSize);
+          const batchStartTime = Date.now();
+          
+          // Process batch concurrently with better error handling
           const batchPromises = batch.map(async (url, batchIndex) => {
             if (!url) return null;
             
             const globalIndex = i + batchIndex;
             try {
-              this.logger.info(`🔍 DEBUG: Processing product ${globalIndex + 1}/${productUrls.length}: ${url}`);
+              this.logger.debug(`Processing product ${globalIndex + 1}/${productUrls.length}: ${url}`);
               
               const startTime = Date.now();
               const rawProduct = await adapter.extractProduct(url);
               const extractionTime = Date.now() - startTime;
               
-              this.logger.info(`🔍 DEBUG: Raw product data extracted in ${extractionTime}ms:`, {
+              this.logger.debug(`Raw product data extracted in ${extractionTime}ms:`, {
                 title: rawProduct.title?.substring(0, 50),
                 hasAttributes: Object.keys(rawProduct.attributes || {}).length > 0,
                 hasVariations: (rawProduct.variations || []).length > 0,
@@ -241,7 +248,7 @@ export class ScrapingService {
 
               const normalizedProduct = await this.normalizeProduct(rawProduct, url);
               
-              this.logger.info(`🔍 DEBUG: Normalized product:`, {
+              this.logger.debug(`Normalized product:`, {
                 title: normalizedProduct.title?.substring(0, 50),
                 productType: normalizedProduct.productType,
                 hasVariations: normalizedProduct.variations.length > 0,
@@ -269,18 +276,22 @@ export class ScrapingService {
           const validProducts = batchResults.filter(p => p !== null) as NormalizedProduct[];
           products.push(...validProducts);
 
-          // Add minimal delay between batches (not between individual products)
-          if (i + maxConcurrent < productUrls.length && rateLimit > 0) {
-            const delayTime = Math.min(rateLimit, 500); // Cap delay at 500ms
-            this.logger.info(`⏱️ Waiting ${delayTime}ms before next batch...`);
-            await this.delay(delayTime);
+          const batchTime = Date.now() - batchStartTime;
+          this.logger.debug(`Batch completed in ${batchTime}ms, processed ${validProducts.length}/${batch.length} products successfully`);
+
+          // Optimized delay between batches - only if there are more products to process
+          if (i + batchSize < productUrls.length && rateLimit > 0) {
+            // Dynamic delay based on batch performance - reduce delay if batch was fast
+            const dynamicDelay = Math.max(10, Math.min(rateLimit, batchTime < 1000 ? rateLimit / 2 : rateLimit));
+            this.logger.debug(`Waiting ${dynamicDelay}ms before next batch...`);
+            await this.delay(dynamicDelay);
           }
         }
 
         // Generate CSV files
         const csvResult = await CsvGenerator.generateBothCsvs(products);
         
-        this.logger.info('🔍 DEBUG: Product type detection results:', {
+        this.logger.debug('Product type detection results:', {
           totalProducts: products.length,
           productTypes: products.map(p => ({
             title: p.title.substring(0, 50),
@@ -524,13 +535,100 @@ export class ScrapingService {
     try {
       return this.createSuccessResponse({
         ...this.performanceMetrics,
-        currentActiveJobs: this.activeJobs.size,
-        queueLength: this.jobQueue.length,
+        activeJobs: this.activeJobs.size,
+        queuedJobs: this.jobQueue.length,
         isProcessing: this.isProcessing
       });
     } catch (error) {
       return this.createErrorResponse(
         `Failed to get performance metrics: ${error}`
+      );
+    }
+  }
+
+  /**
+   * Get live performance metrics with real-time data
+   */
+  async getLivePerformanceMetrics(): Promise<ApiResponse<any>> {
+    try {
+      const now = Date.now();
+      const activeJobStats = Array.from(this.activeJobs.values()).map(job => ({
+        id: job.id,
+        status: job.status,
+        progress: job.processedProducts / Math.max(job.totalProducts, 1),
+        duration: job.startedAt ? now - job.startedAt.getTime() : 0,
+        productsPerSecond: job.startedAt && job.processedProducts > 0 
+          ? (job.processedProducts / ((now - job.startedAt.getTime()) / 1000)).toFixed(2)
+          : 0
+      }));
+
+      return this.createSuccessResponse({
+        timestamp: now,
+        activeJobs: activeJobStats,
+        queueLength: this.jobQueue.length,
+        isProcessing: this.isProcessing,
+        systemLoad: {
+          memoryUsage: process.memoryUsage(),
+          cpuUsage: process.cpuUsage(),
+          uptime: process.uptime()
+        }
+      });
+    } catch (error) {
+      return this.createErrorResponse(
+        `Failed to get live performance metrics: ${error}`
+      );
+    }
+  }
+
+  /**
+   * Get performance recommendations based on current metrics
+   */
+  async getPerformanceRecommendations(): Promise<ApiResponse<any>> {
+    try {
+      const recommendations = [];
+      
+      // Analyze current performance and provide recommendations
+      if (this.performanceMetrics.averageTimePerProduct > 5000) {
+        recommendations.push({
+          type: 'performance',
+          priority: 'high',
+          message: 'Average processing time per product is high (>5s). Consider enabling fast mode or reducing concurrent workers.',
+          suggestion: 'Set fastMode: true in recipe behavior or reduce maxConcurrent to 5-8'
+        });
+      }
+
+      if (this.activeJobs.size > 3) {
+        recommendations.push({
+          type: 'concurrency',
+          priority: 'medium',
+          message: 'High number of active jobs may impact performance.',
+          suggestion: 'Consider reducing maxConcurrent in recipe behavior'
+        });
+      }
+
+      if (this.performanceMetrics.totalJobs > 0) {
+        const avgJobTime = this.performanceMetrics.totalProcessingTime / this.performanceMetrics.totalJobs;
+        if (avgJobTime > 300000) { // 5 minutes
+          recommendations.push({
+            type: 'optimization',
+            priority: 'high',
+            message: 'Average job completion time is high (>5min).',
+            suggestion: 'Review rateLimit settings and consider using HTTP client instead of Puppeteer for simple sites'
+          });
+        }
+      }
+
+      return this.createSuccessResponse({
+        recommendations,
+        currentSettings: {
+          defaultMaxConcurrent: 10,
+          defaultRateLimit: 50,
+          fastModeAvailable: true
+        }
+      });
+    } catch (error) {
+      return this.createErrorResponse(
+        `Failed to get performance recommendations: ${error}`
       );
     }
   }
