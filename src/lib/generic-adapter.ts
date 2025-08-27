@@ -94,24 +94,25 @@ export class GenericAdapter extends BaseAdapter {
   async extractProduct(url: string): Promise<RawProduct> {
     // Get waitForSelectors from behavior if configured
     const waitForSelectors = this.config.behavior?.waitForSelectors;
+    const fastMode = this.config.behavior?.fastMode || false;
     
     const dom = await this.getDom(url, waitForSelectors ? { waitForSelectors } : {});
     const { selectors, transforms, fallbacks } = this.config;
 
-    // Extract core product data
+    // Extract core product data with fast mode optimizations
     const product: RawProduct = {
       id: this.extractWithFallbacks(dom, selectors.sku, fallbacks?.sku) || this.generateIdFromUrl(url),
       title: this.extractWithFallbacks(dom, selectors.title, fallbacks?.title),
       slug: this.extractWithFallbacks(dom, selectors.title, fallbacks?.title)?.toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, '') || 'product',
-      description: this.extractWithFallbacks(dom, selectors.description, selectors.descriptionFallbacks),
+      description: fastMode ? this.extractWithFallbacks(dom, selectors.description, selectors.descriptionFallbacks)?.substring(0, 500) : this.extractWithFallbacks(dom, selectors.description, selectors.descriptionFallbacks),
       shortDescription: selectors.shortDescription ? this.extractWithFallbacks(dom, selectors.shortDescription) : undefined,
       sku: this.extractWithFallbacks(dom, selectors.sku, fallbacks?.sku),
       stockStatus: this.extractStockStatus(dom, selectors.stock),
-      images: this.extractImages(dom, selectors.images),
+      images: fastMode ? this.extractImages(dom, selectors.images).slice(0, 3) : this.extractImages(dom, selectors.images), // Limit images in fast mode
       category: selectors.category ? this.extractWithFallbacks(dom, selectors.category) : undefined,
       productType: 'simple', // Default to simple, could be enhanced to detect variable products
-      attributes: this.extractAttributes(dom, selectors.attributes),
-      variations: selectors.variations ? this.extractVariations(dom, selectors.variations) : [],
+      attributes: fastMode ? {} : this.extractAttributes(dom, selectors.attributes), // Skip attributes in fast mode
+      variations: fastMode ? [] : (selectors.variations ? this.extractVariations(dom, selectors.variations) : []), // Skip variations in fast mode
       price: this.extractPrice(dom, Array.isArray(selectors.price) ? selectors.price[0] : selectors.price),
       salePrice: this.extractSalePrice(dom, selectors.price),
     };
@@ -121,8 +122,8 @@ export class GenericAdapter extends BaseAdapter {
       product.category = this.archiveCategory;
     }
 
-    // Apply transformations
-    if (transforms) {
+    // Apply transformations (simplified in fast mode)
+    if (transforms && !fastMode) {
       if (transforms.title && product.title) {
         product.title = this.applyTransformations(product.title, transforms.title);
       }
@@ -169,36 +170,36 @@ export class GenericAdapter extends BaseAdapter {
       if (result) {
         // Filter out price-like content for description fields
         if (this.isPriceLike(result)) {
-          console.log(`⚠️ DEBUG: Skipping price-like content for selector: ${selector} ->`, result.substring(0, 50));
+          if (process.env.SCRAPER_DEBUG === '1') console.log(`Skipping price-like content for selector: ${selector} ->`, result.substring(0, 50));
           continue;
         }
-        console.log(`✅ DEBUG: Found content with selector: ${selector}`, result.substring(0, 100));
+        if (process.env.SCRAPER_DEBUG === '1') console.log(`Found content with selector: ${selector}`, result.substring(0, 100));
         return result;
       } else {
-        console.log(`❌ DEBUG: No content found with selector: ${selector}`);
+        if (process.env.SCRAPER_DEBUG === '1') console.log(`No content found with selector: ${selector}`);
       }
     }
 
     // Try fallback selectors if available
     if (fallbacks) {
-      console.log(`🔍 DEBUG: Trying fallback selectors:`, fallbacks);
+      if (process.env.SCRAPER_DEBUG === '1') console.log(`Trying fallback selectors:`, fallbacks);
       for (const fallback of fallbacks) {
         const result = this.extractText(dom, fallback);
         if (result) {
           // Filter out price-like content for fallback selectors too
           if (this.isPriceLike(result)) {
-            console.log(`⚠️ DEBUG: Skipping price-like content for fallback selector: ${fallback} ->`, result.substring(0, 50));
+            if (process.env.SCRAPER_DEBUG === '1') console.log(`Skipping price-like content for fallback selector: ${fallback} ->`, result.substring(0, 50));
             continue;
           }
-          console.log(`✅ DEBUG: Found content with fallback selector: ${fallback}`, result.substring(0, 100));
+          if (process.env.SCRAPER_DEBUG === '1') console.log(`Found content with fallback selector: ${fallback}`, result.substring(0, 100));
           return result;
         } else {
-          console.log(`❌ DEBUG: No content found with fallback selector: ${fallback}`);
+          if (process.env.SCRAPER_DEBUG === '1') console.log(`No content found with fallback selector: ${fallback}`);
         }
       }
     }
 
-    console.log(`⚠️ DEBUG: No content found with any selector or fallback`);
+    if (process.env.SCRAPER_DEBUG === '1') console.log(`No content found with any selector or fallback`);
     return '';
   }
 
@@ -341,9 +342,7 @@ export class GenericAdapter extends BaseAdapter {
       }
       const filteredLd = ldImages.map(u => this.resolveUrl(u)).filter(productCdnFilter).filter(notIconFilter);
       if (filteredLd.length > 0) {
-        if (process.env.SCRAPER_DEBUG === '1') {
-          console.log(`[extractImages] Found ${filteredLd.length} LD+JSON images, but continuing to check configured selectors`);
-        }
+        if (process.env.SCRAPER_DEBUG === '1') console.log(`[extractImages] Found ${filteredLd.length} LD+JSON images, but continuing to check configured selectors`);
         // Don't return immediately - continue to check configured selectors for more images
       }
     } catch {}
@@ -370,9 +369,7 @@ export class GenericAdapter extends BaseAdapter {
       }
       const filteredJson = jsonImages.map(u => this.resolveUrl(u)).filter(productCdnFilter).filter(notIconFilter);
       if (filteredJson.length > 0) {
-        if (process.env.SCRAPER_DEBUG === '1') {
-          console.log(`[extractImages] Found ${filteredJson.length} Shopify JSON images, but continuing to check configured selectors`);
-        }
+        if (process.env.SCRAPER_DEBUG === '1') console.log(`[extractImages] Found ${filteredJson.length} Shopify JSON images, but continuing to check configured selectors`);
         // Don't return immediately - continue to check configured selectors for more images
       }
     } catch {}
@@ -424,9 +421,7 @@ export class GenericAdapter extends BaseAdapter {
           .filter(productCdnFilter)
           .filter(notIconFilter);
         if (urls.length > 0) {
-          if (process.env.SCRAPER_DEBUG === '1') {
-            console.log(`[extractImages] Found ${urls.length} images from selector ${sel}`);
-          }
+          if (process.env.SCRAPER_DEBUG === '1') console.log(`[extractImages] Found ${urls.length} images from selector ${sel}`);
           return Array.from(new Set(urls));
         }
       }
@@ -440,9 +435,7 @@ export class GenericAdapter extends BaseAdapter {
           .filter(productCdnFilter)
           .filter(notIconFilter);
         if (urls.length > 0) {
-          if (process.env.SCRAPER_DEBUG === '1') {
-            console.log(`[extractImages] Found ${urls.length} images from gallery scope ${scopeSel}`);
-          }
+          if (process.env.SCRAPER_DEBUG === '1') console.log(`[extractImages] Found ${urls.length} images from gallery scope ${scopeSel}`);
           return Array.from(new Set(urls));
         }
       }
@@ -526,17 +519,39 @@ export class GenericAdapter extends BaseAdapter {
       
       if (attributeElements.length > 0) {
         for (const element of attributeElements) {
+          // Case 1: Structured name/value nodes present
           const nameElement = element.querySelector('[data-attribute-name], .attribute-name, .attr-name, .option-name');
-          const valueElements = element.querySelectorAll('[data-attribute-value], .attribute-value, .attr-value, option, .option-value');
-          
+          const valueElements = element.querySelectorAll('[data-attribute-value], .attribute-value, .attr-value, .option-value');
           if (nameElement && valueElements.length > 0) {
             const name = nameElement.textContent?.trim() || '';
             const values = Array.from(valueElements)
               .map(val => (val as Element).textContent?.trim())
               .filter((val): val is string => val !== undefined && !this.isPlaceholderValue(val));
-            
             if (name && values.length > 0) {
               attributes[name] = values;
+            }
+          }
+
+          // Case 2: WooCommerce selects (no explicit name node)
+          const selectNodes = element.querySelectorAll('select[name*="attribute"], select[name*="pa_"], select[class*="attribute"], .variations select');
+          for (const select of Array.from(selectNodes)) {
+            const rawName = select.getAttribute('name') || select.getAttribute('data-attribute') || '';
+            if (!rawName) continue;
+            // Derive display name: attribute_pa_color -> Color; attribute_size -> Size
+            const nameClean = rawName
+              .replace(/^attribute_/i, '')
+              .replace(/^pa_/i, '')
+              .replace(/[_-]+/g, ' ')
+              .trim();
+            const displayName = nameClean.replace(/\b\w/g, c => c.toUpperCase());
+
+            const options = Array.from(select.querySelectorAll('option')) as HTMLOptionElement[];
+            const values = options
+              .map(o => (o.textContent || '').trim())
+              .filter(v => v && !this.isPlaceholderValue(v));
+            if (displayName && values.length > 0) {
+              const existing = attributes[displayName] || [];
+              attributes[displayName] = Array.from(new Set([...existing, ...values]));
             }
           }
         }
@@ -582,9 +597,7 @@ export class GenericAdapter extends BaseAdapter {
               // Check if this has product variants
               if (json?.product?.variants && Array.isArray(json.product.variants)) {
                 const variants = json.product.variants;
-                if (process.env.SCRAPER_DEBUG === '1') {
-                  console.log(`[extractVariations] Found ${variants.length} variants in meta script`);
-                }
+                if (process.env.SCRAPER_DEBUG === '1') console.log(`[extractVariations] Found ${variants.length} variants in meta script`);
                 
                 for (const v of variants) {
                   const price = (v.price / 100).toString(); // Shopify prices are in cents
@@ -610,15 +623,13 @@ export class GenericAdapter extends BaseAdapter {
                 }
                 
                 if (variations.length > 0) {
-                  console.log(`🔍 DEBUG: Extracted ${variations.length} variations from Shopify meta script`);
+                  if (process.env.SCRAPER_DEBUG === '1') console.log(`Extracted ${variations.length} variations from Shopify meta script`);
                   return variations;
                 }
               }
             }
           } catch (e) {
-            if (process.env.SCRAPER_DEBUG === '1') {
-              console.log('[extractVariations] Failed to parse meta script variants:', e);
-            }
+            if (process.env.SCRAPER_DEBUG === '1') console.log('[extractVariations] Failed to parse meta script variants:', e);
           }
         }
 
@@ -665,7 +676,7 @@ export class GenericAdapter extends BaseAdapter {
           }
 
           if (variations.length > 0) {
-            console.log(`🔍 DEBUG: Extracted ${variations.length} variations from Shopify Product JSON`);
+            if (process.env.SCRAPER_DEBUG === '1') console.log(`Extracted ${variations.length} variations from Shopify Product JSON`);
             return variations;
           }
         }
@@ -689,13 +700,13 @@ export class GenericAdapter extends BaseAdapter {
             });
           }
           if (variations.length > 0) {
-            console.log(`🔍 DEBUG: Extracted ${variations.length} variations from LD+JSON offers`);
+            if (process.env.SCRAPER_DEBUG === '1') console.log(`Extracted ${variations.length} variations from LD+JSON offers`);
             return variations;
           }
         }
       }
     } catch (e) {
-      console.warn('Failed to parse Shopify/LD+JSON variants:', e);
+      if (process.env.SCRAPER_DEBUG === '1') console.warn('Failed to parse Shopify/LD+JSON variants:', e);
     }
     
     // 1) WooCommerce: parse JSON from data-product_variations on form.variations_form
@@ -742,12 +753,12 @@ export class GenericAdapter extends BaseAdapter {
               }
             }
           } catch (e) {
-            console.warn('Failed to parse data-product_variations JSON:', e);
+            if (process.env.SCRAPER_DEBUG === '1') console.warn('Failed to parse data-product_variations JSON:', e);
           }
         }
       }
       if (variations.length > 0) {
-        console.log(`🔍 DEBUG: Extracted ${variations.length} variations from data-product_variations JSON`);
+        if (process.env.SCRAPER_DEBUG === '1') console.log(`Extracted ${variations.length} variations from data-product_variations JSON`);
         return variations;
       }
     }
@@ -758,14 +769,14 @@ export class GenericAdapter extends BaseAdapter {
       const variationElements = this.extractElements(dom, sel);
       
       if (variationElements.length > 0) {
-        console.log(`🔍 DEBUG: Found ${variationElements.length} variation elements with selector: ${sel}`);
+        if (process.env.SCRAPER_DEBUG === '1') console.log(`Found ${variationElements.length} variation elements with selector: ${sel}`);
         
         for (const element of variationElements) {
           // Look for variation options in select elements
           const selectElements = element.querySelectorAll('select[name*="attribute"], select[class*="variation"], select[class*="attribute"]');
           
           if (selectElements.length > 0) {
-            console.log(`🔍 DEBUG: Found ${selectElements.length} variation select elements`);
+            if (process.env.SCRAPER_DEBUG === '1') console.log(`Found ${selectElements.length} variation select elements`);
             
             // Only create variations if we have actual variation data (different prices, SKUs, etc.)
             // Don't create variations for every attribute option to avoid CSV duplication
@@ -777,14 +788,14 @@ export class GenericAdapter extends BaseAdapter {
             const hasSkuVariations = this.checkForSkuVariations(dom);
             
             if (hasPriceVariations || hasSkuVariations) {
-              console.log('✅ DEBUG: Found actual price/SKU variations, creating variation records');
+              if (process.env.SCRAPER_DEBUG === '1') console.log('Found actual price/SKU variations, creating variation records');
               
               // Extract options from each select
               for (const select of Array.from(selectElements)) {
                 const options = select.querySelectorAll('option[value]:not([value=""])');
                 const attributeName = select.getAttribute('name') || select.getAttribute('data-attribute') || 'Unknown';
                 
-                console.log(`🔍 DEBUG: Found ${options.length} options for attribute: ${attributeName}`);
+                if (process.env.SCRAPER_DEBUG === '1') console.log(`Found ${options.length} options for attribute: ${attributeName}`);
                 
                 for (const option of Array.from(options)) {
                   const value = option.getAttribute('value');
@@ -808,7 +819,7 @@ export class GenericAdapter extends BaseAdapter {
                 }
               }
             } else {
-              console.log('ℹ️ DEBUG: No actual price/SKU variations found, treating as simple product with attributes');
+              if (process.env.SCRAPER_DEBUG === '1') console.log('No actual price/SKU variations found, treating as simple product with attributes');
               // Don't create variations - this is just a simple product with attribute options
             }
           }
@@ -832,7 +843,7 @@ export class GenericAdapter extends BaseAdapter {
       }
     }
     
-    console.log(`🔍 DEBUG: Extracted ${variations.length} variations total`);
+    if (process.env.SCRAPER_DEBUG === '1') console.log(`Extracted ${variations.length} variations total`);
     return variations;
   }
 
@@ -952,7 +963,7 @@ export class GenericAdapter extends BaseAdapter {
     
     // If we have more than one unique price, there are price variations
     const hasVariations = prices.size > 1;
-    console.log(`🔍 DEBUG: Price variation check - found ${prices.size} unique prices:`, Array.from(prices));
+    if (process.env.SCRAPER_DEBUG === '1') console.log(`Price variation check - found ${prices.size} unique prices:`, Array.from(prices));
     return hasVariations;
   }
 
@@ -973,7 +984,7 @@ export class GenericAdapter extends BaseAdapter {
     
     // If we have more than one unique SKU, there are SKU variations
     const hasVariations = skus.size > 1;
-    console.log(`🔍 DEBUG: SKU variation check - found ${skus.size} unique SKUs:`, Array.from(skus));
+    if (process.env.SCRAPER_DEBUG === '1') console.log(`SKU variation check - found ${skus.size} unique SKUs:`, Array.from(skus));
     return hasVariations;
   }
 
@@ -1106,7 +1117,7 @@ export class GenericAdapter extends BaseAdapter {
         if (saleElement) {
           const saleText = saleElement.textContent?.trim();
           if (saleText && this.isValidPrice(saleText)) {
-            console.log(`✅ DEBUG: Found sale price: ${saleText}`);
+            if (process.env.SCRAPER_DEBUG === '1') console.log(`Found sale price: ${saleText}`);
             return this.cleanPrice(saleText);
           }
         }
@@ -1123,7 +1134,7 @@ export class GenericAdapter extends BaseAdapter {
         )) {
           const priceText = mainPriceElement.textContent?.trim();
           if (priceText && this.isValidPrice(priceText)) {
-            console.log(`✅ DEBUG: Found sale price from main selector: ${priceText}`);
+            if (process.env.SCRAPER_DEBUG === '1') console.log(`Found sale price from main selector: ${priceText}`);
             return this.cleanPrice(priceText);
           }
         }

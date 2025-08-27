@@ -1,11 +1,12 @@
 import { RawProduct, NormalizedProduct, RawVariation, ProductVariation } from '../types';
+import { debug } from './logger';
 
 export class NormalizationToolkit {
   /**
    * Normalize raw product data into standardized format
    */
   static normalizeProduct(raw: RawProduct, url: string): NormalizedProduct {
-    console.log('🔍 DEBUG: normalizeProduct called with:', {
+    debug('🔍 DEBUG: normalizeProduct called with:', {
       url,
       rawTitle: raw.title,
       rawSku: raw.sku,
@@ -44,7 +45,7 @@ export class NormalizationToolkit {
       }
     }
     
-    console.log('🔍 DEBUG: normalizeProduct result:', {
+    debug('🔍 DEBUG: normalizeProduct result:', {
       title: result.title,
       productType: result.productType,
       attributesCount: Object.keys(result.attributes).length,
@@ -157,7 +158,7 @@ export class NormalizationToolkit {
    * Detect product type (simple vs variable)
    */
   static detectProductType(raw: RawProduct): 'simple' | 'variable' {
-    console.log('🔍 DEBUG: detectProductType called with raw product:', {
+    debug('🔍 DEBUG: detectProductType called with raw product:', {
       hasVariations: !!raw.variations,
       variationsLength: raw.variations?.length || 0,
       hasAttributes: !!raw.attributes,
@@ -167,17 +168,17 @@ export class NormalizationToolkit {
     
     // If we already have parsed variations (e.g., from WooCommerce JSON), treat as variable
     if (raw.variations && raw.variations.length > 0) {
-      console.log('✅ DEBUG: Product type = variable (has parsed variations)');
+      debug('✅ DEBUG: Product type = variable (has parsed variations)');
       return 'variable';
     }
     
     // Don't mark as variable just because of multiple attribute values
     if (raw.attributes && Object.keys(raw.attributes).length > 0) {
-      console.log('ℹ️ DEBUG: Product has attributes but no variations - treating as simple');
+      debug('ℹ️ DEBUG: Product has attributes but no variations - treating as simple');
       return 'simple';
     }
     
-    console.log('❌ DEBUG: Product type = simple (no variations or attributes)');
+    debug('❌ DEBUG: Product type = simple (no variations or attributes)');
     return 'simple';
   }
 
@@ -185,14 +186,14 @@ export class NormalizationToolkit {
    * Normalize product attributes
    */
   static normalizeAttributes(attributes: Record<string, (string | undefined)[]>): Record<string, string[]> {
-    console.log('🔍 DEBUG: normalizeAttributes called with:', attributes);
+    debug('🔍 DEBUG: normalizeAttributes called with:', attributes);
     const normalized: Record<string, string[]> = {};
     
     for (const [key, values] of Object.entries(attributes)) {
-      console.log('🔍 DEBUG: Processing attribute:', key, 'values:', values);
+      debug('🔍 DEBUG: Processing attribute:', key, 'values:', values);
       
       if (!values || values.length === 0) {
-        console.log('❌ DEBUG: Skipping empty attribute:', key);
+        debug('❌ DEBUG: Skipping empty attribute:', key);
         continue;
       }
       
@@ -202,17 +203,17 @@ export class NormalizationToolkit {
         .map(value => this.cleanText(value))
         .filter(value => value && !this.isPlaceholder(value));
       
-      console.log('🔍 DEBUG: Cleaned attribute:', cleanKey, 'cleanValues:', cleanValues);
+      debug('🔍 DEBUG: Cleaned attribute:', cleanKey, 'cleanValues:', cleanValues);
       
       if (cleanValues.length > 0) {
         normalized[cleanKey] = cleanValues;
-        console.log('✅ DEBUG: Added normalized attribute:', cleanKey, '=', cleanValues);
+        debug('✅ DEBUG: Added normalized attribute:', cleanKey, '=', cleanValues);
       } else {
-        console.log('❌ DEBUG: No clean values for attribute:', cleanKey);
+        debug('❌ DEBUG: No clean values for attribute:', cleanKey);
       }
     }
     
-    console.log('🔍 DEBUG: Final normalized attributes:', normalized);
+    debug('🔍 DEBUG: Final normalized attributes:', normalized);
     return normalized;
   }
 
@@ -236,7 +237,7 @@ export class NormalizationToolkit {
    * Check if text is a placeholder
    */
   static isPlaceholder(text: string): boolean {
-    console.log('🔍 DEBUG: Checking if text is placeholder:', text);
+    debug('🔍 DEBUG: Checking if text is placeholder:', text);
     const placeholders = [
       'בחר אפשרות',
       'בחירת אפשרות',
@@ -379,7 +380,7 @@ export class NormalizationToolkit {
     );
     
     if (isPlaceholder) {
-      console.log('🔍 DEBUG: Detected placeholder text:', text);
+      debug('🔍 DEBUG: Detected placeholder text:', text);
     }
     
     return isPlaceholder;

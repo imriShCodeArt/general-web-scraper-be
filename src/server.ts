@@ -168,6 +168,34 @@ app.get('/api/scrape/performance', async (req, res) => {
   }
 });
 
+// Get real-time performance monitoring
+app.get('/api/scrape/performance/live', async (req, res) => {
+  try {
+    const result = await scrapingService.getLivePerformanceMetrics();
+    return res.json(result);
+  } catch (error) {
+    logger.error('Failed to get live performance metrics:', error);
+    return res.status(500).json({
+      success: false,
+      error: 'Internal server error',
+    });
+  }
+});
+
+// Get performance recommendations
+app.get('/api/scrape/performance/recommendations', async (req, res) => {
+  try {
+    const result = await scrapingService.getPerformanceRecommendations();
+    return res.json(result);
+  } catch (error) {
+    logger.error('Failed to get performance recommendations:', error);
+    return res.status(500).json({
+      success: false,
+      error: 'Internal server error',
+    });
+  }
+});
+
 // Cancel job
 app.post('/api/scrape/cancel/:jobId', async (req, res) => {
   try {

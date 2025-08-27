@@ -139,6 +139,11 @@ export interface RecipeConfig {
     retryAttempts?: number;
     retryDelay?: number;
     timeout?: number;
+    // Performance optimizations
+    fastMode?: boolean; // Enable fast mode for better performance
+    skipImages?: boolean; // Skip image processing for speed
+    skipStyles?: boolean; // Skip CSS processing for speed
+    skipScripts?: boolean; // Skip JavaScript processing for speed
   };
   
   // Fallback strategies

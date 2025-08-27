@@ -21,12 +21,29 @@ export class PuppeteerHttpClient {
           '--disable-accelerated-2d-canvas',
           '--no-first-run',
           '--no-zygote',
-          '--disable-gpu'
+          '--disable-gpu',
+          // Performance optimizations
+          '--disable-background-timer-throttling',
+          '--disable-backgrounding-occluded-windows',
+          '--disable-renderer-backgrounding',
+          '--disable-features=TranslateUI',
+          '--disable-ipc-flooding-protection',
+          '--disable-default-apps',
+          '--disable-extensions',
+          '--disable-plugins',
+          '--disable-sync',
+          '--disable-translate',
+          '--hide-scrollbars',
+          '--mute-audio',
+          '--no-default-browser-check',
+          '--safebrowsing-disable-auto-update',
+          '--disable-web-security',
+          '--disable-features=VizDisplayCompositor',
         ]
       });
       this.isInitialized = true;
     } catch (error) {
-      console.error('Failed to initialize Puppeteer browser:', error);
+      if (process.env.SCRAPER_DEBUG === '1') console.error('Failed to initialize Puppeteer browser:', error);
       throw error;
     }
   }
@@ -47,46 +64,55 @@ export class PuppeteerHttpClient {
       // Set user agent to avoid detection
       await page.setUserAgent('Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36');
       
-      // Performance optimizations (allow images/styles; block heavy fonts/media)
+      // Enhanced performance optimizations - block more unnecessary resources
       await page.setRequestInterception(true);
       page.on('request', (req) => {
         const type = req.resourceType();
-        if (['font', 'media'].includes(type)) {
+        const url = req.url();
+        
+        // Block more resource types for faster loading
+        if (['font', 'media', 'stylesheet', 'image'].includes(type)) {
           return req.abort();
         }
+        
+        // Block analytics and tracking scripts
+        if (url.includes('google-analytics') || url.includes('facebook') || url.includes('doubleclick') || 
+            url.includes('googletagmanager') || url.includes('hotjar') || url.includes('mixpanel')) {
+          return req.abort();
+        }
+        
         return req.continue();
       });
       
-      // Navigate to the page with more reliable readiness
+      // Navigate to the page with optimized wait strategy
       await page.goto(url, { 
-        waitUntil: 'networkidle2',
-        timeout: 30000
+        waitUntil: 'domcontentloaded', // Changed from 'networkidle2' to 'domcontentloaded' for faster loading
+        timeout: 20000 // Reduced from 30000ms to 20000ms
       });
 
-      // Smart selector waiting
+      // Smart selector waiting with reduced timeout
       if (options?.waitForSelectors && options.waitForSelectors.length > 0) {
         for (const selector of options.waitForSelectors) {
           try {
-            await page.waitForSelector(selector, { timeout: 10000 });
+            await page.waitForSelector(selector, { timeout: 5000 }); // Reduced from 10000ms to 5000ms
           } catch (error) {
             console.warn(`Selector ${selector} not found within timeout`);
           }
         }
       }
 
-      // Explicit wait for common Shopify gallery containers
+      // Faster image loading strategy - only wait for critical selectors
       try {
-        await page.waitForSelector('.product-gallery, .product__media-list, .product__media-item img, picture source', { timeout: 10000 });
+        await page.waitForSelector('.product-gallery, .product__media-list, .product__media-item img, picture source', { timeout: 5000 }); // Reduced timeout
       } catch {}
 
-      // Scroll to trigger lazy loading of images
+      // Optimized scrolling - single scroll instead of multiple
       await page.evaluate(() => {
         window.scrollTo(0, document.body.scrollHeight);
-        window.scrollTo(0, 0);
       });
       
-      // Wait for images to load after scrolling
-      await new Promise(resolve => setTimeout(resolve, 1000));
+      // Reduced wait time for images
+      await new Promise(resolve => setTimeout(resolve, 500)); // Reduced from 1000ms to 500ms
 
       // Extra: dump selector counts when debugging
       if (process.env.SCRAPER_DEBUG === '1') {
@@ -117,10 +143,9 @@ export class PuppeteerHttpClient {
           if (!existsSync('./debug')) mkdirSync('./debug');
           const ts = Date.now();
           writeFileSync(`./debug/page-${ts}.html`, html);
-          // eslint-disable-next-line no-console
-          console.log(`[puppeteer] HTML snapshot saved: debug/page-${ts}.html`);
+          if (process.env.SCRAPER_DEBUG === '1') console.log(`[puppeteer] HTML snapshot saved: debug/page-${ts}.html`);
         } catch (e) {
-          console.warn('Failed to write HTML snapshot', e);
+          if (process.env.SCRAPER_DEBUG === '1') console.warn('Failed to write HTML snapshot', e);
         }
       }
 
@@ -154,7 +179,7 @@ export class PuppeteerHttpClient {
       }
       
     } catch (error) {
-      console.warn('WooCommerce variations not detected, continuing without waiting');
+      if (process.env.SCRAPER_DEBUG === '1') console.warn('WooCommerce variations not detected, continuing without waiting');
     }
   }
 
