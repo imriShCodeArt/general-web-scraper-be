@@ -9,8 +9,8 @@ export const http = {
     const res = await request(app).get(path);
     return res;
   },
-  async postJson(path: string, body: unknown) {
-    const res = await request(app).post(path).send(body);
+  async postJson(path: string, body: Record<string, unknown> | string | undefined) {
+    const res = await request(app).post(path).send(body as any);
     return res;
   },
   async delete(path: string) {

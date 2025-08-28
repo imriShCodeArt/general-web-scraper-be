@@ -175,7 +175,9 @@ export class ScrapingService {
       try {
         // Discover products with optional limit
         const productUrls: string[] = [];
-        const maxProducts = job.metadata.options?.maxProducts;
+        const safeOptions: any = (job.metadata as any).options || {};
+        const maxProducts: number | undefined =
+          typeof safeOptions.maxProducts === 'number' ? safeOptions.maxProducts : undefined;
 
         for await (const url of adapter.discoverProducts()) {
           productUrls.push(url);
@@ -272,15 +274,10 @@ export class ScrapingService {
             `Batch completed in ${batchTime}ms, processed ${validProducts.length}/${batch.length} products successfully`,
           );
 
-          // Optimized delay between batches - only if there are more products to process
+          // Fixed delay between batches to respect configured rateLimit
           if (i + batchSize < productUrls.length && rateLimit > 0) {
-            // Dynamic delay based on batch performance - reduce delay if batch was fast
-            const dynamicDelay = Math.max(
-              10,
-              Math.min(rateLimit, batchTime < 1000 ? rateLimit / 2 : rateLimit),
-            );
-            this.logger.debug(`Waiting ${dynamicDelay}ms before next batch...`);
-            await this.delay(dynamicDelay);
+            this.logger.debug(`Waiting ${rateLimit}ms before next batch...`);
+            await this.delay(rateLimit);
           }
         }
 
@@ -523,6 +520,9 @@ export class ScrapingService {
         activeJobs: this.activeJobs.size,
         queuedJobs: this.jobQueue.length,
         isProcessing: this.isProcessing,
+        // Backward/compat aliases used by some tests
+        currentActiveJobs: this.activeJobs.size,
+        queueLength: this.jobQueue.length,
       });
     } catch (error) {
       return this.createErrorResponse(`Failed to get performance metrics: ${error}`);
