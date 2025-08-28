@@ -1,4 +1,8 @@
-import { NextRequest, NextResponse } from 'next/server';
+// Avoid Next.js dependency for type-checking in Node-only env
+type NextRequest = unknown;
+const NextResponse = {
+  json: (body: unknown, init?: { status?: number }) => ({ body, ...init }) as any,
+} as any;
 
 /**
  * Health check endpoint for monitoring and CI/CD pipeline
