@@ -191,6 +191,5 @@ export const testUtils: TestUtils = {
   },
 };
 
-// Global test helpers
 // Attach to global for convenience in tests
 (globalThis as any).testUtils = testUtils;

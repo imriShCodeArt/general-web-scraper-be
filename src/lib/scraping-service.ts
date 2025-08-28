@@ -75,13 +75,19 @@ export class ScrapingService {
 
   /**
    * Normalize a raw product
+   *
+   * @param rawProduct - Raw product object from adapter
+   * @param url - Optional product URL for context
    */
   private async normalizeProduct(rawProduct: any, url?: string): Promise<NormalizedProduct> {
     return NormalizationToolkit.normalizeProduct(rawProduct, url || '');
   }
 
   /**
-   * Generate filename for CSV
+   * Generate filename for CSV outputs
+   *
+   * @param siteUrl - The site URL being scraped
+   * @param jobId - The job identifier
    */
   private generateFilename(siteUrl: string, jobId: string): string {
     const domain = new URL(siteUrl).hostname;
@@ -89,7 +95,10 @@ export class ScrapingService {
   }
 
   /**
-   * Start a new scraping job
+   * Start a new scraping job.
+   *
+   * @param request - Includes `siteUrl`, `recipe`, and optional `options`.
+   * @returns ApiResponse containing the created `jobId`.
    */
   async startScraping(request: ScrapingRequest): Promise<ApiResponse<{ jobId: string }>> {
     try {
@@ -176,7 +185,8 @@ export class ScrapingService {
         // Discover products with optional limit
         const productUrls: string[] = [];
         const options = (job.metadata as any).options || {};
-        const maxProducts: number | undefined = typeof options.maxProducts === 'number' ? options.maxProducts : undefined;
+        const maxProducts: number | undefined =
+          typeof options.maxProducts === 'number' ? options.maxProducts : undefined;
 
         for await (const url of adapter.discoverProducts()) {
           productUrls.push(url);
@@ -366,7 +376,9 @@ export class ScrapingService {
   }
 
   /**
-   * Create adapter based on recipe
+   * Create adapter based on recipe or auto-detection.
+   * @param recipe - Recipe name to prefer
+   * @param siteUrl - Target website URL
    */
   private async createAdapter(recipe: string, siteUrl: string): Promise<SiteAdapter> {
     try {
@@ -395,6 +407,7 @@ export class ScrapingService {
 
   /**
    * Get job status
+   * @param jobId - The job identifier
    */
   async getJobStatus(jobId: string): Promise<ApiResponse<ScrapingJob>> {
     try {
@@ -435,6 +448,7 @@ export class ScrapingService {
 
   /**
    * Get recipe configuration by name
+   * @param recipeName - Name of the recipe
    */
   async getRecipe(recipeName: string): Promise<ApiResponse<any>> {
     try {
@@ -447,6 +461,7 @@ export class ScrapingService {
 
   /**
    * Get recipe configuration by site URL
+   * @param siteUrl - Site URL
    */
   async getRecipeBySiteUrl(siteUrl: string): Promise<ApiResponse<any>> {
     try {
@@ -463,6 +478,7 @@ export class ScrapingService {
 
   /**
    * Cancel a job
+   * @param jobId - The job identifier
    */
   async cancelJob(jobId: string): Promise<ApiResponse<{ cancelled: boolean }>> {
     try {
@@ -562,8 +578,8 @@ export class ScrapingService {
   }
 
   /**
-   * Get performance recommendations based on current metrics
-   */
+  * Get performance recommendations based on current metrics
+  */
   async getPerformanceRecommendations(): Promise<ApiResponse<any>> {
     try {
       const recommendations = [];
@@ -642,6 +658,7 @@ export class ScrapingService {
 
   /**
    * Utility function to add delay
+   * @param ms - Milliseconds to wait
    */
   private delay(ms: number): Promise<void> {
     return new Promise((resolve) => setTimeout(resolve, ms));
