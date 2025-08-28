@@ -56,8 +56,13 @@ export class ScrapingService {
     return this.createApiResponse(false, undefined, error, message);
   }
 
-  constructor() {
-    this.logger = pino({
+  constructor(
+    storage?: StorageService,
+    recipeManager?: RecipeManager,
+    csvGenerator?: CsvGenerator,
+    logger?: pino.Logger
+  ) {
+    this.logger = logger || pino({
       level: process.env.LOG_LEVEL || 'warn',
       transport: {
         target: 'pino-pretty',
@@ -68,9 +73,9 @@ export class ScrapingService {
       },
     });
 
-    this.storage = new StorageService();
-    this.recipeManager = new RecipeManager();
-    this.csvGenerator = new CsvGenerator();
+    this.storage = storage || new StorageService();
+    this.recipeManager = recipeManager || new RecipeManager();
+    this.csvGenerator = csvGenerator || new CsvGenerator();
   }
 
   /**

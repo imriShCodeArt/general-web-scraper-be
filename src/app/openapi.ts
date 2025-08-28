@@ -1,4 +1,5 @@
 import path from 'path';
+// @ts-ignore - types may be missing in some environments
 import swaggerJSDoc, { Options } from 'swagger-jsdoc';
 
 const version = process.env.npm_package_version || '0.0.0';
