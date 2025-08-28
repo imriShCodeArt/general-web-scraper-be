@@ -8,14 +8,15 @@ interface TestUtils {
   createMockNormalizedProduct: (overrides?: Partial<NormalizedProduct>) => NormalizedProduct;
   createMockScrapingJob: (overrides?: Partial<ScrapingJob>) => ScrapingJob;
   wait: (ms: number) => Promise<void>;
-  createMockHttpResponse: (html: string, status?: number) => Response;
+  createMockHttpResponse: (html: string, status?: number) => any;
   createMockHtml: (content: string) => string;
   resetMocks: () => void;
 }
 
 // Extend global types for Jest
 declare global {
-  const testUtils: TestUtils;
+  // eslint-disable-next-line no-var
+  var testUtils: TestUtils;
 }
 
 // Global test setup
@@ -160,12 +161,11 @@ export const testUtils: TestUtils = {
   /**
    * Create a mock HTTP response
    */
-  createMockHttpResponse: (html: string, status: number = 200): Response =>
-    ({
-      status,
-      data: html,
-      headers: { 'content-type': 'text/html' },
-    }) as Response,
+  createMockHttpResponse: (html: string, status: number = 200): any => ({
+    status,
+    data: html,
+    headers: { 'content-type': 'text/html' },
+  }),
 
   /**
    * Create a mock HTML document
@@ -192,4 +192,5 @@ export const testUtils: TestUtils = {
 };
 
 // Global test helpers
-global.testUtils = testUtils;
+// Attach to global for convenience in tests
+(globalThis as any).testUtils = testUtils;

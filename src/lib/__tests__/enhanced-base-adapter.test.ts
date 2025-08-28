@@ -74,13 +74,20 @@ describe('EnhancedBaseAdapter', () => {
 
     mockHttpClient = {
       getDom: jest.fn(),
+      getHtml: jest.fn(),
+      getJson: jest.fn(),
+      post: jest.fn(),
       extractEmbeddedJson: jest.fn(),
-    } as jest.Mocked<HttpClient>;
+      checkUrl: jest.fn(),
+      getStats: jest.fn(),
+    } as unknown as jest.Mocked<HttpClient>;
 
     mockPuppeteerClient = {
       getDom: jest.fn(),
+      getDomFallback: jest.fn(),
+      isAvailable: jest.fn(),
       close: jest.fn(),
-    } as jest.Mocked<PuppeteerHttpClient>;
+    } as unknown as jest.Mocked<PuppeteerHttpClient>;
 
     // Mock the constructors to return our mock instances
     MockHttpClient.mockImplementation(() => mockHttpClient);
