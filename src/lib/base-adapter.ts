@@ -45,7 +45,11 @@ export abstract class BaseAdapter implements SiteAdapter {
     if (!element) return '';
 
     // For description fields, try to get all text content including multiple paragraphs
-    if (selector.includes('description') || selector.includes('content') || selector.includes('p')) {
+    if (
+      selector.includes('description') ||
+      selector.includes('content') ||
+      selector.includes('p')
+    ) {
       // Get all text nodes and paragraph content
       const textContent = element.textContent?.trim() || '';
       const innerHTML = element.innerHTML || '';
@@ -56,8 +60,8 @@ export abstract class BaseAdapter implements SiteAdapter {
         const paragraphs = element.querySelectorAll('p, br + *, div');
         if (paragraphs.length > 0) {
           const paragraphTexts = Array.from(paragraphs)
-            .map(p => p.textContent?.trim())
-            .filter(text => text && text.length > 10) // Filter out very short text
+            .map((p) => p.textContent?.trim())
+            .filter((text) => text && text.length > 10) // Filter out very short text
             .join('\n\n');
 
           if (paragraphTexts) {
@@ -93,7 +97,7 @@ export abstract class BaseAdapter implements SiteAdapter {
   protected extractImages(dom: JSDOM, selector: string): string[] {
     const images = this.extractElements(dom, selector);
     return images
-      .map(img => {
+      .map((img) => {
         const src = img.getAttribute('src') || img.getAttribute('data-src');
         if (src) {
           return this.resolveUrl(src);
@@ -128,14 +132,18 @@ export abstract class BaseAdapter implements SiteAdapter {
     const attributeElements = this.extractElements(dom, selector);
 
     for (const element of attributeElements) {
-      const nameElement = element.querySelector('[data-attribute-name], .attribute-name, .attr-name');
-      const valueElements = element.querySelectorAll('[data-attribute-value], .attribute-value, .attr-value, option');
+      const nameElement = element.querySelector(
+        '[data-attribute-name], .attribute-name, .attr-name',
+      );
+      const valueElements = element.querySelectorAll(
+        '[data-attribute-value], .attribute-value, .attr-value, option',
+      );
 
       if (nameElement && valueElements.length > 0) {
         const name = nameElement.textContent?.trim() || '';
         const values = Array.from(valueElements)
-          .map(val => val.textContent?.trim())
-          .filter(val => val && val !== 'בחר אפשרות' && val !== 'Select option');
+          .map((val) => val.textContent?.trim())
+          .filter((val) => val && val !== 'בחר אפשרות' && val !== 'Select option');
 
         if (name && values.length > 0) {
           attributes[name] = values;
@@ -155,7 +163,9 @@ export abstract class BaseAdapter implements SiteAdapter {
 
     for (const element of variationElements) {
       const sku = element.querySelector('[data-sku], .sku, .product-sku')?.textContent?.trim();
-      const price = element.querySelector('[data-price], .price, .product-price')?.textContent?.trim();
+      const price = element
+        .querySelector('[data-price], .price, .product-price')
+        ?.textContent?.trim();
 
       if (sku) {
         variations.push({
@@ -229,7 +239,11 @@ export abstract class BaseAdapter implements SiteAdapter {
   /**
    * Follow pagination
    */
-  protected async followPagination(baseUrl: string, pattern: string, nextPageSelector: string): Promise<string[]> {
+  protected async followPagination(
+    baseUrl: string,
+    pattern: string,
+    nextPageSelector: string,
+  ): Promise<string[]> {
     const urls: string[] = [];
     let currentUrl = baseUrl;
     let pageCount = 0;
@@ -270,11 +284,13 @@ export abstract class BaseAdapter implements SiteAdapter {
    */
   protected extractProductUrls(dom: JSDOM): string[] {
     // This is a generic implementation - subclasses should override
-    const productLinks = dom.window.document.querySelectorAll('a[href*="/product/"], a[href*="/item/"], a[href*="/item/"], a[href*="/p/"]');
+    const productLinks = dom.window.document.querySelectorAll(
+      'a[href*="/product/"], a[href*="/item/"], a[href*="/item/"], a[href*="/p/"]',
+    );
     return Array.from(productLinks)
-      .map(link => link.getAttribute('href'))
+      .map((link) => link.getAttribute('href'))
       .filter((href): href is string => href !== null)
-      .map(href => this.resolveUrl(href));
+      .map((href) => this.resolveUrl(href));
   }
 
   /**
@@ -288,7 +304,7 @@ export abstract class BaseAdapter implements SiteAdapter {
         // Simple regex replacement for now
         // In a real implementation, this could be more sophisticated
         if (transform.includes('->')) {
-          const [pattern, replacement] = transform.split('->').map(s => s.trim());
+          const [pattern, replacement] = transform.split('->').map((s) => s.trim());
           if (pattern && replacement) {
             const regex = new RegExp(pattern, 'g');
             result = result.replace(regex, replacement);

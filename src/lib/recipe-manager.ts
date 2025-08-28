@@ -30,7 +30,9 @@ export class RecipeManager {
 
     // Validate that the recipe matches the site URL
     if (!this.validateSiteUrl(recipe.siteUrl, siteUrl)) {
-      throw new Error(`Recipe '${recipe.name}' is configured for ${recipe.siteUrl}, not ${siteUrl}`);
+      throw new Error(
+        `Recipe '${recipe.name}' is configured for ${recipe.siteUrl}, not ${siteUrl}`,
+      );
     }
 
     // Create cache key
@@ -58,7 +60,9 @@ export class RecipeManager {
 
     // Validate that the recipe matches the site URL
     if (!this.validateSiteUrl(recipe.siteUrl, siteUrl)) {
-      throw new Error(`Recipe '${recipe.name}' is configured for ${recipe.siteUrl}, not ${siteUrl}`);
+      throw new Error(
+        `Recipe '${recipe.name}' is configured for ${recipe.siteUrl}, not ${siteUrl}`,
+      );
     }
 
     // Create cache key

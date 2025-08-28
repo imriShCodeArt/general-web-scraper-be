@@ -101,7 +101,10 @@ describe('EnhancedBaseAdapter', () => {
     });
 
     it('should initialize Puppeteer when useHeadlessBrowser is true', () => {
-      const puppeteerConfig = { ...mockConfig, behavior: { ...mockConfig.behavior, useHeadlessBrowser: true } };
+      const puppeteerConfig = {
+        ...mockConfig,
+        behavior: { ...mockConfig.behavior, useHeadlessBrowser: true },
+      };
       const puppeteerAdapter = new TestAdapter(puppeteerConfig, 'https://test.com');
 
       expect(puppeteerAdapter['puppeteerClient']).toBe(mockPuppeteerClient);
@@ -303,7 +306,10 @@ describe('EnhancedBaseAdapter', () => {
     });
 
     it('should use Puppeteer when enabled', async () => {
-      const puppeteerConfig = { ...mockConfig, behavior: { ...mockConfig.behavior, useHeadlessBrowser: true } };
+      const puppeteerConfig = {
+        ...mockConfig,
+        behavior: { ...mockConfig.behavior, useHeadlessBrowser: true },
+      };
       const puppeteerAdapter = new TestAdapter(puppeteerConfig, 'https://test.com');
 
       const mockDom = new JSDOM('<html><body>Test</body></html>');
@@ -315,7 +321,10 @@ describe('EnhancedBaseAdapter', () => {
     });
 
     it('should fallback to JSDOM when Puppeteer fails', async () => {
-      const puppeteerConfig = { ...mockConfig, behavior: { ...mockConfig.behavior, useHeadlessBrowser: true } };
+      const puppeteerConfig = {
+        ...mockConfig,
+        behavior: { ...mockConfig.behavior, useHeadlessBrowser: true },
+      };
       const puppeteerAdapter = new TestAdapter(puppeteerConfig, 'https://test.com');
 
       const mockDom = new JSDOM('<html><body>Test</body></html>');
@@ -380,7 +389,10 @@ describe('EnhancedBaseAdapter', () => {
 
   describe('Cleanup', () => {
     it('should cleanup Puppeteer client when available', async () => {
-      const puppeteerConfig = { ...mockConfig, behavior: { ...mockConfig.behavior, useHeadlessBrowser: true } };
+      const puppeteerConfig = {
+        ...mockConfig,
+        behavior: { ...mockConfig.behavior, useHeadlessBrowser: true },
+      };
       const puppeteerAdapter = new TestAdapter(puppeteerConfig, 'https://test.com');
 
       await puppeteerAdapter.cleanup();
@@ -388,7 +400,10 @@ describe('EnhancedBaseAdapter', () => {
     });
 
     it('should handle cleanup errors gracefully', async () => {
-      const puppeteerConfig = { ...mockConfig, behavior: { ...mockConfig.behavior, useHeadlessBrowser: true } };
+      const puppeteerConfig = {
+        ...mockConfig,
+        behavior: { ...mockConfig.behavior, useHeadlessBrowser: true },
+      };
       const puppeteerAdapter = new TestAdapter(puppeteerConfig, 'https://test.com');
 
       mockPuppeteerClient.close.mockRejectedValue(new Error('Cleanup failed'));

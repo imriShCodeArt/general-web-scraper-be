@@ -9,16 +9,14 @@ import {
 import { HttpClient } from './http-client';
 import { PuppeteerHttpClient } from './puppeteer-http-client';
 import { JSDOM } from 'jsdom';
-import {
-  ErrorFactory,
-  ErrorCodes,
-  retryManager,
-} from './error-handler';
+import { ErrorFactory, ErrorCodes, retryManager } from './error-handler';
 
 /**
  * Enhanced Base Adapter with better generics, error handling, and validation
  */
-export abstract class EnhancedBaseAdapter<T extends RawProduct = RawProduct> implements SiteAdapter<T> {
+export abstract class EnhancedBaseAdapter<T extends RawProduct = RawProduct>
+  implements SiteAdapter<T>
+{
   protected httpClient: HttpClient;
   protected puppeteerClient: PuppeteerHttpClient | null = null;
   protected config: RecipeConfig;
@@ -142,7 +140,7 @@ export abstract class EnhancedBaseAdapter<T extends RawProduct = RawProduct> imp
       const validationErrors = this.validateProduct(product);
 
       if (validationErrors.length > 0) {
-        const errorMessage = `Product validation failed: ${validationErrors.map(e => e.message).join(', ')}`;
+        const errorMessage = `Product validation failed: ${validationErrors.map((e) => e.message).join(', ')}`;
         const error = ErrorFactory.createScrapingError(
           errorMessage,
           ErrorCodes.VALIDATION_ERROR,
@@ -154,19 +152,17 @@ export abstract class EnhancedBaseAdapter<T extends RawProduct = RawProduct> imp
 
       return { success: true, data: product };
     } catch (error) {
-      const scrapingError = error instanceof Error ?
-        ErrorFactory.createScrapingError(
-          error.message,
-          ErrorCodes.UNKNOWN_ERROR,
-          false,
-          { url },
-        ) :
-        ErrorFactory.createScrapingError(
-          'Unknown error during product extraction',
-          ErrorCodes.UNKNOWN_ERROR,
-          false,
-          { url },
-        );
+      const scrapingError =
+        error instanceof Error
+          ? ErrorFactory.createScrapingError(error.message, ErrorCodes.UNKNOWN_ERROR, false, {
+              url,
+            })
+          : ErrorFactory.createScrapingError(
+              'Unknown error during product extraction',
+              ErrorCodes.UNKNOWN_ERROR,
+              false,
+              { url },
+            );
 
       return { success: false, error: scrapingError };
     }
@@ -202,7 +198,11 @@ export abstract class EnhancedBaseAdapter<T extends RawProduct = RawProduct> imp
       }
 
       // For description fields, try to get all text content including multiple paragraphs
-      if (selector.includes('description') || selector.includes('content') || selector.includes('p')) {
+      if (
+        selector.includes('description') ||
+        selector.includes('content') ||
+        selector.includes('p')
+      ) {
         // Get all text nodes and paragraph content
         const textContent = element.textContent?.trim() || '';
         const innerHTML = element.innerHTML || '';
@@ -213,8 +213,8 @@ export abstract class EnhancedBaseAdapter<T extends RawProduct = RawProduct> imp
           const paragraphs = element.querySelectorAll('p, br + *, div');
           if (paragraphs.length > 0) {
             const paragraphTexts = Array.from(paragraphs)
-              .map(p => p.textContent?.trim())
-              .filter(text => text && text.length > 10) // Filter out very short text
+              .map((p) => p.textContent?.trim())
+              .filter((text) => text && text.length > 10) // Filter out very short text
               .join('\n\n');
 
             if (paragraphTexts) {
@@ -241,7 +241,10 @@ export abstract class EnhancedBaseAdapter<T extends RawProduct = RawProduct> imp
       const element = dom.window.document.querySelector(selector);
       return element?.getAttribute(attribute) || '';
     } catch (error) {
-      console.warn(`Failed to extract attribute '${attribute}' from selector '${selector}':`, error);
+      console.warn(
+        `Failed to extract attribute '${attribute}' from selector '${selector}':`,
+        error,
+      );
       return '';
     }
   }
@@ -265,7 +268,7 @@ export abstract class EnhancedBaseAdapter<T extends RawProduct = RawProduct> imp
     try {
       const images = this.extractElements(dom, selector);
       return images
-        .map(img => {
+        .map((img) => {
           const src = img.getAttribute('src') || img.getAttribute('data-src');
           if (src) {
             return this.resolveUrl(src);
@@ -315,14 +318,18 @@ export abstract class EnhancedBaseAdapter<T extends RawProduct = RawProduct> imp
       const attributeElements = this.extractElements(dom, selector);
 
       for (const element of attributeElements) {
-        const nameElement = element.querySelector('[data-attribute-name], .attribute-name, .attr-name');
-        const valueElements = element.querySelectorAll('[data-attribute-value], .attribute-value, .attr-value, option');
+        const nameElement = element.querySelector(
+          '[data-attribute-name], .attribute-name, .attr-name',
+        );
+        const valueElements = element.querySelectorAll(
+          '[data-attribute-value], .attribute-value, .attr-value, option',
+        );
 
         if (nameElement && valueElements.length > 0) {
           const name = nameElement.textContent?.trim() || '';
           const values = Array.from(valueElements)
-            .map(val => val.textContent?.trim())
-            .filter(val => val && val !== 'בחר אפשרות' && val !== 'Select option');
+            .map((val) => val.textContent?.trim())
+            .filter((val) => val && val !== 'בחר אפשרות' && val !== 'Select option');
 
           if (name && values.length > 0) {
             attributes[name] = values;
@@ -347,7 +354,9 @@ export abstract class EnhancedBaseAdapter<T extends RawProduct = RawProduct> imp
 
       for (const element of variationElements) {
         const sku = element.querySelector('[data-sku], .sku, .product-sku')?.textContent?.trim();
-        const price = element.querySelector('[data-price], .price, .product-price')?.textContent?.trim();
+        const price = element
+          .querySelector('[data-price], .price, .product-price')
+          ?.textContent?.trim();
 
         if (sku) {
           variations.push({
@@ -445,7 +454,11 @@ export abstract class EnhancedBaseAdapter<T extends RawProduct = RawProduct> imp
   /**
    * Follow pagination with error handling and retry
    */
-  protected async followPagination(baseUrl: string, pattern: string, nextPageSelector: string): Promise<string[]> {
+  protected async followPagination(
+    baseUrl: string,
+    pattern: string,
+    nextPageSelector: string,
+  ): Promise<string[]> {
     const urls: string[] = [];
     let currentUrl = baseUrl;
     let pageCount = 0;
@@ -487,11 +500,13 @@ export abstract class EnhancedBaseAdapter<T extends RawProduct = RawProduct> imp
   protected extractProductUrls(dom: JSDOM): string[] {
     try {
       // This is a generic implementation - subclasses should override
-      const productLinks = dom.window.document.querySelectorAll('a[href*="/product/"], a[href*="/item/"], a[href*="/item/"], a[href*="/p/"]');
+      const productLinks = dom.window.document.querySelectorAll(
+        'a[href*="/product/"], a[href*="/item/"], a[href*="/item/"], a[href*="/p/"]',
+      );
       return Array.from(productLinks)
-        .map(link => link.getAttribute('href'))
+        .map((link) => link.getAttribute('href'))
         .filter((href): href is string => href !== null)
-        .map(href => this.resolveUrl(href));
+        .map((href) => this.resolveUrl(href));
     } catch (error) {
       console.warn('Failed to extract product URLs:', error);
       return [];
@@ -509,7 +524,7 @@ export abstract class EnhancedBaseAdapter<T extends RawProduct = RawProduct> imp
         // Simple regex replacement for now
         // In a real implementation, this could be more sophisticated
         if (transform.includes('->')) {
-          const [pattern, replacement] = transform.split('->').map(s => s.trim());
+          const [pattern, replacement] = transform.split('->').map((s) => s.trim());
           if (pattern && replacement) {
             const regex = new RegExp(pattern, 'g');
             result = result.replace(regex, replacement);

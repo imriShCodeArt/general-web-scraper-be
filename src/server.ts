@@ -21,15 +21,13 @@ function createCleanFilename(originalFilename: string, type: string): string {
 
   // Limit length and add type prefix
   const maxLength = 50;
-  const truncatedName = cleanName.length > maxLength
-    ? cleanName.substring(0, maxLength)
-    : cleanName;
+  const truncatedName =
+    cleanName.length > maxLength ? cleanName.substring(0, maxLength) : cleanName;
 
   return `${type}-${truncatedName || 'products'}`;
 }
 
 const app = express();
-
 
 // Initialize services
 const scrapingService = new ScrapingService();
@@ -252,7 +250,10 @@ app.get('/api/scrape/download/:jobId/:type', async (req, res) => {
     if (type === 'parent') {
       csvContent = storageEntry.parentCsv;
       // Create a clean filename without Hebrew characters and excessive length
-      const cleanFilename = createCleanFilename(storageEntry.metadata?.filename || 'products', type);
+      const cleanFilename = createCleanFilename(
+        storageEntry.metadata?.filename || 'products',
+        type,
+      );
       filename = `parent-${cleanFilename}`;
       console.log('🔍 DEBUG: Parent CSV processing:', {
         csvContentLength: csvContent?.length || 0,
@@ -273,7 +274,10 @@ app.get('/api/scrape/download/:jobId/:type', async (req, res) => {
           error: `${type} CSV not found for this job`,
         });
       }
-      const cleanFilename = createCleanFilename(storageEntry.metadata?.filename || 'products', type);
+      const cleanFilename = createCleanFilename(
+        storageEntry.metadata?.filename || 'products',
+        type,
+      );
       filename = `variation-${cleanFilename}`;
     }
 
@@ -293,13 +297,15 @@ app.get('/api/scrape/download/:jobId/:type', async (req, res) => {
 
     // Set headers for CSV download
     res.setHeader('Content-Type', 'text/csv; charset=utf-8');
-    res.setHeader('Content-Disposition', `attachment; filename="${filename}"; filename*=UTF-8''${encodeURIComponent(filename)}`);
+    res.setHeader(
+      'Content-Disposition',
+      `attachment; filename="${filename}"; filename*=UTF-8''${encodeURIComponent(filename)}`,
+    );
     res.setHeader('Content-Length', Buffer.byteLength(csvContent, 'utf8'));
 
     // Send CSV content
     res.send(csvContent);
     return;
-
   } catch (error) {
     logger.error('Failed to download CSV:', error);
     return res.status(500).json({

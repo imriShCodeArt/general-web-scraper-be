@@ -155,16 +155,17 @@ export const testUtils: TestUtils = {
   /**
    * Wait for a specified time (useful for testing async operations)
    */
-  wait: (ms: number) => new Promise(resolve => setTimeout(resolve, ms)),
+  wait: (ms: number) => new Promise((resolve) => setTimeout(resolve, ms)),
 
   /**
    * Create a mock HTTP response
    */
-  createMockHttpResponse: (html: string, status: number = 200): Response => ({
-    status,
-    data: html,
-    headers: { 'content-type': 'text/html' },
-  } as Response),
+  createMockHttpResponse: (html: string, status: number = 200): Response =>
+    ({
+      status,
+      data: html,
+      headers: { 'content-type': 'text/html' },
+    }) as Response,
 
   /**
    * Create a mock HTML document

@@ -142,8 +142,8 @@ export class StorageService {
     try {
       const files = await fs.readdir(this.storageDir);
       const fileIds = files
-        .filter(file => file.endsWith('.json'))
-        .map(file => file.replace('.json', ''));
+        .filter((file) => file.endsWith('.json'))
+        .map((file) => file.replace('.json', ''));
 
       // Merge and deduplicate
       const allIds = [...new Set([...memoryIds, ...fileIds])];
@@ -214,11 +214,14 @@ export class StorageService {
    * Start cleanup interval
    */
   private startCleanupInterval(): void {
-    this.cleanupInterval = setInterval(() => {
-      this.cleanupExpiredEntries().catch(error => {
-        console.error('Cleanup failed:', error);
-      });
-    }, 60 * 60 * 1000); // Run every hour
+    this.cleanupInterval = setInterval(
+      () => {
+        this.cleanupExpiredEntries().catch((error) => {
+          console.error('Cleanup failed:', error);
+        });
+      },
+      60 * 60 * 1000,
+    ); // Run every hour
   }
 
   /**
@@ -245,7 +248,7 @@ export class StorageService {
 
     try {
       const files = await fs.readdir(this.storageDir);
-      filesystemJobs = files.filter(file => file.endsWith('.json')).length;
+      filesystemJobs = files.filter((file) => file.endsWith('.json')).length;
 
       // Calculate total size
       for (const file of files) {

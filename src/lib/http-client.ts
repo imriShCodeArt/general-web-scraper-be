@@ -44,7 +44,8 @@ export class HttpClient {
       if (randomUserAgent) {
         config.headers['User-Agent'] = randomUserAgent;
       }
-      config.headers['Accept'] = 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8';
+      config.headers['Accept'] =
+        'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8';
       config.headers['Accept-Language'] = 'en-US,en;q=0.5,he;q=0.3';
       config.headers['Accept-Encoding'] = 'gzip, deflate, br'; // Added brotli support
       config.headers['Connection'] = 'keep-alive';
@@ -260,7 +261,7 @@ export class HttpClient {
     totalRequests: number;
     successfulRequests: number;
     failedRequests: number;
-    } {
+  } {
     // This would need to be implemented with request/response interceptors
     // For now, return placeholder data
     return {

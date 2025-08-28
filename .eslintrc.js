@@ -5,9 +5,7 @@ module.exports = {
     jest: true,
     browser: true, // Add browser environment for DOM types
   },
-  extends: [
-    'eslint:recommended',
-  ],
+  extends: ['eslint:recommended'],
   parser: '@typescript-eslint/parser',
   parserOptions: {
     ecmaVersion: 2020,
@@ -19,21 +17,21 @@ module.exports = {
     'no-console': 'off', // Allow console statements for CLI and debugging
     'no-debugger': 'error',
     'no-unused-vars': 'off', // Use TypeScript version instead
-    
+
     // Code style rules
-    'indent': ['error', 2],
-    'quotes': ['error', 'single'],
-    'semi': ['error', 'always'],
+    indent: ['error', 2],
+    quotes: ['error', 'single'],
+    semi: ['error', 'always'],
     'comma-dangle': ['error', 'always-multiline'],
     'no-trailing-spaces': 'error',
     'eol-last': 'error',
-    
+
     // Error prevention rules
     'no-undef': 'error',
     'no-unreachable': 'error',
     'no-empty': 'error',
     'require-yield': 'error',
-    
+
     // TypeScript specific rules
     '@typescript-eslint/no-unused-vars': ['error', { argsIgnorePattern: '^_' }],
     '@typescript-eslint/no-explicit-any': 'warn',

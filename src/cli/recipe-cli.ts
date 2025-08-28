@@ -142,7 +142,6 @@ program
       } else {
         console.log('⚠️  No rate limiting configured');
       }
-
     } catch (error) {
       console.error(`Failed to test recipe '${recipeName}':`, error);
     }

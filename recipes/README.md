@@ -5,6 +5,7 @@ This directory contains recipe configurations for the web scraper. Recipes defin
 ## What is a Recipe?
 
 A recipe is a YAML or JSON configuration file that tells the scraper:
+
 - Which CSS selectors to use for extracting data
 - How to transform and clean the extracted data
 - Site-specific behavior settings
@@ -13,6 +14,7 @@ A recipe is a YAML or JSON configuration file that tells the scraper:
 ## Recipe File Structure
 
 ### Basic Recipe
+
 ```yaml
 name: "Site Name"
 description: "Description of the site"
@@ -29,28 +31,30 @@ transforms:
   title:
     - "trim: "
     - "replace:^\s+|\s+$"
-  
+
 behavior:
   rateLimit: 1000
   maxConcurrent: 3
 ```
 
 ### Recipe Collection
+
 ```yaml
 globalSettings:
   defaultRateLimit: 1000
   defaultMaxConcurrent: 3
 
 recipes:
-  - name: "Recipe 1"
+  - name: 'Recipe 1'
     # ... recipe configuration
-  - name: "Recipe 2"
+  - name: 'Recipe 2'
     # ... recipe configuration
 ```
 
 ## Available Selectors
 
 ### Core Product Fields
+
 - `title`: Product title/name
 - `price`: Product price
 - `sku`: Product SKU/code
@@ -61,16 +65,19 @@ recipes:
 - `category`: Product category
 
 ### Discovery & Navigation
+
 - `productLinks`: Links to product pages
 - `pagination`: Pagination configuration
   - `nextPage`: Selector for next page link
   - `maxPages`: Maximum pages to crawl
 
 ### Product Variations
+
 - `attributes`: Product attributes (color, size, etc.)
 - `variations`: Product variation selectors
 
 ### Embedded Data
+
 - `embeddedJson`: Script tags containing JSON data
 - `apiEndpoints`: API endpoints for data
 
@@ -79,11 +86,13 @@ recipes:
 Transformations clean and format extracted data:
 
 ### Text Transformations
+
 - `trim: chars` - Remove characters from start/end
 - `replace:pattern|replacement` - Regex replacement
 - `->` - Simple text replacement (old->new)
 
 ### Attribute Transformations
+
 ```yaml
 transforms:
   attributes:
@@ -105,17 +114,18 @@ transforms:
 ## Fallback Strategies
 
 Provide multiple selectors for robust extraction:
+
 ```yaml
 selectors:
-  title: 
-    - ".product-title"
-    - ".title"
-    - "h1"
+  title:
+    - '.product-title'
+    - '.title'
+    - 'h1'
 
 fallbacks:
   title:
-    - ".fallback-title"
-    - ".alt-title"
+    - '.fallback-title'
+    - '.alt-title'
 ```
 
 ## Validation Rules
@@ -150,21 +160,25 @@ fallbacks:
 ## API Usage
 
 ### List all recipes
+
 ```bash
 GET /api/recipes?action=list
 ```
 
 ### Get recipe by name
+
 ```bash
 GET /api/recipes?action=get&recipe=Generic%20E-commerce
 ```
 
 ### Get recipe by site URL
+
 ```bash
 GET /api/recipes?action=getBySite&siteUrl=https://example.com
 ```
 
 ### Validate recipe
+
 ```bash
 POST /api/recipes
 {
@@ -174,6 +188,7 @@ POST /api/recipes
 ```
 
 ### Load recipe from file
+
 ```bash
 POST /api/recipes
 {
@@ -196,12 +211,14 @@ POST /api/recipes
 ## Troubleshooting
 
 ### Common Issues
+
 - **No data extracted**: Check selector syntax and page structure
 - **Partial data**: Verify all required selectors are present
 - **Rate limiting**: Increase delays between requests
 - **JavaScript content**: Enable `useHeadlessBrowser: true`
 
 ### Debugging
+
 - Use browser dev tools to verify selectors
 - Check recipe validation results
 - Monitor scraping logs for errors
@@ -210,6 +227,7 @@ POST /api/recipes
 ## Contributing
 
 When adding new recipes:
+
 1. Follow the existing structure
 2. Include comprehensive selectors
 3. Add appropriate fallbacks

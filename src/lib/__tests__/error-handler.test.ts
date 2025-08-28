@@ -11,12 +11,9 @@ import {
 
 describe('ScrapingErrorImpl', () => {
   it('should create a scraping error with all properties', () => {
-    const error = new ScrapingErrorImpl(
-      'Test error message',
-      'TEST_ERROR',
-      true,
-      { url: 'https://test.com' },
-    );
+    const error = new ScrapingErrorImpl('Test error message', 'TEST_ERROR', true, {
+      url: 'https://test.com',
+    });
 
     expect(error.message).toBe('Test error message');
     expect(error.code).toBe('TEST_ERROR');
@@ -127,7 +124,9 @@ describe('ErrorBoundary', () => {
 
     // Execute both functions and verify handlers are called
     await expect(boundary.execute(networkFn, 'network-test')).rejects.toThrow(networkError);
-    await expect(boundary.execute(validationFn, 'validation-test')).rejects.toThrow(validationError);
+    await expect(boundary.execute(validationFn, 'validation-test')).rejects.toThrow(
+      validationError,
+    );
 
     // Verify that handlers were called with the correct errors
     expect(networkHandler).toHaveBeenCalledWith(networkError);
@@ -167,22 +166,26 @@ describe('RetryManager', () => {
   });
 
   it('should not retry on non-retryable errors', async () => {
-    const fn = jest.fn().mockRejectedValue(
-      new ScrapingErrorImpl('Validation error', ErrorCodes.VALIDATION_ERROR, false),
-    );
+    const fn = jest
+      .fn()
+      .mockRejectedValue(
+        new ScrapingErrorImpl('Validation error', ErrorCodes.VALIDATION_ERROR, false),
+      );
 
     await expect(manager.executeWithRetry(fn)).rejects.toThrow('Validation error');
     expect(fn).toHaveBeenCalledTimes(1);
   });
 
   it('should respect max attempts configuration', async () => {
-    const fn = jest.fn().mockRejectedValue(
-      new ScrapingErrorImpl('Network error', ErrorCodes.NETWORK_ERROR, true),
-    );
+    const fn = jest
+      .fn()
+      .mockRejectedValue(new ScrapingErrorImpl('Network error', ErrorCodes.NETWORK_ERROR, true));
 
     const config = { maxAttempts: 2 };
 
-    await expect(manager.executeWithRetry(fn, config)).rejects.toThrow('Operation failed after 2 attempts');
+    await expect(manager.executeWithRetry(fn, config)).rejects.toThrow(
+      'Operation failed after 2 attempts',
+    );
     expect(fn).toHaveBeenCalledTimes(2);
   });
 
@@ -209,16 +212,20 @@ describe('RetryManager', () => {
   });
 
   it('should handle custom retryable error codes', async () => {
-    const fn = jest.fn().mockRejectedValue(
-      new ScrapingErrorImpl('Rate limit error', ErrorCodes.RATE_LIMIT_ERROR, true),
-    );
+    const fn = jest
+      .fn()
+      .mockRejectedValue(
+        new ScrapingErrorImpl('Rate limit error', ErrorCodes.RATE_LIMIT_ERROR, true),
+      );
 
     const config = {
       retryableErrors: [ErrorCodes.RATE_LIMIT_ERROR],
       maxAttempts: 2,
     };
 
-    await expect(manager.executeWithRetry(fn, config)).rejects.toThrow('Operation failed after 2 attempts');
+    await expect(manager.executeWithRetry(fn, config)).rejects.toThrow(
+      'Operation failed after 2 attempts',
+    );
     expect(fn).toHaveBeenCalledTimes(2);
   });
 });

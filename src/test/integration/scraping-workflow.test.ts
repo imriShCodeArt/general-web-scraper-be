@@ -9,7 +9,6 @@ jest.mock('../../lib/recipe-manager');
 jest.mock('../../lib/storage');
 jest.mock('../../lib/csv-generator');
 
-
 describe('Scraping Workflow Integration Tests', () => {
   let scrapingService: ScrapingService;
   let mockRecipeManager: jest.Mocked<RecipeManager>;
@@ -172,7 +171,7 @@ describe('Scraping Workflow Integration Tests', () => {
             throw new Error('Product extraction failed');
           }
           // Add a delay to make the job take longer
-          await new Promise(resolve => setTimeout(resolve, 50));
+          await new Promise((resolve) => setTimeout(resolve, 50));
           return Promise.resolve(testUtils.createMockRawProduct());
         }),
         getConfig: jest.fn().mockReturnValue(mockRecipe),
@@ -313,8 +312,8 @@ describe('Scraping Workflow Integration Tests', () => {
       const allJobs = await scrapingService.getAllJobs();
       expect(allJobs.success).toBe(true);
       expect(allJobs.data).toHaveLength(2);
-      expect(allJobs.data?.map(j => j.id)).toContain(response1.data!.jobId);
-      expect(allJobs.data?.map(j => j.id)).toContain(response2.data!.jobId);
+      expect(allJobs.data?.map((j) => j.id)).toContain(response1.data!.jobId);
+      expect(allJobs.data?.map((j) => j.id)).toContain(response2.data!.jobId);
     });
 
     it('should cancel jobs correctly', async () => {
@@ -330,7 +329,7 @@ describe('Scraping Workflow Integration Tests', () => {
         }),
         extractProduct: jest.fn().mockImplementation(async () => {
           // Add a long delay to make the job take time
-          await new Promise(resolve => setTimeout(resolve, 200));
+          await new Promise((resolve) => setTimeout(resolve, 200));
           return Promise.resolve(testUtils.createMockRawProduct());
         }),
         getConfig: jest.fn().mockReturnValue(mockRecipe),

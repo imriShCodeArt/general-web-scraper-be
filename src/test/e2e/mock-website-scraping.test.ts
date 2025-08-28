@@ -11,7 +11,6 @@ jest.mock('../../lib/recipe-manager');
 jest.mock('../../lib/storage');
 jest.mock('../../lib/csv-generator');
 
-
 describe('E2E Mock Website Scraping Tests', () => {
   let scrapingService: ScrapingService;
   let mockRecipeManager: jest.Mocked<RecipeManager>;
@@ -195,24 +194,30 @@ describe('E2E Mock Website Scraping Tests', () => {
           const html = await response.text();
           const dom = new (await import('jsdom')).JSDOM(html);
 
-          const title = dom.window.document.querySelector('.product-title')?.textContent?.trim() || '';
-          const price = dom.window.document.querySelector('.product-price')?.textContent?.trim() || '';
+          const title =
+            dom.window.document.querySelector('.product-title')?.textContent?.trim() || '';
+          const price =
+            dom.window.document.querySelector('.product-price')?.textContent?.trim() || '';
           const sku = dom.window.document.querySelector('.product-sku')?.textContent?.trim() || '';
-          const stock = dom.window.document.querySelector('.product-stock')?.textContent?.trim() || '';
-          const description = dom.window.document.querySelector('.product-description')?.textContent?.trim() || '';
+          const stock =
+            dom.window.document.querySelector('.product-stock')?.textContent?.trim() || '';
+          const description =
+            dom.window.document.querySelector('.product-description')?.textContent?.trim() || '';
 
           const images = Array.from(dom.window.document.querySelectorAll('.product-image'))
-            .map(img => img.getAttribute('src'))
-            .filter(src => src)
-            .map(src => `${mockServerUrl}${src}`);
+            .map((img) => img.getAttribute('src'))
+            .filter((src) => src)
+            .map((src) => `${mockServerUrl}${src}`);
 
           const attributes: Record<string, string[]> = {};
-          const attributeElements = dom.window.document.querySelectorAll('.product-attributes .attribute');
+          const attributeElements = dom.window.document.querySelectorAll(
+            '.product-attributes .attribute',
+          );
           for (const element of attributeElements) {
             const name = element.querySelector('.attribute-name')?.textContent?.trim();
             const values = Array.from(element.querySelectorAll('.attribute-value'))
-              .map(val => val.textContent?.trim())
-              .filter(val => val);
+              .map((val) => val.textContent?.trim())
+              .filter((val) => val);
 
             if (name && values.length > 0) {
               attributes[name] = values;
@@ -396,10 +401,13 @@ describe('E2E Mock Website Scraping Tests', () => {
           const dom = new (await import('jsdom')).JSDOM(malformedHtml);
 
           // Try to extract data even from malformed HTML
-          const title = dom.window.document.querySelector('.product-title')?.textContent?.trim() || '';
-          const price = dom.window.document.querySelector('.product-price')?.textContent?.trim() || '';
+          const title =
+            dom.window.document.querySelector('.product-title')?.textContent?.trim() || '';
+          const price =
+            dom.window.document.querySelector('.product-price')?.textContent?.trim() || '';
           const sku = dom.window.document.querySelector('.product-sku')?.textContent?.trim() || '';
-          const description = dom.window.document.querySelector('.product-description')?.textContent?.trim() || '';
+          const description =
+            dom.window.document.querySelector('.product-description')?.textContent?.trim() || '';
 
           return {
             title,
@@ -506,7 +514,7 @@ describe('E2E Mock Website Scraping Tests', () => {
       );
 
       const responses = await Promise.all(jobPromises);
-      expect(responses.every(r => r.success)).toBe(true);
+      expect(responses.every((r) => r.success)).toBe(true);
 
       // Wait for all jobs to complete
       await testUtils.wait(500);

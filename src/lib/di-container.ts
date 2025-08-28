@@ -8,7 +8,10 @@ export class Container implements DIContainer {
   private services = new Map<string, any>();
   private singletons = new Map<string, any>();
   private factories = new Map<string, () => any>();
-  private lifecycleHooks = new Map<string, { initialize?: () => Promise<void>; destroy?: () => Promise<void> }>();
+  private lifecycleHooks = new Map<
+    string,
+    { initialize?: () => Promise<void>; destroy?: () => Promise<void> }
+  >();
 
   /**
    * Register a service implementation

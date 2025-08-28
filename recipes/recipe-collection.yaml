@@ -6,220 +6,220 @@ globalSettings:
   defaultRateLimit: 1000
   defaultMaxConcurrent: 3
   userAgents:
-    - "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36"
-    - "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36"
+    - 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36'
+    - 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36'
 
 recipes:
-  - name: "WooCommerce Standard"
-    description: "Standard WooCommerce site recipe"
-    version: "1.0.0"
-    siteUrl: "https://woocommerce-site.com"
-    
+  - name: 'WooCommerce Standard'
+    description: 'Standard WooCommerce site recipe'
+    version: '1.0.0'
+    siteUrl: 'https://woocommerce-site.com'
+
     selectors:
-      title: 
-        - "h1.product_title"
-        - ".product_title"
-        - "h1"
-      
+      title:
+        - 'h1.product_title'
+        - '.product_title'
+        - 'h1'
+
       price:
-        - ".price .amount"
-        - ".woocommerce-Price-amount"
-        - ".price"
-      
+        - '.price .amount'
+        - '.woocommerce-Price-amount'
+        - '.price'
+
       sku:
-        - ".sku"
-        - ".product_sku"
-      
+        - '.sku'
+        - '.product_sku'
+
       description:
-        - ".woocommerce-product-details__short-description"
-        - ".product-description"
-        - ".description"
-      
+        - '.woocommerce-product-details__short-description'
+        - '.product-description'
+        - '.description'
+
       images:
-        - ".woocommerce-product-gallery__image img"
-        - ".product-gallery img"
-        - ".gallery img"
-      
+        - '.woocommerce-product-gallery__image img'
+        - '.product-gallery img'
+        - '.gallery img'
+
       stock:
-        - ".stock"
-        - ".in-stock"
-        - ".out-of-stock"
-      
+        - '.stock'
+        - '.in-stock'
+        - '.out-of-stock'
+
       category:
-        - ".woocommerce-breadcrumb"
-        - ".breadcrumb"
-      
+        - '.woocommerce-breadcrumb'
+        - '.breadcrumb'
+
       productLinks:
-        - ".product a"
-        - ".woocommerce-loop-product__title"
+        - '.product a'
+        - '.woocommerce-loop-product__title'
         - "a[href*='/product/']"
-      
+
       pagination:
-        nextPage: ".next.page-numbers"
+        nextPage: '.next.page-numbers'
         maxPages: 50
-      
+
       attributes:
-        - ".variations"
-        - ".product-attributes"
-      
+        - '.variations'
+        - '.product-attributes'
+
       variations:
-        - ".variations_form"
-        - ".product-variations"
-    
+        - '.variations_form'
+        - '.product-variations'
+
     transforms:
       title:
-        - "trim: "
+        - 'trim: '
         - "replace:^\\s+|\\s+$"
-      
+
       price:
         - "replace:[^\\d.,]"
-        - "replace:,|."
-    
+        - 'replace:,|.'
+
     behavior:
       waitForSelectors:
-        - ".product_title"
-        - ".price"
+        - '.product_title'
+        - '.price'
       rateLimit: 1000
       maxConcurrent: 3
 
-  - name: "Shopify Standard"
-    description: "Standard Shopify site recipe"
-    version: "1.0.0"
-    siteUrl: "https://shopify-site.com"
-    
+  - name: 'Shopify Standard'
+    description: 'Standard Shopify site recipe'
+    version: '1.0.0'
+    siteUrl: 'https://shopify-site.com'
+
     selectors:
-      title: 
-        - "h1.product-single__title"
-        - ".product-single__title"
-        - "h1"
-      
+      title:
+        - 'h1.product-single__title'
+        - '.product-single__title'
+        - 'h1'
+
       price:
-        - ".product__price .price"
-        - ".price"
-        - "[data-product-price]"
-      
+        - '.product__price .price'
+        - '.price'
+        - '[data-product-price]'
+
       sku:
-        - ".product-sku"
-        - "[data-sku]"
-      
+        - '.product-sku'
+        - '[data-sku]'
+
       description:
-        - ".product-single__description"
-        - ".product-description"
-        - ".description"
-      
+        - '.product-single__description'
+        - '.product-description'
+        - '.description'
+
       images:
-        - ".product__media img"
-        - ".product-gallery img"
-        - ".gallery img"
-      
+        - '.product__media img'
+        - '.product-gallery img'
+        - '.gallery img'
+
       stock:
-        - ".product__inventory"
-        - ".inventory"
-      
+        - '.product__inventory'
+        - '.inventory'
+
       category:
-        - ".breadcrumb"
-        - ".product-category"
-      
+        - '.breadcrumb'
+        - '.product-category'
+
       productLinks:
-        - ".product-item a"
-        - ".product-card a"
+        - '.product-item a'
+        - '.product-card a'
         - "a[href*='/products/']"
-      
+
       pagination:
-        nextPage: ".pagination__next"
+        nextPage: '.pagination__next'
         maxPages: 50
-      
+
       attributes:
-        - ".single-option-selector"
-        - ".product-options"
-      
+        - '.single-option-selector'
+        - '.product-options'
+
       variations:
-        - ".product-form"
-        - ".product-variants"
-    
+        - '.product-form'
+        - '.product-variants'
+
     transforms:
       title:
-        - "trim: "
+        - 'trim: '
         - "replace:^\\s+|\\s+$"
-      
+
       price:
         - "replace:[^\\d.,]"
-        - "replace:,|."
-    
+        - 'replace:,|.'
+
     behavior:
       waitForSelectors:
-        - ".product-single__title"
-        - ".price"
+        - '.product-single__title'
+        - '.price'
       rateLimit: 1000
       maxConcurrent: 3
 
-  - name: "Magento Standard"
-    description: "Standard Magento site recipe"
-    version: "1.0.0"
-    siteUrl: "https://magento-site.com"
-    
+  - name: 'Magento Standard'
+    description: 'Standard Magento site recipe'
+    version: '1.0.0'
+    siteUrl: 'https://magento-site.com'
+
     selectors:
-      title: 
-        - "h1.page-title"
-        - ".page-title"
-        - "h1"
-      
+      title:
+        - 'h1.page-title'
+        - '.page-title'
+        - 'h1'
+
       price:
-        - ".price-box .price"
-        - ".price"
-        - "[data-price-type]"
-      
+        - '.price-box .price'
+        - '.price'
+        - '[data-price-type]'
+
       sku:
-        - ".sku"
-        - ".product-info-sku"
-      
+        - '.sku'
+        - '.product-info-sku'
+
       description:
-        - ".product-info-description"
-        - ".description"
-        - ".product-description"
-      
+        - '.product-info-description'
+        - '.description'
+        - '.product-description'
+
       images:
-        - ".gallery-image img"
-        - ".product-gallery img"
-        - ".gallery img"
-      
+        - '.gallery-image img'
+        - '.product-gallery img'
+        - '.gallery img'
+
       stock:
-        - ".stock"
-        - ".availability"
-      
+        - '.stock'
+        - '.availability'
+
       category:
-        - ".breadcrumbs"
-        - ".category"
-      
+        - '.breadcrumbs'
+        - '.category'
+
       productLinks:
-        - ".product-item a"
-        - ".product-card a"
+        - '.product-item a'
+        - '.product-card a'
         - "a[href*='/catalog/product/']"
-      
+
       pagination:
-        nextPage: ".next"
+        nextPage: '.next'
         maxPages: 50
-      
+
       attributes:
-        - ".product-options"
-        - ".product-attributes"
-      
+        - '.product-options'
+        - '.product-attributes'
+
       variations:
-        - ".product-options-wrapper"
-        - ".product-variants"
-    
+        - '.product-options-wrapper'
+        - '.product-variants'
+
     transforms:
       title:
-        - "trim: "
+        - 'trim: '
         - "replace:^\\s+|\\s+$"
-      
+
       price:
         - "replace:[^\\d.,]"
-        - "replace:,|."
-    
+        - 'replace:,|.'
+
     behavior:
       waitForSelectors:
-        - ".page-title"
-        - ".price"
+        - '.page-title'
+        - '.price'
       rateLimit: 1000
       maxConcurrent: 3

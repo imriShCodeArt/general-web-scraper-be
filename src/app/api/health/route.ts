@@ -7,18 +7,18 @@ import { NextRequest, NextResponse } from 'next/server';
 export async function GET(request: NextRequest) {
   try {
     const startTime = Date.now();
-    
+
     // Perform health checks
     const checks = await Promise.all([
       checkSystemResources(),
       checkDatabase(),
       checkExternalServices(),
     ]);
-    
+
     const duration = Date.now() - startTime;
-    const isHealthy = checks.every(check => check.status === 'healthy');
+    const isHealthy = checks.every((check) => check.status === 'healthy');
     const statusCode = isHealthy ? 200 : 503;
-    
+
     const response = {
       status: isHealthy ? 'healthy' : 'unhealthy',
       timestamp: new Date().toISOString(),
@@ -27,16 +27,21 @@ export async function GET(request: NextRequest) {
       version: process.env.npm_package_version || '1.0.0',
       environment: process.env.NODE_ENV || 'development',
     };
-    
+
     return NextResponse.json(response, { status: statusCode });
   } catch (error) {
     const errorResponse = {
       status: 'unhealthy',
       timestamp: new Date().toISOString(),
       error: error instanceof Error ? error.message : 'Unknown error',
-      stack: process.env.NODE_ENV === 'development' ? error instanceof Error ? error.stack : undefined : undefined,
+      stack:
+        process.env.NODE_ENV === 'development'
+          ? error instanceof Error
+            ? error.stack
+            : undefined
+          : undefined,
     };
-    
+
     return NextResponse.json(errorResponse, { status: 503 });
   }
 }
@@ -48,9 +53,9 @@ async function checkSystemResources() {
   try {
     const memoryUsage = process.memoryUsage();
     const cpuUsage = process.cpuUsage();
-    
+
     const isHealthy = memoryUsage.heapUsed < 500 * 1024 * 1024; // 500MB limit
-    
+
     return {
       name: 'system_resources',
       status: isHealthy ? 'healthy' : 'warning',

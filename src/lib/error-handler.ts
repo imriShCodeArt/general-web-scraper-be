@@ -51,7 +51,7 @@ export enum ErrorCodes {
   PRODUCT_NOT_FOUND = 'PRODUCT_NOT_FOUND',
   RECIPE_ERROR = 'RECIPE_ERROR',
   STORAGE_ERROR = 'STORAGE_ERROR',
-  UNKNOWN_ERROR = 'UNKNOWN_ERROR'
+  UNKNOWN_ERROR = 'UNKNOWN_ERROR',
 }
 
 /**
@@ -212,16 +212,14 @@ export class RetryManager {
 
     // Check error name and message for retryable patterns
     const errorText = `${error.name} ${error.message}`.toLowerCase();
-    return retryableErrors.some(code =>
-      errorText.includes(code.toLowerCase().replace('_', ' ')),
-    );
+    return retryableErrors.some((code) => errorText.includes(code.toLowerCase().replace('_', ' ')));
   }
 
   /**
    * Delay execution for a specified time
    */
   private delay(ms: number): Promise<void> {
-    return new Promise(resolve => setTimeout(resolve, ms));
+    return new Promise((resolve) => setTimeout(resolve, ms));
   }
 }
 

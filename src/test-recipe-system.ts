@@ -60,7 +60,9 @@ async function testRecipeSystem() {
 
     // Test loading from file
     try {
-      const genericRecipe = await recipeLoader.loadRecipeFromFile('./recipes/generic-ecommerce.yaml');
+      const genericRecipe = await recipeLoader.loadRecipeFromFile(
+        './recipes/generic-ecommerce.yaml',
+      );
       console.log('Loaded generic recipe:', genericRecipe.name);
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : String(error);
@@ -80,7 +82,6 @@ async function testRecipeSystem() {
     console.log('');
 
     console.log('🎉 Recipe system test completed successfully!');
-
   } catch (error) {
     console.error('❌ Recipe system test failed:', error);
   }

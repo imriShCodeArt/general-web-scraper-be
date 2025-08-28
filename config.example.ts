@@ -23,10 +23,12 @@ export const config = {
   },
 
   // API Keys for External Services
-  apiKeys: process.env.API_KEYS ? JSON.parse(process.env.API_KEYS) : {
-    service1: 'key1',
-    service2: 'key2',
-  },
+  apiKeys: process.env.API_KEYS
+    ? JSON.parse(process.env.API_KEYS)
+    : {
+        service1: 'key1',
+        service2: 'key2',
+      },
 
   // Server Configuration
   server: {

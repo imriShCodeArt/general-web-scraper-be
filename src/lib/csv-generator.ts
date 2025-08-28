@@ -32,7 +32,12 @@ export class CsvGenerator {
 
       const row: Record<string, string> = {
         post_title: product.title,
-        post_name: product.slug && product.slug.trim() !== '' ? product.slug : (product.sku ? product.sku.toLowerCase() : `product-${index + 1}`),
+        post_name:
+          product.slug && product.slug.trim() !== ''
+            ? product.slug
+            : product.sku
+              ? product.sku.toLowerCase()
+              : `product-${index + 1}`,
         post_status: 'publish',
         sku: product.sku,
         stock_status: (product as any).stock_status || product.stockStatus,
@@ -58,14 +63,16 @@ export class CsvGenerator {
         const isTaxonomy = /^pa_/i.test(rawName) ? 1 : 0;
         const inVariations = isVariable ? 1 : 0;
         // position|visible|is_taxonomy|in_variations
-        row[`attribute_data:${headerName}`] = `${position}|${visible}|${isTaxonomy}|${inVariations}`;
+        row[`attribute_data:${headerName}`] =
+          `${position}|${visible}|${isTaxonomy}|${inVariations}`;
 
         // Default attribute per first variation when variable
         if (isVariable && firstVariation && firstVariation.attributeAssignments) {
-          const fv = firstVariation.attributeAssignments[rawName]
-            || firstVariation.attributeAssignments[this.cleanAttributeName(rawName)]
-            || firstVariation.attributeAssignments[`pa_${this.cleanAttributeName(rawName)}`]
-            || '';
+          const fv =
+            firstVariation.attributeAssignments[rawName] ||
+            firstVariation.attributeAssignments[this.cleanAttributeName(rawName)] ||
+            firstVariation.attributeAssignments[`pa_${this.cleanAttributeName(rawName)}`] ||
+            '';
           if (fv) {
             row[`attribute_default:${headerName}`] = fv;
           }
@@ -81,7 +88,7 @@ export class CsvGenerator {
 
     return new Promise((resolve, reject) => {
       writeToBuffer(csvData, { headers: true })
-        .then(buffer => resolve(buffer.toString()))
+        .then((buffer) => resolve(buffer.toString()))
         .catch(reject);
     });
   }
@@ -92,7 +99,6 @@ export class CsvGenerator {
   static async generateVariationCsv(products: NormalizedProduct[]): Promise<string> {
     const variationRows: Record<string, string>[] = [];
     const attributeHeadersSet = new Set<string>();
-
 
     // DEBUG: Log what we're processing
     debug('🔍 DEBUG: generateVariationCsv called with products:', products.length);
@@ -173,11 +179,16 @@ export class CsvGenerator {
     const dynamicHeaders = Array.from(attributeHeadersSet).sort();
     const headers = [...baseHeaders, ...dynamicHeaders];
 
-    debug('🔍 DEBUG: generateVariationCsv completed, rows:', variationRows.length, 'headers:', headers);
+    debug(
+      '🔍 DEBUG: generateVariationCsv completed, rows:',
+      variationRows.length,
+      'headers:',
+      headers,
+    );
 
     return new Promise((resolve, reject) => {
       writeToBuffer(variationRows, { headers })
-        .then(buffer => resolve(buffer.toString()))
+        .then((buffer) => resolve(buffer.toString()))
         .catch(reject);
     });
   }
@@ -199,7 +210,7 @@ export class CsvGenerator {
     ]);
 
     const variationCount = products
-      .filter(p => p.productType === 'variable')
+      .filter((p) => p.productType === 'variable')
       .reduce((sum, p) => sum + p.variations.length, 0);
 
     debug('🔍 DEBUG: generateBothCsvs results:', {
@@ -207,8 +218,8 @@ export class CsvGenerator {
       variationCount,
       parentCsvLength: parentCsv.length,
       variationCsvLength: variationCsv.length,
-      productsWithVariations: products.filter(p => p.productType === 'variable').length,
-      productTypes: products.map(p => p.productType),
+      productsWithVariations: products.filter((p) => p.productType === 'variable').length,
+      productTypes: products.map((p) => p.productType),
     });
 
     return {
@@ -235,11 +246,8 @@ export class CsvGenerator {
    */
   private static attributeDisplayName(rawName: string): string {
     const withoutPrefix = rawName.replace(/^pa_/i, '');
-    const cleaned = withoutPrefix
-      .replace(/[_-]+/g, ' ')
-      .trim()
-      .toLowerCase();
-    return cleaned.replace(/\b\w/g, c => c.toUpperCase());
+    const cleaned = withoutPrefix.replace(/[_-]+/g, ' ').trim().toLowerCase();
+    return cleaned.replace(/\b\w/g, (c) => c.toUpperCase());
   }
 
   /**
@@ -259,9 +267,13 @@ export class CsvGenerator {
       if (!seen.has(key)) {
         seen.set(key, product);
         uniqueProducts.push(product);
-        console.log(`✅ DEBUG: Added unique product: ${product.sku} - ${product.title.substring(0, 50)}`);
+        console.log(
+          `✅ DEBUG: Added unique product: ${product.sku} - ${product.title.substring(0, 50)}`,
+        );
       } else {
-        console.log(`⚠️ DEBUG: Skipping duplicate product: ${product.sku} - ${product.title.substring(0, 50)}`);
+        console.log(
+          `⚠️ DEBUG: Skipping duplicate product: ${product.sku} - ${product.title.substring(0, 50)}`,
+        );
       }
     }
 
@@ -278,8 +290,8 @@ export class CsvGenerator {
 
     // Try to extract category from products
     const categories = products
-      .map(p => p.category)
-      .filter(cat => cat && cat !== 'Uncategorized')
+      .map((p) => p.category)
+      .filter((cat) => cat && cat !== 'Uncategorized')
       .slice(0, 3); // Take first 3 categories
 
     if (categories.length > 0) {

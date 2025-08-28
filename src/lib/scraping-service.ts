@@ -1,11 +1,5 @@
 import { randomUUID } from 'crypto';
-import {
-  ScrapingJob,
-  ScrapingRequest,
-  NormalizedProduct,
-  JobResult,
-  ApiResponse,
-} from '../types';
+import { ScrapingJob, ScrapingRequest, NormalizedProduct, JobResult, ApiResponse } from '../types';
 import { SiteAdapter } from '../types';
 import { NormalizationToolkit } from './normalization';
 import { CsvGenerator } from './csv-generator';
@@ -101,9 +95,7 @@ export class ScrapingService {
     try {
       // Validate request
       if (!request.siteUrl || !request.recipe) {
-        return this.createErrorResponse(
-          'Missing required fields: siteUrl and recipe',
-        );
+        return this.createErrorResponse('Missing required fields: siteUrl and recipe');
       }
 
       // Create job
@@ -134,15 +126,10 @@ export class ScrapingService {
         this.processQueue();
       }
 
-      return this.createSuccessResponse(
-        { jobId },
-        'Scraping job created successfully',
-      );
+      return this.createSuccessResponse({ jobId }, 'Scraping job created successfully');
     } catch (error) {
       this.logger.error('Failed to start scraping job:', error);
-      return this.createErrorResponse(
-        `Failed to start scraping job: ${error}`,
-      );
+      return this.createErrorResponse(`Failed to start scraping job: ${error}`);
     }
   }
 
@@ -201,7 +188,9 @@ export class ScrapingService {
         }
 
         job.totalProducts = productUrls.length;
-        this.logger.info(`Discovered ${productUrls.length} products for job ${job.id}${maxProducts ? ` (limited to ${maxProducts})` : ''}`);
+        this.logger.info(
+          `Discovered ${productUrls.length} products for job ${job.id}${maxProducts ? ` (limited to ${maxProducts})` : ''}`,
+        );
 
         if (productUrls.length === 0) {
           throw new Error('No products found');
@@ -215,7 +204,9 @@ export class ScrapingService {
         );
         const rateLimit = Math.max(recipe.behavior?.rateLimit || 50, 10); // Reduced default from 200ms to 50ms, minimum 10ms
 
-        this.logger.info(`Processing ${productUrls.length} products with ${maxConcurrent} concurrent workers and ${rateLimit}ms rate limit`);
+        this.logger.info(
+          `Processing ${productUrls.length} products with ${maxConcurrent} concurrent workers and ${rateLimit}ms rate limit`,
+        );
 
         // Process products in optimized batches with connection pooling
         const batchSize = maxConcurrent;
@@ -229,7 +220,9 @@ export class ScrapingService {
 
             const globalIndex = i + batchIndex;
             try {
-              this.logger.debug(`Processing product ${globalIndex + 1}/${productUrls.length}: ${url}`);
+              this.logger.debug(
+                `Processing product ${globalIndex + 1}/${productUrls.length}: ${url}`,
+              );
 
               const startTime = Date.now();
               const rawProduct = await adapter.extractProduct(url);
@@ -256,7 +249,6 @@ export class ScrapingService {
 
               job.processedProducts = globalIndex + 1;
               return normalizedProduct;
-
             } catch (error) {
               const errorMsg = `Failed to process product ${url}: ${error}`;
               this.logger.error(errorMsg);
@@ -272,16 +264,21 @@ export class ScrapingService {
 
           // Wait for batch to complete
           const batchResults = await Promise.all(batchPromises);
-          const validProducts = batchResults.filter(p => p !== null) as NormalizedProduct[];
+          const validProducts = batchResults.filter((p) => p !== null) as NormalizedProduct[];
           products.push(...validProducts);
 
           const batchTime = Date.now() - batchStartTime;
-          this.logger.debug(`Batch completed in ${batchTime}ms, processed ${validProducts.length}/${batch.length} products successfully`);
+          this.logger.debug(
+            `Batch completed in ${batchTime}ms, processed ${validProducts.length}/${batch.length} products successfully`,
+          );
 
           // Optimized delay between batches - only if there are more products to process
           if (i + batchSize < productUrls.length && rateLimit > 0) {
             // Dynamic delay based on batch performance - reduce delay if batch was fast
-            const dynamicDelay = Math.max(10, Math.min(rateLimit, batchTime < 1000 ? rateLimit / 2 : rateLimit));
+            const dynamicDelay = Math.max(
+              10,
+              Math.min(rateLimit, batchTime < 1000 ? rateLimit / 2 : rateLimit),
+            );
             this.logger.debug(`Waiting ${dynamicDelay}ms before next batch...`);
             await this.delay(dynamicDelay);
           }
@@ -292,7 +289,7 @@ export class ScrapingService {
 
         this.logger.debug('Product type detection results:', {
           totalProducts: products.length,
-          productTypes: products.map(p => ({
+          productTypes: products.map((p) => ({
             title: p.title.substring(0, 50),
             productType: p.productType,
             variationsCount: p.variations.length,
@@ -336,16 +333,18 @@ export class ScrapingService {
             ? this.performanceMetrics.totalProcessingTime / this.performanceMetrics.totalProducts
             : 0;
 
-        this.logger.info(`Job ${job.id} completed successfully. Processed ${products.length} products in ${jobDuration}ms.`);
-        this.logger.info(`Performance Metrics - Avg: ${this.performanceMetrics.averageTimePerProduct.toFixed(2)}ms/product, Total: ${this.performanceMetrics.totalProducts} products`);
-
+        this.logger.info(
+          `Job ${job.id} completed successfully. Processed ${products.length} products in ${jobDuration}ms.`,
+        );
+        this.logger.info(
+          `Performance Metrics - Avg: ${this.performanceMetrics.averageTimePerProduct.toFixed(2)}ms/product, Total: ${this.performanceMetrics.totalProducts} products`,
+        );
       } finally {
         // Clean up adapter resources (including Puppeteer)
         if (adapter && typeof adapter.cleanup === 'function') {
           await adapter.cleanup();
         }
       }
-
     } catch (error) {
       this.logger.error(`Job ${job.id} failed:`, error);
 
@@ -380,7 +379,9 @@ export class ScrapingService {
       this.logger.info(`Created adapter for ${siteUrl} using recipe: ${recipe}`);
       return adapter;
     } catch (error) {
-      this.logger.warn(`Failed to create adapter with recipe '${recipe}', trying auto-detection: ${error}`);
+      this.logger.warn(
+        `Failed to create adapter with recipe '${recipe}', trying auto-detection: ${error}`,
+      );
 
       try {
         // Fallback to auto-detection
@@ -389,7 +390,9 @@ export class ScrapingService {
         return adapter;
       } catch (fallbackError) {
         this.logger.error(`Failed to create adapter for ${siteUrl}: ${fallbackError}`);
-        throw new Error(`No suitable recipe found for ${siteUrl}. Please provide a valid recipe name or ensure a recipe exists for this site.`);
+        throw new Error(
+          `No suitable recipe found for ${siteUrl}. Please provide a valid recipe name or ensure a recipe exists for this site.`,
+        );
       }
     }
   }
@@ -406,9 +409,7 @@ export class ScrapingService {
 
       return this.createSuccessResponse(job);
     } catch (error) {
-      return this.createErrorResponse(
-        `Failed to get job status: ${error}`,
-      );
+      return this.createErrorResponse(`Failed to get job status: ${error}`);
     }
   }
 
@@ -420,9 +421,7 @@ export class ScrapingService {
       const jobs = Array.from(this.activeJobs.values());
       return this.createSuccessResponse(jobs);
     } catch (error) {
-      return this.createErrorResponse(
-        `Failed to get jobs: ${error}`,
-      );
+      return this.createErrorResponse(`Failed to get jobs: ${error}`);
     }
   }
 
@@ -434,9 +433,7 @@ export class ScrapingService {
       const recipes = await this.recipeManager.listRecipes();
       return this.createSuccessResponse(recipes);
     } catch (error) {
-      return this.createErrorResponse(
-        `Failed to list recipes: ${error}`,
-      );
+      return this.createErrorResponse(`Failed to list recipes: ${error}`);
     }
   }
 
@@ -448,9 +445,7 @@ export class ScrapingService {
       const recipe = await this.recipeManager.getRecipe(recipeName);
       return this.createSuccessResponse(recipe);
     } catch (error) {
-      return this.createErrorResponse(
-        `Failed to get recipe: ${error}`,
-      );
+      return this.createErrorResponse(`Failed to get recipe: ${error}`);
     }
   }
 
@@ -466,9 +461,7 @@ export class ScrapingService {
         return this.createErrorResponse('No recipe found for this site');
       }
     } catch (error) {
-      return this.createErrorResponse(
-        `Failed to get recipe for site: ${error}`,
-      );
+      return this.createErrorResponse(`Failed to get recipe for site: ${error}`);
     }
   }
 
@@ -487,7 +480,7 @@ export class ScrapingService {
       }
 
       // Remove from queue if pending
-      const queueIndex = this.jobQueue.findIndex(j => j.id === jobId);
+      const queueIndex = this.jobQueue.findIndex((j) => j.id === jobId);
       if (queueIndex !== -1) {
         this.jobQueue.splice(queueIndex, 1);
       }
@@ -502,14 +495,9 @@ export class ScrapingService {
       );
       job.errors.push(scrapingError);
 
-      return this.createSuccessResponse(
-        { cancelled: true },
-        'Job cancelled successfully',
-      );
+      return this.createSuccessResponse({ cancelled: true }, 'Job cancelled successfully');
     } catch (error) {
-      return this.createErrorResponse(
-        `Failed to cancel job: ${error}`,
-      );
+      return this.createErrorResponse(`Failed to cancel job: ${error}`);
     }
   }
 
@@ -521,9 +509,7 @@ export class ScrapingService {
       const stats = await this.storage.getStorageStats();
       return this.createSuccessResponse(stats);
     } catch (error) {
-      return this.createErrorResponse(
-        `Failed to get storage stats: ${error}`,
-      );
+      return this.createErrorResponse(`Failed to get storage stats: ${error}`);
     }
   }
 
@@ -539,9 +525,7 @@ export class ScrapingService {
         isProcessing: this.isProcessing,
       });
     } catch (error) {
-      return this.createErrorResponse(
-        `Failed to get performance metrics: ${error}`,
-      );
+      return this.createErrorResponse(`Failed to get performance metrics: ${error}`);
     }
   }
 
@@ -551,14 +535,15 @@ export class ScrapingService {
   async getLivePerformanceMetrics(): Promise<ApiResponse<any>> {
     try {
       const now = Date.now();
-      const activeJobStats = Array.from(this.activeJobs.values()).map(job => ({
+      const activeJobStats = Array.from(this.activeJobs.values()).map((job) => ({
         id: job.id,
         status: job.status,
         progress: job.processedProducts / Math.max(job.totalProducts, 1),
         duration: job.startedAt ? now - job.startedAt.getTime() : 0,
-        productsPerSecond: job.startedAt && job.processedProducts > 0
-          ? (job.processedProducts / ((now - job.startedAt.getTime()) / 1000)).toFixed(2)
-          : 0,
+        productsPerSecond:
+          job.startedAt && job.processedProducts > 0
+            ? (job.processedProducts / ((now - job.startedAt.getTime()) / 1000)).toFixed(2)
+            : 0,
       }));
 
       return this.createSuccessResponse({
@@ -573,9 +558,7 @@ export class ScrapingService {
         },
       });
     } catch (error) {
-      return this.createErrorResponse(
-        `Failed to get live performance metrics: ${error}`,
-      );
+      return this.createErrorResponse(`Failed to get live performance metrics: ${error}`);
     }
   }
 
@@ -591,7 +574,8 @@ export class ScrapingService {
         recommendations.push({
           type: 'performance',
           priority: 'high',
-          message: 'Average processing time per product is high (>5s). Consider enabling fast mode or reducing concurrent workers.',
+          message:
+            'Average processing time per product is high (>5s). Consider enabling fast mode or reducing concurrent workers.',
           suggestion: 'Set fastMode: true in recipe behavior or reduce maxConcurrent to 5-8',
         });
       }
@@ -606,13 +590,16 @@ export class ScrapingService {
       }
 
       if (this.performanceMetrics.totalJobs > 0) {
-        const avgJobTime = this.performanceMetrics.totalProcessingTime / this.performanceMetrics.totalJobs;
-        if (avgJobTime > 300000) { // 5 minutes
+        const avgJobTime =
+          this.performanceMetrics.totalProcessingTime / this.performanceMetrics.totalJobs;
+        if (avgJobTime > 300000) {
+          // 5 minutes
           recommendations.push({
             type: 'optimization',
             priority: 'high',
             message: 'Average job completion time is high (>5min).',
-            suggestion: 'Review rateLimit settings and consider using HTTP client instead of Puppeteer for simple sites',
+            suggestion:
+              'Review rateLimit settings and consider using HTTP client instead of Puppeteer for simple sites',
           });
         }
       }
@@ -626,9 +613,7 @@ export class ScrapingService {
         },
       });
     } catch (error) {
-      return this.createErrorResponse(
-        `Failed to get performance recommendations: ${error}`,
-      );
+      return this.createErrorResponse(`Failed to get performance recommendations: ${error}`);
     }
   }
 
@@ -660,8 +645,6 @@ export class ScrapingService {
    * Utility function to add delay
    */
   private delay(ms: number): Promise<void> {
-    return new Promise(resolve => setTimeout(resolve, ms));
+    return new Promise((resolve) => setTimeout(resolve, ms));
   }
 }
-
-

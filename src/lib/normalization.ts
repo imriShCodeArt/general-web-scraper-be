@@ -23,10 +23,14 @@ export class NormalizationToolkit {
       shortDescription: this.cleanText(raw.shortDescription || ''),
       sku: this.cleanSku(raw.sku || this.generateSku(url)),
       stockStatus: this.normalizeStockStatus(raw.stockStatus),
-      images: this.normalizeImages((raw.images || []).filter((img): img is string => img !== undefined)),
+      images: this.normalizeImages(
+        (raw.images || []).filter((img): img is string => img !== undefined),
+      ),
       category: this.cleanText(raw.category || 'Uncategorized'),
       productType: this.detectProductType(raw),
-      attributes: this.normalizeAttributes((raw.attributes || {} as Record<string, (string | undefined)[]>)),
+      attributes: this.normalizeAttributes(
+        raw.attributes || ({} as Record<string, (string | undefined)[]>),
+      ),
       variations: this.normalizeVariations(raw.variations || []),
       regularPrice: this.cleanText(raw.price || ''),
       salePrice: this.cleanText(raw.salePrice || ''),
@@ -37,7 +41,7 @@ export class NormalizationToolkit {
 
     // Ensure parent SKU is unique and not equal to any variation SKU
     if (result.productType === 'variable' && result.variations.length > 0) {
-      const variationSkus = new Set(result.variations.map(v => v.sku));
+      const variationSkus = new Set(result.variations.map((v) => v.sku));
       if (variationSkus.has(result.sku)) {
         const base = result.sku || this.generateSku(url);
         // Append a suffix to make the parent SKU distinct
@@ -61,27 +65,29 @@ export class NormalizationToolkit {
   static cleanText(text: string): string {
     if (!text) return '';
 
-    return text
-      .trim()
-      // Decode percent encoding
-      .replace(/%20/g, ' ')
-      .replace(/%2B/g, '+')
-      .replace(/%2F/g, '/')
-      .replace(/%3F/g, '?')
-      .replace(/%3D/g, '=')
-      .replace(/%26/g, '&')
-      // Decode HTML entities
-      .replace(/&amp;/g, '&')
-      .replace(/&lt;/g, '<')
-      .replace(/&gt;/g, '>')
-      .replace(/&quot;/g, '"')
-      .replace(/&#39;/g, '\'')
-      .replace(/&nbsp;/g, ' ')
-      // Remove extra whitespace
-      .replace(/\s+/g, ' ')
-      // Remove placeholder text
-      .replace(/(בחר אפשרות|בחירת אפשרות|Select option|Choose option)/gi, '')
-      .trim();
+    return (
+      text
+        .trim()
+        // Decode percent encoding
+        .replace(/%20/g, ' ')
+        .replace(/%2B/g, '+')
+        .replace(/%2F/g, '/')
+        .replace(/%3F/g, '?')
+        .replace(/%3D/g, '=')
+        .replace(/%26/g, '&')
+        // Decode HTML entities
+        .replace(/&amp;/g, '&')
+        .replace(/&lt;/g, '<')
+        .replace(/&gt;/g, '>')
+        .replace(/&quot;/g, '"')
+        .replace(/&#39;/g, "'")
+        .replace(/&nbsp;/g, ' ')
+        // Remove extra whitespace
+        .replace(/\s+/g, ' ')
+        // Remove placeholder text
+        .replace(/(בחר אפשרות|בחירת אפשרות|Select option|Choose option)/gi, '')
+        .trim()
+    );
   }
 
   /**
@@ -129,7 +135,11 @@ export class NormalizationToolkit {
     if (!status) return 'instock';
 
     const normalized = status.toLowerCase().trim();
-    if (normalized.includes('out') || normalized.includes('unavailable') || normalized.includes('0')) {
+    if (
+      normalized.includes('out') ||
+      normalized.includes('unavailable') ||
+      normalized.includes('0')
+    ) {
       return 'outofstock';
     }
     return 'instock';
@@ -142,8 +152,8 @@ export class NormalizationToolkit {
     if (!images || images.length === 0) return [];
 
     return images
-      .filter(img => img && img.trim())
-      .map(img => {
+      .filter((img) => img && img.trim())
+      .map((img) => {
         if (img.startsWith('http')) return img;
         if (baseUrl && img.startsWith('/')) {
           const url = new URL(baseUrl);
@@ -151,7 +161,7 @@ export class NormalizationToolkit {
         }
         return img;
       })
-      .filter(img => img.startsWith('http'));
+      .filter((img) => img.startsWith('http'));
   }
 
   /**
@@ -185,7 +195,9 @@ export class NormalizationToolkit {
   /**
    * Normalize product attributes
    */
-  static normalizeAttributes(attributes: Record<string, (string | undefined)[]>): Record<string, string[]> {
+  static normalizeAttributes(
+    attributes: Record<string, (string | undefined)[]>,
+  ): Record<string, string[]> {
     debug('🔍 DEBUG: normalizeAttributes called with:', attributes);
     const normalized: Record<string, string[]> = {};
 
@@ -200,8 +212,8 @@ export class NormalizationToolkit {
       const cleanKey = this.cleanAttributeName(key);
       const cleanValues = values
         .filter((value): value is string => value !== undefined)
-        .map(value => this.cleanText(value))
-        .filter(value => value && !this.isPlaceholder(value));
+        .map((value) => this.cleanText(value))
+        .filter((value) => value && !this.isPlaceholder(value));
 
       debug('🔍 DEBUG: Cleaned attribute:', cleanKey, 'cleanValues:', cleanValues);
 
@@ -221,16 +233,18 @@ export class NormalizationToolkit {
    * Clean attribute names
    */
   static cleanAttributeName(name: string): string {
-    return name
-      .trim()
-      // Remove WooCommerce prefixes
-      .replace(/^(pa_|attribute_)/, '')
-      // Decode percent encoding
-      .replace(/%20/g, ' ')
-      .replace(/%2B/g, '+')
-      // Capitalize first letter (preserve Hebrew)
-      .replace(/^([a-z])/, (match) => match.toUpperCase())
-      .trim();
+    return (
+      name
+        .trim()
+        // Remove WooCommerce prefixes
+        .replace(/^(pa_|attribute_)/, '')
+        // Decode percent encoding
+        .replace(/%20/g, ' ')
+        .replace(/%2B/g, '+')
+        // Capitalize first letter (preserve Hebrew)
+        .replace(/^([a-z])/, (match) => match.toUpperCase())
+        .trim()
+    );
   }
 
   /**
@@ -249,133 +263,133 @@ export class NormalizationToolkit {
       'Select size',
       'Select color',
       'Select model',
-      'General',  // Common in WooCommerce
-      'בחירת אפשרות',  // Hebrew "Choose option"
-      'בחירת אפשרותA - רינבוקורן Lets Go',  // Specific from modanbags.co.il
-      'בחירת אפשרותB - ריינבוקורן דמויות כחול',  // Specific from modanbags.co.il
-      'בחירת אפשרותC - ריינבוקורן דמויות כחול',  // Specific from modanbags.co.il
-      'בחירת אפשרותD - ריינבוקורן דמויות כחול',  // Specific from modanbags.co.il
-      'בחירת אפשרותE - ריינבוקורן דמויות כחול',  // Specific from modanbags.co.il
-      'בחירת אפשרותF - ריינבוקורן דמויות כחול',  // Specific from modanbags.co.il
-      'בחירת אפשרותG - ריינבוקורן דמויות כחול',  // Specific from modanbags.co.il
-      'בחירת אפשרותH - ריינבוקורן דמויות כחול',  // Specific from modanbags.co.il
-      'בחירת אפשרותI - ריינבוקורן דמויות כחול',  // Specific from modanbags.co.il
-      'בחירת אפשרותJ - ריינבוקורן דמויות כחול',  // Specific from modanbags.co.il
-      'בחירת אפשרותK - ריינבוקורן דמויות כחול',  // Specific from modanbags.co.il
-      'בחירת אפשרותL - ריינבוקורן דמויות כחול',  // Specific from modanbags.co.il
-      'בחירת אפשרותM - ריינבוקורן דמויות כחול',  // Specific from modanbags.co.il
-      'בחירת אפשרותN - ריינבוקורן דמויות כחול',  // Specific from modanbags.co.il
-      'בחירת אפשרותO - ריינבוקורן דמויות כחול',  // Specific from modanbags.co.il
-      'בחירת אפשרותP - ריינבוקורן דמויות כחול',  // Specific from modanbags.co.il
-      'בחירת אפשרותQ - ריינבוקורן דמויות כחול',  // Specific from modanbags.co.il
-      'בחירת אפשרותR - ריינבוקורן דמויות כחול',  // Specific from modanbags.co.il
-      'בחירת אפשרותS - ריינבוקורן דמויות כחול',  // Specific from modanbags.co.il
-      'בחירת אפשרותT - ריינבוקורן דמויות כחול',  // Specific from modanbags.co.il
-      'בחירת אפשרותU - ריינבוקורן דמויות כחול',  // Specific from modanbags.co.il
-      'בחירת אפשרותV - ריינבוקורן דמויות כחול',  // Specific from modanbags.co.il
-      'בחירת אפשרותW - ריינבוקורן דמויות כחול',  // Specific from modanbags.co.il
-      'בחירת אפשרותX - ריינבוקורן דמויות כחול',  // Specific from modanbags.co.il
-      'בחירת אפשרותY - ריינבוקורן דמויות כחול',  // Specific from modanbags.co.il
-      'בחירת אפשרותZ - ריינבוקורן דמויות כחול',  // Specific from modanbags.co.il
-      'בחירת אפשרות0 - ריינבוקורן דמויות כחול',  // Specific from modanbags.co.il
-      'בחירת אפשרות1 - ריינבוקורן דמויות כחול',  // Specific from modanbags.co.il
-      'בחירת אפשרות2 - ריינבוקורן דמויות כחול',  // Specific from modanbags.co.il
-      'בחירת אפשרות3 - ריינבוקורן דמויות כחול',  // Specific from modanbags.co.il
-      'בחירת אפשרות4 - ריינבוקורן דמויות כחול',  // Specific from modanbags.co.il
-      'בחירת אפשרות5 - ריינבוקורן דמויות כחול',  // Specific from modanbags.co.il
-      'בחירת אפשרות6 - ריינבוקורן דמויות כחול',  // Specific from modanbags.co.il
-      'בחירת אפשרות7 - ריינבוקורן דמויות כחול',  // Specific from modanbags.co.il
-      'בחירת אפשרות8 - ריינבוקורן דמויות כחול',  // Specific from modanbags.co.il
-      'בחירת אפשרות9 - ריינבוקורן דמויות כחול',  // Specific from modanbags.co.il
-      'בחירת אפשרותא - ריינבוקורן דמויות כחול',  // Specific from modanbags.co.il
-      'בחירת אפשרותב - ריינבוקורן דמויות כחול',  // Specific from modanbags.co.il
-      'בחירת אפשרותג - ריינבוקורן דמויות כחול',  // Specific from modanbags.co.il
-      'בחירת אפשרותד - ריינבוקורן דמויות כחול',  // Specific from modanbags.co.il
-      'בחירת אפשרותה - ריינבוקורן דמויות כחול',  // Specific from modanbags.co.il
-      'בחירת אפשרותו - ריינבוקורן דמויות כחול',  // Specific from modanbags.co.il
-      'בחירת אפשרותA',  // Hebrew with option prefix
-      'בחירת אפשרותB',  // Hebrew with option prefix
-      'בחירת אפשרותC',  // Hebrew with option prefix
-      'בחירת אפשרותD',  // Hebrew with option prefix
-      'בחירת אפשרותE',  // Hebrew with option prefix
-      'בחירת אפשרותF',  // Hebrew with option prefix
-      'בחירת אפשרותG',  // Hebrew with option prefix
-      'בחירת אפשרותH',  // Hebrew with option prefix
-      'בחירת אפשרותI',  // Hebrew with option prefix
-      'בחירת אפשרותJ',  // Hebrew with option prefix
-      'בחירת אפשרותK',  // Hebrew with option prefix
-      'בחירת אפשרותL',  // Hebrew with option prefix
-      'בחירת אפשרותM',  // Hebrew with option prefix
-      'בחירת אפשרותN',  // Hebrew with option prefix
-      'בחירת אפשרותO',  // Hebrew with option prefix
-      'בחירת אפשרותP',  // Hebrew with option prefix
-      'בחירת אפשרותQ',  // Hebrew with option prefix
-      'בחירת אפשרותR',  // Hebrew with option prefix
-      'בחירת אפשרותS',  // Hebrew with option prefix
-      'בחירת אפשרותT',  // Hebrew with option prefix
-      'בחירת אפשרותU',  // Hebrew with option prefix
-      'בחירת אפשרותV',  // Hebrew with option prefix
-      'בחירת אפשרותW',  // Hebrew with option prefix
-      'בחירת אפשרותX',  // Hebrew with option prefix
-      'בחירת אפשרותY',  // Hebrew with option prefix
-      'בחירת אפשרותZ',  // Hebrew with option prefix
-      'בחירת אפשרות0',  // Hebrew with option prefix
-      'בחירת אפשרות1',  // Hebrew with option prefix
-      'בחירת אפשרות2',  // Hebrew with option prefix
-      'בחירת אפשרות3',  // Hebrew with option prefix
-      'בחירת אפשרות4',  // Hebrew with option prefix
-      'בחירת אפשרות5',  // Hebrew with option prefix
-      'בחירת אפשרות6',  // Hebrew with option prefix
-      'בחירת אפשרות7',  // Hebrew with option prefix
-      'בחירת אפשרות8',  // Hebrew with option prefix
-      'בחירת אפשרות9',  // Hebrew with option prefix
-      'בחירת אפשרותא',  // Hebrew with option prefix
-      'בחירת אפשרותב',  // Hebrew with option prefix
-      'בחירת אפשרותג',  // Hebrew with option prefix
-      'בחירת אפשרותד',  // Hebrew with option prefix
-      'בחירת אפשרותה',  // Hebrew with option prefix
-      'בחירת אפשרותו',  // Hebrew with option prefix
-      'בחירת אפשרותז',  // Hebrew with option prefix
-      'בחירת אפשרותח',  // Hebrew with option prefix
-      'בחירת אפשרותט',  // Hebrew with option prefix
-      'בחירת אפשרותי',  // Hebrew with option prefix
-      'בחירת אפשרותכ',  // Hebrew with option prefix
-      'בחירת אפשרותל',  // Hebrew with option prefix
-      'בחירת אפשרותמ',  // Hebrew with option prefix
-      'בחירת אפשרותנ',  // Hebrew with option prefix
-      'בחירת אפשרותס',  // Hebrew with option prefix
-      'בחירת אפשרותע',  // Hebrew with option prefix
-      'בחירת אפשרותפ',  // Hebrew with option prefix
-      'בחירת אפשרותצ',  // Hebrew with option prefix
-      'בחירת אפשרותק',  // Hebrew with option prefix
-      'בחירת אפשרותר',  // Hebrew with option prefix
-      'בחירת אפשרותש',  // Hebrew with option prefix
-      'בחירת אפשרותת',  // Hebrew with option prefix
-      'בחירת אפשרותא',  // Hebrew with option prefix
-      'בחירת אפשרותב',  // Hebrew with option prefix
-      'בחירת אפשרותג',  // Hebrew with option prefix
-      'בחירת אפשרותד',  // Hebrew with option prefix
-      'בחירת אפשרותה',  // Hebrew with option prefix
-      'בחירת אפשרותו',  // Hebrew with option prefix
-      'בחירת אפשרותז',  // Hebrew with option prefix
-      'בחירת אפשרותח',  // Hebrew with option prefix
-      'בחירת אפשרותט',  // Hebrew with option prefix
-      'בחירת אפשרותי',  // Hebrew with option prefix
-      'בחירת אפשרותכ',  // Hebrew with option prefix
-      'בחירת אפשרותל',  // Hebrew with option prefix
-      'בחירת אפשרותמ',  // Hebrew with option prefix
-      'בחירת אפשרותנ',  // Hebrew with option prefix
-      'בחירת אפשרותס',  // Hebrew with option prefix
-      'בחירת אפשרותע',  // Hebrew with option prefix
-      'בחירת אפשרותפ',  // Hebrew with option prefix
-      'בחירת אפשרותצ',  // Hebrew with option prefix
-      'בחירת אפשרותק',  // Hebrew with option prefix
-      'בחירת אפשרותר',  // Hebrew with option prefix
-      'בחירת אפשרותש',  // Hebrew with option prefix
-      'בחירת אפשרותת',   // Hebrew with option prefix
+      'General', // Common in WooCommerce
+      'בחירת אפשרות', // Hebrew "Choose option"
+      'בחירת אפשרותA - רינבוקורן Lets Go', // Specific from modanbags.co.il
+      'בחירת אפשרותB - ריינבוקורן דמויות כחול', // Specific from modanbags.co.il
+      'בחירת אפשרותC - ריינבוקורן דמויות כחול', // Specific from modanbags.co.il
+      'בחירת אפשרותD - ריינבוקורן דמויות כחול', // Specific from modanbags.co.il
+      'בחירת אפשרותE - ריינבוקורן דמויות כחול', // Specific from modanbags.co.il
+      'בחירת אפשרותF - ריינבוקורן דמויות כחול', // Specific from modanbags.co.il
+      'בחירת אפשרותG - ריינבוקורן דמויות כחול', // Specific from modanbags.co.il
+      'בחירת אפשרותH - ריינבוקורן דמויות כחול', // Specific from modanbags.co.il
+      'בחירת אפשרותI - ריינבוקורן דמויות כחול', // Specific from modanbags.co.il
+      'בחירת אפשרותJ - ריינבוקורן דמויות כחול', // Specific from modanbags.co.il
+      'בחירת אפשרותK - ריינבוקורן דמויות כחול', // Specific from modanbags.co.il
+      'בחירת אפשרותL - ריינבוקורן דמויות כחול', // Specific from modanbags.co.il
+      'בחירת אפשרותM - ריינבוקורן דמויות כחול', // Specific from modanbags.co.il
+      'בחירת אפשרותN - ריינבוקורן דמויות כחול', // Specific from modanbags.co.il
+      'בחירת אפשרותO - ריינבוקורן דמויות כחול', // Specific from modanbags.co.il
+      'בחירת אפשרותP - ריינבוקורן דמויות כחול', // Specific from modanbags.co.il
+      'בחירת אפשרותQ - ריינבוקורן דמויות כחול', // Specific from modanbags.co.il
+      'בחירת אפשרותR - ריינבוקורן דמויות כחול', // Specific from modanbags.co.il
+      'בחירת אפשרותS - ריינבוקורן דמויות כחול', // Specific from modanbags.co.il
+      'בחירת אפשרותT - ריינבוקורן דמויות כחול', // Specific from modanbags.co.il
+      'בחירת אפשרותU - ריינבוקורן דמויות כחול', // Specific from modanbags.co.il
+      'בחירת אפשרותV - ריינבוקורן דמויות כחול', // Specific from modanbags.co.il
+      'בחירת אפשרותW - ריינבוקורן דמויות כחול', // Specific from modanbags.co.il
+      'בחירת אפשרותX - ריינבוקורן דמויות כחול', // Specific from modanbags.co.il
+      'בחירת אפשרותY - ריינבוקורן דמויות כחול', // Specific from modanbags.co.il
+      'בחירת אפשרותZ - ריינבוקורן דמויות כחול', // Specific from modanbags.co.il
+      'בחירת אפשרות0 - ריינבוקורן דמויות כחול', // Specific from modanbags.co.il
+      'בחירת אפשרות1 - ריינבוקורן דמויות כחול', // Specific from modanbags.co.il
+      'בחירת אפשרות2 - ריינבוקורן דמויות כחול', // Specific from modanbags.co.il
+      'בחירת אפשרות3 - ריינבוקורן דמויות כחול', // Specific from modanbags.co.il
+      'בחירת אפשרות4 - ריינבוקורן דמויות כחול', // Specific from modanbags.co.il
+      'בחירת אפשרות5 - ריינבוקורן דמויות כחול', // Specific from modanbags.co.il
+      'בחירת אפשרות6 - ריינבוקורן דמויות כחול', // Specific from modanbags.co.il
+      'בחירת אפשרות7 - ריינבוקורן דמויות כחול', // Specific from modanbags.co.il
+      'בחירת אפשרות8 - ריינבוקורן דמויות כחול', // Specific from modanbags.co.il
+      'בחירת אפשרות9 - ריינבוקורן דמויות כחול', // Specific from modanbags.co.il
+      'בחירת אפשרותא - ריינבוקורן דמויות כחול', // Specific from modanbags.co.il
+      'בחירת אפשרותב - ריינבוקורן דמויות כחול', // Specific from modanbags.co.il
+      'בחירת אפשרותג - ריינבוקורן דמויות כחול', // Specific from modanbags.co.il
+      'בחירת אפשרותד - ריינבוקורן דמויות כחול', // Specific from modanbags.co.il
+      'בחירת אפשרותה - ריינבוקורן דמויות כחול', // Specific from modanbags.co.il
+      'בחירת אפשרותו - ריינבוקורן דמויות כחול', // Specific from modanbags.co.il
+      'בחירת אפשרותA', // Hebrew with option prefix
+      'בחירת אפשרותB', // Hebrew with option prefix
+      'בחירת אפשרותC', // Hebrew with option prefix
+      'בחירת אפשרותD', // Hebrew with option prefix
+      'בחירת אפשרותE', // Hebrew with option prefix
+      'בחירת אפשרותF', // Hebrew with option prefix
+      'בחירת אפשרותG', // Hebrew with option prefix
+      'בחירת אפשרותH', // Hebrew with option prefix
+      'בחירת אפשרותI', // Hebrew with option prefix
+      'בחירת אפשרותJ', // Hebrew with option prefix
+      'בחירת אפשרותK', // Hebrew with option prefix
+      'בחירת אפשרותL', // Hebrew with option prefix
+      'בחירת אפשרותM', // Hebrew with option prefix
+      'בחירת אפשרותN', // Hebrew with option prefix
+      'בחירת אפשרותO', // Hebrew with option prefix
+      'בחירת אפשרותP', // Hebrew with option prefix
+      'בחירת אפשרותQ', // Hebrew with option prefix
+      'בחירת אפשרותR', // Hebrew with option prefix
+      'בחירת אפשרותS', // Hebrew with option prefix
+      'בחירת אפשרותT', // Hebrew with option prefix
+      'בחירת אפשרותU', // Hebrew with option prefix
+      'בחירת אפשרותV', // Hebrew with option prefix
+      'בחירת אפשרותW', // Hebrew with option prefix
+      'בחירת אפשרותX', // Hebrew with option prefix
+      'בחירת אפשרותY', // Hebrew with option prefix
+      'בחירת אפשרותZ', // Hebrew with option prefix
+      'בחירת אפשרות0', // Hebrew with option prefix
+      'בחירת אפשרות1', // Hebrew with option prefix
+      'בחירת אפשרות2', // Hebrew with option prefix
+      'בחירת אפשרות3', // Hebrew with option prefix
+      'בחירת אפשרות4', // Hebrew with option prefix
+      'בחירת אפשרות5', // Hebrew with option prefix
+      'בחירת אפשרות6', // Hebrew with option prefix
+      'בחירת אפשרות7', // Hebrew with option prefix
+      'בחירת אפשרות8', // Hebrew with option prefix
+      'בחירת אפשרות9', // Hebrew with option prefix
+      'בחירת אפשרותא', // Hebrew with option prefix
+      'בחירת אפשרותב', // Hebrew with option prefix
+      'בחירת אפשרותג', // Hebrew with option prefix
+      'בחירת אפשרותד', // Hebrew with option prefix
+      'בחירת אפשרותה', // Hebrew with option prefix
+      'בחירת אפשרותו', // Hebrew with option prefix
+      'בחירת אפשרותז', // Hebrew with option prefix
+      'בחירת אפשרותח', // Hebrew with option prefix
+      'בחירת אפשרותט', // Hebrew with option prefix
+      'בחירת אפשרותי', // Hebrew with option prefix
+      'בחירת אפשרותכ', // Hebrew with option prefix
+      'בחירת אפשרותל', // Hebrew with option prefix
+      'בחירת אפשרותמ', // Hebrew with option prefix
+      'בחירת אפשרותנ', // Hebrew with option prefix
+      'בחירת אפשרותס', // Hebrew with option prefix
+      'בחירת אפשרותע', // Hebrew with option prefix
+      'בחירת אפשרותפ', // Hebrew with option prefix
+      'בחירת אפשרותצ', // Hebrew with option prefix
+      'בחירת אפשרותק', // Hebrew with option prefix
+      'בחירת אפשרותר', // Hebrew with option prefix
+      'בחירת אפשרותש', // Hebrew with option prefix
+      'בחירת אפשרותת', // Hebrew with option prefix
+      'בחירת אפשרותא', // Hebrew with option prefix
+      'בחירת אפשרותב', // Hebrew with option prefix
+      'בחירת אפשרותג', // Hebrew with option prefix
+      'בחירת אפשרותד', // Hebrew with option prefix
+      'בחירת אפשרותה', // Hebrew with option prefix
+      'בחירת אפשרותו', // Hebrew with option prefix
+      'בחירת אפשרותז', // Hebrew with option prefix
+      'בחירת אפשרותח', // Hebrew with option prefix
+      'בחירת אפשרותט', // Hebrew with option prefix
+      'בחירת אפשרותי', // Hebrew with option prefix
+      'בחירת אפשרותכ', // Hebrew with option prefix
+      'בחירת אפשרותל', // Hebrew with option prefix
+      'בחירת אפשרותמ', // Hebrew with option prefix
+      'בחירת אפשרותנ', // Hebrew with option prefix
+      'בחירת אפשרותס', // Hebrew with option prefix
+      'בחירת אפשרותע', // Hebrew with option prefix
+      'בחירת אפשרותפ', // Hebrew with option prefix
+      'בחירת אפשרותצ', // Hebrew with option prefix
+      'בחירת אפשרותק', // Hebrew with option prefix
+      'בחירת אפשרותר', // Hebrew with option prefix
+      'בחירת אפשרותש', // Hebrew with option prefix
+      'בחירת אפשרותת', // Hebrew with option prefix
     ];
 
-    const isPlaceholder = placeholders.some(placeholder =>
+    const isPlaceholder = placeholders.some((placeholder) =>
       text.toLowerCase().includes(placeholder.toLowerCase()),
     );
 
@@ -391,8 +405,8 @@ export class NormalizationToolkit {
    */
   static normalizeVariations(variations: RawVariation[]): ProductVariation[] {
     return variations
-      .filter(variation => variation && variation.sku)
-      .map(variation => ({
+      .filter((variation) => variation && variation.sku)
+      .map((variation) => ({
         sku: this.cleanSku(variation.sku!),
         regularPrice: this.cleanText(variation.regularPrice || ''),
         taxClass: this.cleanText(variation.taxClass || ''),
