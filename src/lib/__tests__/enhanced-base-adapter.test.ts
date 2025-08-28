@@ -1,9 +1,8 @@
 import { EnhancedBaseAdapter } from '../enhanced-base-adapter';
-import { RawProduct, RecipeConfig, ValidationError } from '../../types';
+import { RawProduct, RecipeConfig } from '../../types';
 import { HttpClient } from '../http-client';
 import { PuppeteerHttpClient } from '../puppeteer-http-client';
 import { JSDOM } from 'jsdom';
-import { ErrorCodes } from '../error-handler';
 
 // Mock dependencies
 jest.mock('../http-client');
@@ -19,7 +18,7 @@ class TestAdapter extends EnhancedBaseAdapter<RawProduct> {
     yield 'https://test.com/product/2';
   }
 
-  async extractProduct(url: string): Promise<RawProduct> {
+  async extractProduct(): Promise<RawProduct> {
     return {
       id: 'test-001',
       title: 'Test Product',
@@ -33,7 +32,7 @@ class TestAdapter extends EnhancedBaseAdapter<RawProduct> {
       productType: 'simple',
       attributes: {},
       variations: [],
-      price: '99.99'
+      price: '99.99',
     };
   }
 }
@@ -70,18 +69,18 @@ describe('EnhancedBaseAdapter', () => {
         requiredFields: ['title', 'sku'],
         minDescriptionLength: 10,
         maxTitleLength: 100,
-      }
+      },
     };
 
     mockHttpClient = {
       getDom: jest.fn(),
       extractEmbeddedJson: jest.fn(),
-    } as any;
+    } as jest.Mocked<HttpClient>;
 
     mockPuppeteerClient = {
       getDom: jest.fn(),
       close: jest.fn(),
-    } as any;
+    } as jest.Mocked<PuppeteerHttpClient>;
 
     // Mock the constructors to return our mock instances
     MockHttpClient.mockImplementation(() => mockHttpClient);
@@ -95,7 +94,7 @@ describe('EnhancedBaseAdapter', () => {
   });
 
   describe('Constructor and Configuration', () => {
-        it('should initialize with configuration', () => {
+    it('should initialize with configuration', () => {
       expect(adapter.getConfig()).toBe(mockConfig);
       expect(adapter.getBaseUrl()).toBe('https://test.com');
       expect(adapter.getHttpClient()).toBe(mockHttpClient);
@@ -124,7 +123,7 @@ describe('EnhancedBaseAdapter', () => {
         productType: 'simple' as const,
         attributes: {},
         variations: [],
-        price: '99.99'
+        price: '99.99',
       };
 
       const errors = adapter.validateProduct(validProduct);
@@ -145,7 +144,7 @@ describe('EnhancedBaseAdapter', () => {
         productType: 'simple' as const,
         attributes: {},
         variations: [],
-        price: '99.99'
+        price: '99.99',
       };
 
       const errors = adapter.validateProduct(invalidProduct);
@@ -168,7 +167,7 @@ describe('EnhancedBaseAdapter', () => {
         productType: 'simple' as const,
         attributes: {},
         variations: [],
-        price: '99.99'
+        price: '99.99',
       };
 
       const errors = adapter.validateProduct(invalidProduct);
@@ -192,7 +191,7 @@ describe('EnhancedBaseAdapter', () => {
         productType: 'simple' as const,
         attributes: {},
         variations: [],
-        price: '99.99'
+        price: '99.99',
       };
 
       const errors = adapter.validateProduct(invalidProduct);
@@ -306,7 +305,7 @@ describe('EnhancedBaseAdapter', () => {
     it('should use Puppeteer when enabled', async () => {
       const puppeteerConfig = { ...mockConfig, behavior: { ...mockConfig.behavior, useHeadlessBrowser: true } };
       const puppeteerAdapter = new TestAdapter(puppeteerConfig, 'https://test.com');
-      
+
       const mockDom = new JSDOM('<html><body>Test</body></html>');
       mockPuppeteerClient.getDom.mockResolvedValue(mockDom);
 
@@ -318,7 +317,7 @@ describe('EnhancedBaseAdapter', () => {
     it('should fallback to JSDOM when Puppeteer fails', async () => {
       const puppeteerConfig = { ...mockConfig, behavior: { ...mockConfig.behavior, useHeadlessBrowser: true } };
       const puppeteerAdapter = new TestAdapter(puppeteerConfig, 'https://test.com');
-      
+
       const mockDom = new JSDOM('<html><body>Test</body></html>');
       mockPuppeteerClient.getDom.mockRejectedValue(new Error('Puppeteer failed'));
       mockHttpClient.getDom.mockResolvedValue(mockDom);
@@ -365,7 +364,7 @@ describe('EnhancedBaseAdapter', () => {
     it('should apply regex transformations', () => {
       const text = 'Hello World';
       const transformations = ['Hello->Hi', 'World->Universe'];
-      
+
       const result = adapter['applyTransformations'](text, transformations);
       expect(result).toBe('Hi Universe');
     });
@@ -373,7 +372,7 @@ describe('EnhancedBaseAdapter', () => {
     it('should handle invalid transformations gracefully', () => {
       const text = 'Hello World';
       const transformations = ['Invalid->', '->Invalid', 'Invalid'];
-      
+
       const result = adapter['applyTransformations'](text, transformations);
       expect(result).toBe('Hello World'); // No changes
     });
@@ -383,7 +382,7 @@ describe('EnhancedBaseAdapter', () => {
     it('should cleanup Puppeteer client when available', async () => {
       const puppeteerConfig = { ...mockConfig, behavior: { ...mockConfig.behavior, useHeadlessBrowser: true } };
       const puppeteerAdapter = new TestAdapter(puppeteerConfig, 'https://test.com');
-      
+
       await puppeteerAdapter.cleanup();
       expect(mockPuppeteerClient.close).toHaveBeenCalled();
     });
@@ -391,9 +390,9 @@ describe('EnhancedBaseAdapter', () => {
     it('should handle cleanup errors gracefully', async () => {
       const puppeteerConfig = { ...mockConfig, behavior: { ...mockConfig.behavior, useHeadlessBrowser: true } };
       const puppeteerAdapter = new TestAdapter(puppeteerConfig, 'https://test.com');
-      
+
       mockPuppeteerClient.close.mockRejectedValue(new Error('Cleanup failed'));
-      
+
       // Should not throw
       await expect(puppeteerAdapter.cleanup()).resolves.not.toThrow();
     });
@@ -402,13 +401,13 @@ describe('EnhancedBaseAdapter', () => {
   describe('Error Handling', () => {
     it('should handle DOM extraction errors gracefully', async () => {
       mockHttpClient.getDom.mockRejectedValue(new Error('Network error'));
-      
+
       await expect(adapter['getDom']('https://test.com')).rejects.toThrow('Failed to get DOM');
     });
 
     it('should handle text extraction errors gracefully', () => {
       const mockDom = new JSDOM('<html><body>Test</body></html>');
-      
+
       // Mock querySelector to throw an error
       jest.spyOn(mockDom.window.document, 'querySelector').mockImplementation(() => {
         throw new Error('DOM error');

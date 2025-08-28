@@ -14,7 +14,7 @@ export class GenericAdapter extends BaseAdapter {
    */
   async *discoverProducts(): AsyncIterable<string> {
     const { productLinks, pagination } = this.config.selectors;
-    
+
     if (!productLinks) {
       throw new Error('Product links selector not configured in recipe');
     }
@@ -33,10 +33,10 @@ export class GenericAdapter extends BaseAdapter {
         if (archiveTitle && archiveTitle.length > 0) {
           this.archiveCategory = archiveTitle;
         }
-        
+
         // Extract product URLs from current page
         const productUrls = this.extractProductUrlsWithSelector(dom, productLinks);
-        
+
         for (const url of productUrls) {
           yield url;
         }
@@ -48,13 +48,13 @@ export class GenericAdapter extends BaseAdapter {
           // Support multiple potential selectors for "next" including <link rel="next">
           const selectorCandidates: string[] = [
             pagination.nextPage,
-            "a[rel='next']",
-            "link[rel='next']",
+            'a[rel=\'next\']',
+            'link[rel=\'next\']',
             '.pagination__next',
             '.pagination .next a',
             '.pagination__item--next a',
-            "a[aria-label='Next']",
-            "a[aria-label='Weiter']",
+            'a[aria-label=\'Next\']',
+            'a[aria-label=\'Weiter\']',
           ];
 
           let nextPageHref: string | null = null;
@@ -95,7 +95,7 @@ export class GenericAdapter extends BaseAdapter {
     // Get waitForSelectors from behavior if configured
     const waitForSelectors = this.config.behavior?.waitForSelectors;
     const fastMode = this.config.behavior?.fastMode || false;
-    
+
     const dom = await this.getDom(url, waitForSelectors ? { waitForSelectors } : {});
     const { selectors, transforms, fallbacks } = this.config;
 
@@ -130,7 +130,7 @@ export class GenericAdapter extends BaseAdapter {
       if (transforms.price && product.variations) {
         product.variations = product.variations.map(variation => ({
           ...variation,
-          regularPrice: this.applyTransformations(variation.regularPrice || '', transforms.price!)
+          regularPrice: this.applyTransformations(variation.regularPrice || '', transforms.price!),
         }));
       }
       if (transforms.description && product.description) {
@@ -163,7 +163,7 @@ export class GenericAdapter extends BaseAdapter {
    */
   protected extractWithFallbacks(dom: JSDOM, selectors: string | string[], fallbacks?: string[]): string {
     const selectorArray = Array.isArray(selectors) ? selectors : [selectors];
-    
+
     // Try primary selectors first
     for (const selector of selectorArray) {
       const result = this.extractText(dom, selector);
@@ -182,7 +182,7 @@ export class GenericAdapter extends BaseAdapter {
 
     // Try fallback selectors if available
     if (fallbacks) {
-      if (process.env.SCRAPER_DEBUG === '1') console.log(`Trying fallback selectors:`, fallbacks);
+      if (process.env.SCRAPER_DEBUG === '1') console.log('Trying fallback selectors:', fallbacks);
       for (const fallback of fallbacks) {
         const result = this.extractText(dom, fallback);
         if (result) {
@@ -199,7 +199,7 @@ export class GenericAdapter extends BaseAdapter {
       }
     }
 
-    if (process.env.SCRAPER_DEBUG === '1') console.log(`No content found with any selector or fallback`);
+    if (process.env.SCRAPER_DEBUG === '1') console.log('No content found with any selector or fallback');
     return '';
   }
 
@@ -209,34 +209,34 @@ export class GenericAdapter extends BaseAdapter {
   private isPriceLike(text: string): boolean {
     if (!text) return false;
     const t = text.trim();
-    
+
     // Common currency tokens and numeric patterns
     const currencyPattern = /(₪|\$|€|£)/;
-    const numberPattern = /^\s*(₪|\$|€|£)?\s*\d+[\d,\.]*\s*(₪|\$|€|£)?\s*$/;
+    const numberPattern = /^\s*(₪|\$|€|£)?\s*\d+[\d,.]*\s*(₪|\$|€|£)?\s*$/;
     const containsOnlyPrice = numberPattern.test(t);
     const containsCurrencyAndNumber = currencyPattern.test(t) && /\d/.test(t) && t.length <= 20;
-    
+
     // Hebrew "אין מוצרים בסל" or other cart snippets aren't product descriptions either
     const cartSnippet = /אין מוצרים בסל/;
-    
+
     // Check for common price-related text patterns
     const pricePatterns = [
-      /^\s*\d+[\d,\.]*\s*₪?\s*$/,
-      /^\s*₪\s*\d+[\d,\.]*\s*$/,
-      /^\s*\d+[\d,\.]*\s*שח\s*$/,
-      /^\s*שח\s*\d+[\d,\.]*\s*$/,
-      /^\s*\d+[\d,\.]*\s*ILS\s*$/,
-      /^\s*ILS\s*\d+[\d,\.]*\s*$/,
-      /^\s*\d+[\d,\.]*\s*NIS\s*$/,
-      /^\s*NIS\s*\d+[\d,\.]*\s*$/
+      /^\s*\d+[\d,.]*\s*₪?\s*$/,
+      /^\s*₪\s*\d+[\d,.]*\s*$/,
+      /^\s*\d+[\d,.]*\s*שח\s*$/,
+      /^\s*שח\s*\d+[\d,.]*\s*$/,
+      /^\s*\d+[\d,.]*\s*ILS\s*$/,
+      /^\s*ILS\s*\d+[\d,.]*\s*$/,
+      /^\s*\d+[\d,.]*\s*NIS\s*$/,
+      /^\s*NIS\s*\d+[\d,.]*\s*$/,
     ];
-    
+
     const matchesPricePattern = pricePatterns.some(pattern => pattern.test(t));
-    
+
     // Check for very short numeric content that's likely a price
-    const isShortNumeric = t.length <= 15 && /^\s*\d+[\d,\.]*\s*$/.test(t);
-    
-    return containsOnlyPrice || containsCurrencyAndNumber || cartSnippet.test(t) || 
+    const isShortNumeric = t.length <= 15 && /^\s*\d+[\d,.]*\s*$/.test(t);
+
+    return containsOnlyPrice || containsCurrencyAndNumber || cartSnippet.test(t) ||
            matchesPricePattern || isShortNumeric;
   }
 
@@ -319,7 +319,7 @@ export class GenericAdapter extends BaseAdapter {
 
     // 0) Try LD+JSON Product images first
     try {
-      const ldScripts = Array.from(doc.querySelectorAll("script[type='application/ld+json']"));
+      const ldScripts = Array.from(doc.querySelectorAll('script[type=\'application/ld+json\']'));
       const ldImages: string[] = [];
       for (const s of ldScripts) {
         const raw = s.textContent?.trim();
@@ -345,11 +345,13 @@ export class GenericAdapter extends BaseAdapter {
         if (process.env.SCRAPER_DEBUG === '1') console.log(`[extractImages] Found ${filteredLd.length} LD+JSON images, but continuing to check configured selectors`);
         // Don't return immediately - continue to check configured selectors for more images
       }
-    } catch {}
+    } catch {
+      // Ignore errors and continue with other methods
+    }
 
     // 0b) Try Shopify Product JSON (script id starts with ProductJson)
     try {
-      const productJsonScripts = Array.from(doc.querySelectorAll("script[id^='ProductJson']"));
+      const productJsonScripts = Array.from(doc.querySelectorAll('script[id^=\'ProductJson\']'));
       const jsonImages: string[] = [];
       for (const s of productJsonScripts) {
         const raw = s.textContent?.trim();
@@ -372,7 +374,9 @@ export class GenericAdapter extends BaseAdapter {
         if (process.env.SCRAPER_DEBUG === '1') console.log(`[extractImages] Found ${filteredJson.length} Shopify JSON images, but continuing to check configured selectors`);
         // Don't return immediately - continue to check configured selectors for more images
       }
-    } catch {}
+    } catch {
+      // Ignore errors and continue with other methods
+    }
 
     const collectImagesFromScope = (scope: Element): string[] => {
       const urls: string[] = [];
@@ -392,10 +396,10 @@ export class GenericAdapter extends BaseAdapter {
         }
       });
       // Also extract background-image URLs
-      const bgNodes = scope.querySelectorAll("[style*='background-image']");
+      const bgNodes = scope.querySelectorAll('[style*=\'background-image\']');
       bgNodes.forEach(n => {
         const style = (n as HTMLElement).getAttribute('style') || '';
-        const match = style.match(/background-image:\s*url\((['\"]?)([^)'\"]+)\1\)/i);
+        const match = style.match(/background-image:\s*url\((['"]?)([^)'"]+)\1\)/i);
         if (match && match[2]) {
           urls.push(this.resolveUrl(match[2]));
         }
@@ -456,7 +460,9 @@ export class GenericAdapter extends BaseAdapter {
           .filter(productCdnFilter)
           .filter(notIconFilter);
         if (urls.length > 0) return Array.from(new Set(urls));
-      } catch {}
+      } catch {
+        // Ignore parsing errors and continue
+      }
     }
 
     // 2) Fallback to configured selectors but apply strict filtering
@@ -483,7 +489,7 @@ export class GenericAdapter extends BaseAdapter {
     }
 
     // 3) Last resort: OpenGraph image
-    const og = doc.querySelector("meta[property='og:image']")?.getAttribute('content');
+    const og = doc.querySelector('meta[property=\'og:image\']')?.getAttribute('content');
     if (og && productCdnFilter(og) && notIconFilter(og)) {
       return [this.resolveUrl(og)];
     }
@@ -496,7 +502,7 @@ export class GenericAdapter extends BaseAdapter {
    */
   protected override extractStockStatus(dom: JSDOM, selector: string | string[]): string {
     const selectorArray = Array.isArray(selector) ? selector : [selector];
-    
+
     for (const sel of selectorArray) {
       const stockText = this.extractText(dom, sel);
       if (stockText) {
@@ -513,10 +519,10 @@ export class GenericAdapter extends BaseAdapter {
   protected override extractAttributes(dom: JSDOM, selector: string | string[]): Record<string, string[]> {
     const selectorArray = Array.isArray(selector) ? selector : [selector];
     const attributes: Record<string, string[]> = {};
-    
+
     for (const sel of selectorArray) {
       const attributeElements = this.extractElements(dom, sel);
-      
+
       if (attributeElements.length > 0) {
         for (const element of attributeElements) {
           // Case 1: Structured name/value nodes present
@@ -558,7 +564,7 @@ export class GenericAdapter extends BaseAdapter {
         break; // Use first successful selector
       }
     }
-    
+
     return attributes;
   }
 
@@ -567,7 +573,7 @@ export class GenericAdapter extends BaseAdapter {
    */
   protected override extractVariations(dom: JSDOM, selector?: string | string[]): RawVariation[] {
     if (!selector) return [];
-    
+
     const selectorArray = Array.isArray(selector) ? selector : [selector];
     const variations: RawVariation[] = [];
 
@@ -576,10 +582,10 @@ export class GenericAdapter extends BaseAdapter {
       // Common Shopify script patterns - including the meta script pattern
       const scriptCandidates = [
         // Add the meta script pattern that contains variant data FIRST (most comprehensive)
-        ...Array.from(dom.window.document.querySelectorAll("script:not([id]):not([type])")),
-        ...Array.from(dom.window.document.querySelectorAll("script[id^='ProductJson']")),
-        ...Array.from(dom.window.document.querySelectorAll("script[type='application/ld+json']")),
-        ...Array.from(dom.window.document.querySelectorAll("script[type='application/json']")),
+        ...Array.from(dom.window.document.querySelectorAll('script:not([id]):not([type])')),
+        ...Array.from(dom.window.document.querySelectorAll('script[id^=\'ProductJson\']')),
+        ...Array.from(dom.window.document.querySelectorAll('script[type=\'application/ld+json\']')),
+        ...Array.from(dom.window.document.querySelectorAll('script[type=\'application/json\']')),
       ] as HTMLScriptElement[];
 
       for (const script of scriptCandidates) {
@@ -593,22 +599,22 @@ export class GenericAdapter extends BaseAdapter {
             const metaMatch = raw.match(/var meta\s*=\s*({.*?});/s);
             if (metaMatch && metaMatch[1]) {
               const json = JSON.parse(metaMatch[1]);
-              
+
               // Check if this has product variants
               if (json?.product?.variants && Array.isArray(json.product.variants)) {
                 const variants = json.product.variants;
                 if (process.env.SCRAPER_DEBUG === '1') console.log(`[extractVariations] Found ${variants.length} variants in meta script`);
-                
+
                 for (const v of variants) {
                   const price = (v.price / 100).toString(); // Shopify prices are in cents
                   const stockStatus = v.available === false ? 'outofstock' : 'instock';
                   const images: string[] = [];
-                  
+
                   // Extract variant-specific images if available
                   if (v.featured_image && (v.featured_image.src || v.featured_image.url)) {
                     images.push(v.featured_image.url || v.featured_image.src);
                   }
-                  
+
                   variations.push({
                     sku: (v.sku || '').toString() || this.extractVariantSkuFromLinks(dom, v.id) || 'SKU',
                     regularPrice: price,
@@ -617,11 +623,11 @@ export class GenericAdapter extends BaseAdapter {
                     stockStatus,
                     images,
                     attributeAssignments: {
-                      Size: v.public_title || v.title || v.option1 || ''
+                      Size: v.public_title || v.title || v.option1 || '',
                     },
                   });
                 }
-                
+
                 if (variations.length > 0) {
                   if (process.env.SCRAPER_DEBUG === '1') console.log(`Extracted ${variations.length} variations from Shopify meta script`);
                   return variations;
@@ -708,7 +714,7 @@ export class GenericAdapter extends BaseAdapter {
     } catch (e) {
       if (process.env.SCRAPER_DEBUG === '1') console.warn('Failed to parse Shopify/LD+JSON variants:', e);
     }
-    
+
     // 1) WooCommerce: parse JSON from data-product_variations on form.variations_form
     const forms = dom.window.document.querySelectorAll('form.variations_form[data-product_variations]');
     if (forms && forms.length > 0) {
@@ -762,49 +768,49 @@ export class GenericAdapter extends BaseAdapter {
         return variations;
       }
     }
-    
+
     // 2) Fallback: extract from DOM selects/prices as before
     // First, try to extract variations from variation forms (WooCommerce style)
     for (const sel of selectorArray) {
       const variationElements = this.extractElements(dom, sel);
-      
+
       if (variationElements.length > 0) {
         if (process.env.SCRAPER_DEBUG === '1') console.log(`Found ${variationElements.length} variation elements with selector: ${sel}`);
-        
+
         for (const element of variationElements) {
           // Look for variation options in select elements
           const selectElements = element.querySelectorAll('select[name*="attribute"], select[class*="variation"], select[class*="attribute"]');
-          
+
           if (selectElements.length > 0) {
             if (process.env.SCRAPER_DEBUG === '1') console.log(`Found ${selectElements.length} variation select elements`);
-            
+
             // Only create variations if we have actual variation data (different prices, SKUs, etc.)
             // Don't create variations for every attribute option to avoid CSV duplication
             const basePrice = this.extractText(dom, '.price, [data-price], .product-price') || '';
             const baseSku = this.extractText(dom, '.sku, [data-sku], .product-sku') || 'SKU';
-            
+
             // Check if this is a true variable product with different prices/SKUs
             const hasPriceVariations = this.checkForPriceVariations(dom);
             const hasSkuVariations = this.checkForSkuVariations(dom);
-            
+
             if (hasPriceVariations || hasSkuVariations) {
               if (process.env.SCRAPER_DEBUG === '1') console.log('Found actual price/SKU variations, creating variation records');
-              
+
               // Extract options from each select
               for (const select of Array.from(selectElements)) {
                 const options = select.querySelectorAll('option[value]:not([value=""])');
                 const attributeName = select.getAttribute('name') || select.getAttribute('data-attribute') || 'Unknown';
-                
+
                 if (process.env.SCRAPER_DEBUG === '1') console.log(`Found ${options.length} options for attribute: ${attributeName}`);
-                
+
                 for (const option of Array.from(options)) {
                   const value = option.getAttribute('value');
                   const text = option.textContent?.trim();
-                  
+
                   if (value && text && !this.isPlaceholderValue(text)) {
                     // Create a variation for each option
                     const sku = `${baseSku}-${value}`;
-                    
+
                     variations.push({
                       sku,
                       regularPrice: basePrice,
@@ -812,7 +818,7 @@ export class GenericAdapter extends BaseAdapter {
                       stockStatus: 'instock',
                       images: [],
                       attributeAssignments: {
-                        [attributeName!]: value
+                        [attributeName!]: value,
                       },
                     });
                   }
@@ -823,11 +829,11 @@ export class GenericAdapter extends BaseAdapter {
               // Don't create variations - this is just a simple product with attribute options
             }
           }
-          
+
           // Also try traditional variation extraction
           const sku = element.querySelector('[data-sku], .sku, .product-sku')?.textContent?.trim();
           const price = element.querySelector('[data-price], .price, .product-price')?.textContent?.trim();
-          
+
           if (sku && !variations.some(v => v.sku === sku)) {
             variations.push({
               sku,
@@ -842,7 +848,7 @@ export class GenericAdapter extends BaseAdapter {
         break; // Use first successful selector
       }
     }
-    
+
     if (process.env.SCRAPER_DEBUG === '1') console.log(`Extracted ${variations.length} variations total`);
     return variations;
   }
@@ -861,7 +867,9 @@ export class GenericAdapter extends BaseAdapter {
           return v;
         }
       }
-    } catch {}
+    } catch {
+      // Ignore URL parsing errors and continue
+    }
     return '';
   }
 
@@ -938,11 +946,11 @@ export class GenericAdapter extends BaseAdapter {
       'בחירת אפשרותק',
       'בחירת אפשרותר',
       'בחירת אפשרותש',
-      'בחירת אפשרותת'
+      'בחירת אפשרותת',
     ];
-    
-    return placeholders.some(placeholder => 
-      value.toLowerCase().includes(placeholder.toLowerCase())
+
+    return placeholders.some(placeholder =>
+      value.toLowerCase().includes(placeholder.toLowerCase()),
     );
   }
 
@@ -953,14 +961,14 @@ export class GenericAdapter extends BaseAdapter {
     // Look for price variations in the DOM
     const priceElements = dom.window.document.querySelectorAll('[data-price], .price, .product-price, .variation-price');
     const prices = new Set<string>();
-    
+
     priceElements.forEach((el: Element) => {
       const price = el.textContent?.trim();
       if (price && price !== '') {
         prices.add(price);
       }
     });
-    
+
     // If we have more than one unique price, there are price variations
     const hasVariations = prices.size > 1;
     if (process.env.SCRAPER_DEBUG === '1') console.log(`Price variation check - found ${prices.size} unique prices:`, Array.from(prices));
@@ -974,14 +982,14 @@ export class GenericAdapter extends BaseAdapter {
     // Look for SKU variations in the DOM
     const skuElements = dom.window.document.querySelectorAll('[data-sku], .sku, .product-sku, .variation-sku');
     const skus = new Set<string>();
-    
+
     skuElements.forEach((el: Element) => {
       const sku = el.textContent?.trim();
       if (sku && sku !== '') {
         skus.add(sku);
       }
     });
-    
+
     // If we have more than one unique SKU, there are SKU variations
     const hasVariations = skus.size > 1;
     if (process.env.SCRAPER_DEBUG === '1') console.log(`SKU variation check - found ${skus.size} unique SKUs:`, Array.from(skus));
@@ -995,16 +1003,16 @@ export class GenericAdapter extends BaseAdapter {
     // Simple implementation - in a real scenario, you might want to use a proper wait mechanism
     let attempts = 0;
     const maxAttempts = 10;
-    
+
     while (attempts < maxAttempts) {
-      const allPresent = selectors.every(selector => 
-        dom.window.document.querySelector(selector)
+      const allPresent = selectors.every(selector =>
+        dom.window.document.querySelector(selector),
       );
-      
+
       if (allPresent) {
         break;
       }
-      
+
       await new Promise(resolve => setTimeout(resolve, 100));
       attempts++;
     }
@@ -1015,7 +1023,7 @@ export class GenericAdapter extends BaseAdapter {
    */
   protected override applyTransformations(text: string, transformations: string[]): string {
     let result = text;
-    
+
     for (const transform of transformations) {
       try {
         if (transform.includes('->')) {
@@ -1040,7 +1048,7 @@ export class GenericAdapter extends BaseAdapter {
         console.warn(`Failed to apply transformation: ${transform}`, error);
       }
     }
-    
+
     return result;
   }
 
@@ -1048,22 +1056,22 @@ export class GenericAdapter extends BaseAdapter {
    * Apply transformations to attributes
    */
   protected applyAttributeTransformations(
-    attributes: Record<string, string[]>, 
-    transformations: Record<string, string[]>
+    attributes: Record<string, string[]>,
+    transformations: Record<string, string[]>,
   ): Record<string, string[]> {
     const result: Record<string, string[]> = {};
-    
+
     for (const [attrName, attrValues] of Object.entries(attributes)) {
       const transforms = transformations[attrName];
       if (transforms) {
-        result[attrName] = attrValues.map(value => 
-          this.applyTransformations(value, transforms)
+        result[attrName] = attrValues.map(value =>
+          this.applyTransformations(value, transforms),
         );
       } else {
         result[attrName] = attrValues;
       }
     }
-    
+
     return result;
   }
 
@@ -1082,12 +1090,12 @@ export class GenericAdapter extends BaseAdapter {
       if (data.sku && !product.sku) {
         product.sku = data.sku;
       }
-              if (data.price && product.variations && product.variations.length > 0) {
-          const firstVariation = product.variations[0];
-          if (firstVariation) {
-            firstVariation.regularPrice = data.price.toString();
-          }
+      if (data.price && product.variations && product.variations.length > 0) {
+        const firstVariation = product.variations[0];
+        if (firstVariation) {
+          firstVariation.regularPrice = data.price.toString();
         }
+      }
     }
   }
 
@@ -1096,7 +1104,7 @@ export class GenericAdapter extends BaseAdapter {
    */
   private extractSalePrice(dom: JSDOM, priceSelectors: string | string[]): string {
     const selectorArray = Array.isArray(priceSelectors) ? priceSelectors : [priceSelectors];
-    
+
     for (const selector of selectorArray) {
       // Look for sale price indicators
       const salePriceSelectors = [
@@ -1109,9 +1117,9 @@ export class GenericAdapter extends BaseAdapter {
         '.price .sale',
         '.price .discount',
         '[class*="sale-price"]',
-        '[class*="discount-price"]'
+        '[class*="discount-price"]',
       ];
-      
+
       for (const saleSelector of salePriceSelectors) {
         const saleElement = dom.window.document.querySelector(saleSelector);
         if (saleElement) {
@@ -1122,7 +1130,7 @@ export class GenericAdapter extends BaseAdapter {
           }
         }
       }
-      
+
       // Also check if the main price selector has a sale indicator
       const mainPriceElement = dom.window.document.querySelector(selector);
       if (mainPriceElement) {
@@ -1140,7 +1148,7 @@ export class GenericAdapter extends BaseAdapter {
         }
       }
     }
-    
+
     return '';
   }
 
@@ -1150,17 +1158,17 @@ export class GenericAdapter extends BaseAdapter {
   private isValidPrice(text: string): boolean {
     if (!text) return false;
     const t = text.trim();
-    
+
     // Must contain at least one digit
     if (!/\d/.test(t)) return false;
-    
+
     // Must be reasonably short (price text shouldn't be very long)
     if (t.length > 50) return false;
-    
+
     // Should contain currency symbols or be numeric
     const currencyPattern = /(₪|\$|€|£)/;
-    const numericPattern = /^\s*\d+[\d,\.]*\s*$/;
-    
+    const numericPattern = /^\s*\d+[\d,.]*\s*$/;
+
     return currencyPattern.test(t) || numericPattern.test(t);
   }
 
@@ -1187,14 +1195,14 @@ export class GenericAdapter extends BaseAdapter {
     // Check required fields
     if (validation.requiredFields) {
       for (const field of validation.requiredFields) {
-        if (!product[field as keyof RawProduct] || 
-            (typeof product[field as keyof RawProduct] === 'string' && 
+        if (!product[field as keyof RawProduct] ||
+            (typeof product[field as keyof RawProduct] === 'string' &&
              (product[field as keyof RawProduct] as string).trim() === '')) {
           errors.push(new ValidationErrorImpl(
             field,
             product[field as keyof RawProduct],
             'required',
-            `Required field '${field}' is missing or empty`
+            `Required field '${field}' is missing or empty`,
           ));
         }
       }
@@ -1207,7 +1215,7 @@ export class GenericAdapter extends BaseAdapter {
           'description',
           product.description.length,
           validation.minDescriptionLength,
-          `Description must be at least ${validation.minDescriptionLength} characters long`
+          `Description must be at least ${validation.minDescriptionLength} characters long`,
         ));
       }
     }
@@ -1219,7 +1227,7 @@ export class GenericAdapter extends BaseAdapter {
           'title',
           product.title.length,
           validation.maxTitleLength,
-          `Title must be no more than ${validation.maxTitleLength} characters long`
+          `Title must be no more than ${validation.maxTitleLength} characters long`,
         ));
       }
     }

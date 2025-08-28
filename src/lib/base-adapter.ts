@@ -15,7 +15,7 @@ export abstract class BaseAdapter implements SiteAdapter {
     this.baseUrl = baseUrl;
     this.httpClient = new HttpClient();
     this.usePuppeteer = config.behavior?.useHeadlessBrowser === true;
-    
+
     // Initialize Puppeteer if needed
     if (this.usePuppeteer) {
       this.puppeteerClient = new PuppeteerHttpClient();
@@ -43,13 +43,13 @@ export abstract class BaseAdapter implements SiteAdapter {
   protected extractText(dom: JSDOM, selector: string): string {
     const element = dom.window.document.querySelector(selector);
     if (!element) return '';
-    
+
     // For description fields, try to get all text content including multiple paragraphs
     if (selector.includes('description') || selector.includes('content') || selector.includes('p')) {
       // Get all text nodes and paragraph content
       const textContent = element.textContent?.trim() || '';
       const innerHTML = element.innerHTML || '';
-      
+
       // If we have HTML content, try to extract meaningful text
       if (innerHTML.includes('<p>') || innerHTML.includes('<br>')) {
         // Extract text from paragraphs and line breaks
@@ -59,16 +59,16 @@ export abstract class BaseAdapter implements SiteAdapter {
             .map(p => p.textContent?.trim())
             .filter(text => text && text.length > 10) // Filter out very short text
             .join('\n\n');
-          
+
           if (paragraphTexts) {
             return paragraphTexts;
           }
         }
       }
-      
+
       return textContent;
     }
-    
+
     return element.textContent?.trim() || '';
   }
 
@@ -124,25 +124,25 @@ export abstract class BaseAdapter implements SiteAdapter {
    */
   protected extractAttributes(dom: JSDOM, selector: string): Record<string, string[]> {
     const attributes: Record<string, string[]> = {};
-    
+
     const attributeElements = this.extractElements(dom, selector);
-    
+
     for (const element of attributeElements) {
       const nameElement = element.querySelector('[data-attribute-name], .attribute-name, .attr-name');
       const valueElements = element.querySelectorAll('[data-attribute-value], .attribute-value, .attr-value, option');
-      
+
       if (nameElement && valueElements.length > 0) {
         const name = nameElement.textContent?.trim() || '';
         const values = Array.from(valueElements)
           .map(val => val.textContent?.trim())
           .filter(val => val && val !== 'בחר אפשרות' && val !== 'Select option');
-        
+
         if (name && values.length > 0) {
           attributes[name] = values;
         }
       }
     }
-    
+
     return attributes;
   }
 
@@ -152,11 +152,11 @@ export abstract class BaseAdapter implements SiteAdapter {
   protected extractVariations(dom: JSDOM, selector: string): any[] {
     const variations: any[] = [];
     const variationElements = this.extractElements(dom, selector);
-    
+
     for (const element of variationElements) {
       const sku = element.querySelector('[data-sku], .sku, .product-sku')?.textContent?.trim();
       const price = element.querySelector('[data-price], .price, .product-price')?.textContent?.trim();
-      
+
       if (sku) {
         variations.push({
           sku,
@@ -168,7 +168,7 @@ export abstract class BaseAdapter implements SiteAdapter {
         });
       }
     }
-    
+
     return variations;
   }
 
@@ -179,16 +179,16 @@ export abstract class BaseAdapter implements SiteAdapter {
     if (url.startsWith('http')) {
       return url;
     }
-    
+
     if (url.startsWith('//')) {
       return `https:${url}`;
     }
-    
+
     if (url.startsWith('/')) {
       const baseUrl = new URL(this.baseUrl);
       return `${baseUrl.protocol}//${baseUrl.host}${url}`;
     }
-    
+
     return `${this.baseUrl}/${url}`;
   }
 
@@ -207,15 +207,15 @@ export abstract class BaseAdapter implements SiteAdapter {
    */
   protected normalizeStockText(stockText: string): string {
     const text = stockText.toLowerCase();
-    
+
     if (text.includes('out') || text.includes('unavailable') || text.includes('0')) {
       return 'outofstock';
     }
-    
+
     if (text.includes('in') || text.includes('available') || text.includes('stock')) {
       return 'instock';
     }
-    
+
     return 'instock'; // Default to in stock
   }
 
@@ -234,15 +234,15 @@ export abstract class BaseAdapter implements SiteAdapter {
     let currentUrl = baseUrl;
     let pageCount = 0;
     const maxPages = 100; // Safety limit
-    
+
     while (currentUrl && pageCount < maxPages) {
       try {
         const dom = await this.httpClient.getDom(currentUrl);
-        
+
         // Extract product URLs from current page
         const productUrls = this.extractProductUrls(dom);
         urls.push(...productUrls);
-        
+
         // Find next page
         const nextPageElement = dom.window.document.querySelector(nextPageSelector);
         if (nextPageElement) {
@@ -261,7 +261,7 @@ export abstract class BaseAdapter implements SiteAdapter {
         break;
       }
     }
-    
+
     return urls;
   }
 
@@ -282,7 +282,7 @@ export abstract class BaseAdapter implements SiteAdapter {
    */
   protected applyTransformations(text: string, transformations: string[]): string {
     let result = text;
-    
+
     for (const transform of transformations) {
       try {
         // Simple regex replacement for now
@@ -298,7 +298,7 @@ export abstract class BaseAdapter implements SiteAdapter {
         console.warn(`Failed to apply transformation: ${transform}`, error);
       }
     }
-    
+
     return result;
   }
 
@@ -308,7 +308,7 @@ export abstract class BaseAdapter implements SiteAdapter {
   protected async getDom(url: string, options?: { waitForSelectors?: string[] }): Promise<JSDOM> {
     // Smart Puppeteer usage: use it when explicitly enabled in recipe
     const needsJavaScript = this.config.behavior?.useHeadlessBrowser === true;
-    
+
     if (needsJavaScript && this.puppeteerClient) {
       try {
         console.log('🔍 DEBUG: Using Puppeteer for JavaScript execution:', url);

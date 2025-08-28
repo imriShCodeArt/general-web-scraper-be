@@ -1,7 +1,7 @@
 import { readFileSync, existsSync, readdirSync } from 'fs';
-import { join, extname, basename } from 'path';
+import { join, extname } from 'path';
 import { parse } from 'yaml';
-import { RecipeConfig, RecipeFile, RecipeLoader } from '../types';
+import { RecipeConfig, RecipeLoader } from '../types';
 
 export class RecipeLoaderService implements RecipeLoader {
   private recipesDir: string;
@@ -22,7 +22,7 @@ export class RecipeLoaderService implements RecipeLoader {
 
     // Look for recipe files
     const recipeFiles = this.findRecipeFiles();
-    
+
     for (const filePath of recipeFiles) {
       try {
         const recipe = await this.loadRecipeFromFile(filePath);
@@ -89,7 +89,7 @@ export class RecipeLoaderService implements RecipeLoader {
   /**
    * Load a recipe from a URL
    */
-  async loadRecipeFromUrl(url: string): Promise<RecipeConfig> {
+  async loadRecipeFromUrl(): Promise<RecipeConfig> {
     // This would require HTTP client implementation
     // For now, we'll throw an error
     throw new Error('Loading recipes from URL not yet implemented');
@@ -188,22 +188,22 @@ export class RecipeLoaderService implements RecipeLoader {
   async getRecipeBySiteUrl(siteUrl: string): Promise<RecipeConfig | null> {
     const recipeFiles = this.findRecipeFiles();
     const matchingRecipes: Array<{ recipe: RecipeConfig; specificity: number }> = [];
-    
+
     for (const filePath of recipeFiles) {
       try {
         const recipe = await this.loadRecipeFromFile(filePath);
-        
+
         if (this.matchesSiteUrl(recipe.siteUrl, siteUrl)) {
           // Calculate specificity: exact match = 3, wildcard subdomain = 2, generic = 1
           let specificity = 1;
-          if (recipe.siteUrl === "*") {
+          if (recipe.siteUrl === '*') {
             specificity = 1; // Generic recipe
-          } else if (recipe.siteUrl.startsWith("*.")) {
+          } else if (recipe.siteUrl.startsWith('*.')) {
             specificity = 2; // Wildcard subdomain
           } else {
             specificity = 3; // Exact match
           }
-          
+
           matchingRecipes.push({ recipe, specificity });
         }
       } catch (error) {
@@ -227,17 +227,17 @@ export class RecipeLoaderService implements RecipeLoader {
   private matchesSiteUrl(recipeUrl: string, siteUrl: string): boolean {
     try {
       // Handle wildcard URLs
-      if (recipeUrl === "*") {
+      if (recipeUrl === '*') {
         return true; // Generic recipe matches any site
       }
-      
-      if (recipeUrl.startsWith("*.")) {
+
+      if (recipeUrl.startsWith('*.')) {
         // Wildcard subdomain matching (e.g., *.co.il)
         const recipeDomain = recipeUrl.substring(2); // Remove "*."
         const siteHost = new URL(siteUrl).hostname;
         return siteHost.endsWith(recipeDomain);
       }
-      
+
       // Exact hostname matching
       const recipeHost = new URL(recipeUrl).hostname;
       const siteHost = new URL(siteUrl).hostname;

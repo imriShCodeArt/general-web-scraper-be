@@ -9,7 +9,7 @@ export { GenericAdapter } from './lib/generic-adapter';
 export { BaseAdapter } from './lib/base-adapter';
 
 // Vercel serverless function handler
-export default (req: any, res: any) => {
+export default (req: unknown, res: unknown) => {
   // For Vercel, just pass the request to the Express app
   return app(req, res);
 };

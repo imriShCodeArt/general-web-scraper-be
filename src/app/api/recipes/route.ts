@@ -29,7 +29,7 @@ router.get('/get/:recipeName', async (req: Request, res: Response) => {
       });
     }
     const recipe = await recipeManager.getRecipe(recipeName);
-    
+
     if (recipe) {
       return res.json({ success: true, data: recipe });
     } else {
@@ -51,7 +51,7 @@ router.get('/get/:recipeName', async (req: Request, res: Response) => {
 router.get('/getBySite', async (req: Request, res: Response) => {
   try {
     const { siteUrl } = req.query;
-    
+
     if (!siteUrl || typeof siteUrl !== 'string') {
       return res.status(400).json({
         success: false,
@@ -60,7 +60,7 @@ router.get('/getBySite', async (req: Request, res: Response) => {
     }
 
     const siteRecipe = await recipeManager.getRecipeBySiteUrl(siteUrl);
-    
+
     if (siteRecipe) {
       return res.json({ success: true, data: siteRecipe });
     } else {
@@ -70,7 +70,7 @@ router.get('/getBySite', async (req: Request, res: Response) => {
       });
     }
   } catch (error) {
-    console.error(`Failed to find recipe for site:`, error);
+    console.error('Failed to find recipe for site:', error);
     return res.status(500).json({
       success: false,
       error: 'Failed to find recipe for site',
@@ -110,7 +110,7 @@ router.get('/names', async (req: Request, res: Response) => {
 router.post('/validate', async (req: Request, res: Response) => {
   try {
     const { recipeName } = req.body;
-    
+
     if (!recipeName) {
       return res.status(400).json({
         success: false,
@@ -119,7 +119,7 @@ router.post('/validate', async (req: Request, res: Response) => {
     }
 
     const recipe = await recipeManager.getRecipe(recipeName);
-    
+
     if (!recipe) {
       return res.status(404).json({
         success: false,
@@ -142,7 +142,7 @@ router.post('/validate', async (req: Request, res: Response) => {
 router.post('/loadFromFile', async (req: Request, res: Response) => {
   try {
     const { filePath } = req.body;
-    
+
     if (!filePath) {
       return res.status(400).json({
         success: false,

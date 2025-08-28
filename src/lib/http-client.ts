@@ -1,4 +1,4 @@
-import axios, { AxiosInstance, AxiosRequestConfig, AxiosResponse } from 'axios';
+import axios, { AxiosInstance, AxiosRequestConfig } from 'axios';
 import { JSDOM } from 'jsdom';
 
 export class HttpClient {
@@ -17,7 +17,6 @@ export class HttpClient {
       maxRedirects: 3, // Reduced from 5 to 3 for faster processing
       validateStatus: (status) => status < 500, // Accept 4xx status codes
       // Connection pooling and performance optimizations
-      maxRedirects: 3,
       maxContentLength: 50 * 1024 * 1024, // 50MB max content length
       maxBodyLength: 50 * 1024 * 1024, // 50MB max body length
       // HTTP/2 support for better performance
@@ -68,7 +67,7 @@ export class HttpClient {
           console.error('Request setup failed:', error.message);
         }
         return Promise.reject(error);
-      }
+      },
     );
   }
 
@@ -81,7 +80,7 @@ export class HttpClient {
         ...config,
         responseType: 'text',
       });
-      
+
       return response.data;
     } catch (error) {
       throw new Error(`Failed to fetch HTML from ${url}: ${error}`);
@@ -97,7 +96,7 @@ export class HttpClient {
         ...config,
         responseType: 'json',
       });
-      
+
       return response.data;
     } catch (error) {
       throw new Error(`Failed to fetch JSON from ${url}: ${error}`);
@@ -183,7 +182,7 @@ export class HttpClient {
 
       for (const selector of selectors) {
         const elements = dom.window.document.querySelectorAll(selector);
-        
+
         for (const element of elements) {
           try {
             const text = element.textContent?.trim();
@@ -211,7 +210,7 @@ export class HttpClient {
     try {
       const dom = await this.getDom(sitemapUrl);
       const urls: string[] = [];
-      
+
       // Look for sitemap entries
       const locElements = dom.window.document.querySelectorAll('loc');
       for (const element of locElements) {
@@ -261,7 +260,7 @@ export class HttpClient {
     totalRequests: number;
     successfulRequests: number;
     failedRequests: number;
-  } {
+    } {
     // This would need to be implemented with request/response interceptors
     // For now, return placeholder data
     return {

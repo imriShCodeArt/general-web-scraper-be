@@ -1,4 +1,4 @@
-import { Container, Injectable, Inject } from '../di-container';
+import { Container } from '../di-container';
 import { Service } from '../../types';
 
 describe('Container', () => {
@@ -23,7 +23,7 @@ describe('Container', () => {
 
     it('should check if a service exists', () => {
       expect(container.has('nonexistent')).toBe(false);
-      
+
       container.register('testService', {});
       expect(container.has('testService')).toBe(true);
     });
@@ -75,7 +75,7 @@ describe('Container', () => {
       const mockService: Service = {
         name: 'testService',
         initialize: jest.fn().mockResolvedValue(undefined),
-        destroy: jest.fn().mockResolvedValue(undefined)
+        destroy: jest.fn().mockResolvedValue(undefined),
       };
 
       container.register('testService', mockService);
@@ -88,7 +88,7 @@ describe('Container', () => {
       const mockService: Service = {
         name: 'testService',
         initialize: jest.fn().mockResolvedValue(undefined),
-        destroy: jest.fn().mockResolvedValue(undefined)
+        destroy: jest.fn().mockResolvedValue(undefined),
       };
 
       container.register('testService', mockService);
@@ -101,7 +101,7 @@ describe('Container', () => {
       const mockService: Service = {
         name: 'testService',
         initialize: jest.fn().mockRejectedValue(new Error('Init failed')),
-        destroy: jest.fn().mockRejectedValue(new Error('Destroy failed'))
+        destroy: jest.fn().mockRejectedValue(new Error('Destroy failed')),
       };
 
       container.register('testService', mockService);
@@ -110,7 +110,7 @@ describe('Container', () => {
       // The errors are logged as warnings but don't cause the container to fail
       await expect(container.initialize()).rejects.toThrow('Init failed');
       await expect(container.destroy()).rejects.toThrow('Destroy failed');
-      
+
       // Verify that the methods were called
       expect(mockService.initialize).toHaveBeenCalled();
       expect(mockService.destroy).toHaveBeenCalled();
@@ -129,9 +129,9 @@ describe('Container', () => {
 
     it('should allow child container to be independent', () => {
       const child = container.createChild();
-      
+
       child.register('childService', { name: 'child' });
-      
+
       expect(container.has('childService')).toBe(false);
       expect(child.has('childService')).toBe(true);
     });

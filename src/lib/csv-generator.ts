@@ -1,5 +1,5 @@
 import { writeToBuffer } from 'fast-csv';
-import { NormalizedProduct, ProductVariation } from '../types';
+import { NormalizedProduct } from '../types';
 import { debug } from './logger';
 
 export class CsvGenerator {
@@ -8,11 +8,11 @@ export class CsvGenerator {
    */
   static async generateParentCsv(products: NormalizedProduct[]): Promise<string> {
     debug('🔍 DEBUG: generateParentCsv called with products:', products.length);
-    
+
     // Deduplicate products by SKU to prevent CSV duplicates
     const uniqueProducts = this.deduplicateProducts(products);
     debug(`🔍 DEBUG: Deduplicated from ${products.length} to ${uniqueProducts.length} products`);
-    
+
     const csvData = uniqueProducts.map((product, index) => {
       // Build attributes from product.attributes plus union of variation attributeAssignments
       const aggregatedAttributes: Record<string, string[]> = {};
@@ -78,7 +78,7 @@ export class CsvGenerator {
     });
 
     debug('🔍 DEBUG: generateParentCsv completed, rows:', csvData.length);
-    
+
     return new Promise((resolve, reject) => {
       writeToBuffer(csvData, { headers: true })
         .then(buffer => resolve(buffer.toString()))
@@ -92,20 +92,20 @@ export class CsvGenerator {
   static async generateVariationCsv(products: NormalizedProduct[]): Promise<string> {
     const variationRows: Record<string, string>[] = [];
     const attributeHeadersSet = new Set<string>();
-    let variationId = 1;
+
 
     // DEBUG: Log what we're processing
     debug('🔍 DEBUG: generateVariationCsv called with products:', products.length);
-    
+
     for (const product of products) {
       debug('🔍 DEBUG: Processing product for variations:', {
         title: product.title.substring(0, 50),
         productType: product.productType,
         variationsCount: product.variations.length,
         attributesCount: Object.keys(product.attributes).length,
-        attributes: product.attributes
+        attributes: product.attributes,
       });
-      
+
       if (product.productType === 'variable' && product.variations.length > 0) {
         // Collect attribute header names from product + variations
         const aggregatedAttributes: Record<string, string[]> = {};
@@ -146,18 +146,17 @@ export class CsvGenerator {
           }
 
           variationRows.push(row);
-          variationId++;
         }
       } else {
         debug('❌ DEBUG: Product is NOT variable or has no variations:', {
           productType: product.productType,
-          variationsCount: product.variations.length
+          variationsCount: product.variations.length,
         });
       }
     }
 
     debug('🔍 DEBUG: Final variation rows count:', variationRows.length);
-    
+
     if (variationRows.length === 0) {
       return '';
     }
@@ -193,7 +192,7 @@ export class CsvGenerator {
     variationCount: number;
   }> {
     debug('🔍 DEBUG: generateBothCsvs called with products:', products.length);
-    
+
     const [parentCsv, variationCsv] = await Promise.all([
       this.generateParentCsv(products),
       this.generateVariationCsv(products),
@@ -209,7 +208,7 @@ export class CsvGenerator {
       parentCsvLength: parentCsv.length,
       variationCsvLength: variationCsv.length,
       productsWithVariations: products.filter(p => p.productType === 'variable').length,
-      productTypes: products.map(p => p.productType)
+      productTypes: products.map(p => p.productType),
     });
 
     return {
@@ -237,7 +236,7 @@ export class CsvGenerator {
   private static attributeDisplayName(rawName: string): string {
     const withoutPrefix = rawName.replace(/^pa_/i, '');
     const cleaned = withoutPrefix
-      .replace(/[_\-]+/g, ' ')
+      .replace(/[_-]+/g, ' ')
       .trim()
       .toLowerCase();
     return cleaned.replace(/\b\w/g, c => c.toUpperCase());
@@ -255,7 +254,7 @@ export class CsvGenerator {
         console.warn('⚠️ DEBUG: Skipping product without SKU or title:', product);
         continue;
       }
-      
+
       const key = `${product.sku}-${product.title}`;
       if (!seen.has(key)) {
         seen.set(key, product);
@@ -303,11 +302,11 @@ export class CsvGenerator {
 
     for (let i = 0; i < products.length; i++) {
       const product = products[i];
-      
+
       if (!product?.sku) {
         errors.push(`Product ${i + 1}: Missing SKU`);
       }
-      
+
       if (!product?.title) {
         errors.push(`Product ${i + 1}: Missing title`);
       }

@@ -1,20 +1,18 @@
-import { 
-  SiteAdapter, 
-  RawProduct, 
-  RecipeConfig, 
+import {
+  SiteAdapter,
+  RawProduct,
+  RecipeConfig,
   ValidationError,
   Result,
-  AsyncResult,
-  ScrapingError
+  ScrapingError,
 } from '../types';
 import { HttpClient } from './http-client';
 import { PuppeteerHttpClient } from './puppeteer-http-client';
 import { JSDOM } from 'jsdom';
-import { 
-  errorBoundary, 
-  retryManager, 
-  ErrorFactory, 
-  ErrorCodes 
+import {
+  ErrorFactory,
+  ErrorCodes,
+  retryManager,
 } from './error-handler';
 
 /**
@@ -32,7 +30,7 @@ export abstract class EnhancedBaseAdapter<T extends RawProduct = RawProduct> imp
     this.baseUrl = baseUrl;
     this.httpClient = new HttpClient();
     this.usePuppeteer = config.behavior?.useHeadlessBrowser === true;
-    
+
     // Initialize Puppeteer if needed
     if (this.usePuppeteer) {
       this.puppeteerClient = new PuppeteerHttpClient();
@@ -76,7 +74,7 @@ export abstract class EnhancedBaseAdapter<T extends RawProduct = RawProduct> imp
             field,
             value,
             expected: 'non-empty value',
-            message: `Required field '${field}' is missing or empty`
+            message: `Required field '${field}' is missing or empty`,
           } as ValidationError);
         }
       }
@@ -90,7 +88,7 @@ export abstract class EnhancedBaseAdapter<T extends RawProduct = RawProduct> imp
           field: 'regularPrice',
           value: product.regularPrice,
           expected: `format matching ${validation.priceFormat}`,
-          message: `Price format validation failed for '${product.regularPrice}'`
+          message: `Price format validation failed for '${product.regularPrice}'`,
         } as ValidationError);
       }
     }
@@ -103,7 +101,7 @@ export abstract class EnhancedBaseAdapter<T extends RawProduct = RawProduct> imp
           field: 'sku',
           value: product.sku,
           expected: `format matching ${validation.skuFormat}`,
-          message: `SKU format validation failed for '${product.sku}'`
+          message: `SKU format validation failed for '${product.sku}'`,
         } as ValidationError);
       }
     }
@@ -115,7 +113,7 @@ export abstract class EnhancedBaseAdapter<T extends RawProduct = RawProduct> imp
           field: 'description',
           value: product.description.length,
           expected: `at least ${validation.minDescriptionLength} characters`,
-          message: `Description is too short: ${product.description.length} characters`
+          message: `Description is too short: ${product.description.length} characters`,
         } as ValidationError);
       }
     }
@@ -127,7 +125,7 @@ export abstract class EnhancedBaseAdapter<T extends RawProduct = RawProduct> imp
           field: 'title',
           value: product.title.length,
           expected: `at most ${validation.maxTitleLength} characters`,
-          message: `Title is too long: ${product.title.length} characters`
+          message: `Title is too long: ${product.title.length} characters`,
         } as ValidationError);
       }
     }
@@ -149,27 +147,27 @@ export abstract class EnhancedBaseAdapter<T extends RawProduct = RawProduct> imp
           errorMessage,
           ErrorCodes.VALIDATION_ERROR,
           false,
-          { url, validationErrors }
+          { url, validationErrors },
         );
         return { success: false, error };
       }
 
       return { success: true, data: product };
     } catch (error) {
-      const scrapingError = error instanceof Error ? 
+      const scrapingError = error instanceof Error ?
         ErrorFactory.createScrapingError(
           error.message,
           ErrorCodes.UNKNOWN_ERROR,
           false,
-          { url }
+          { url },
         ) :
         ErrorFactory.createScrapingError(
           'Unknown error during product extraction',
           ErrorCodes.UNKNOWN_ERROR,
           false,
-          { url }
+          { url },
         );
-      
+
       return { success: false, error: scrapingError };
     }
   }
@@ -183,13 +181,13 @@ export abstract class EnhancedBaseAdapter<T extends RawProduct = RawProduct> imp
       baseDelay: this.config.behavior?.retryDelay || 1000,
       maxDelay: 30000,
       backoffMultiplier: 2,
-      retryableErrors: [ErrorCodes.NETWORK_ERROR, ErrorCodes.TIMEOUT_ERROR]
+      retryableErrors: [ErrorCodes.NETWORK_ERROR, ErrorCodes.TIMEOUT_ERROR],
     };
 
     return await retryManager.executeWithRetry(
       () => this.extractProduct(url),
       retryConfig,
-      `extractProduct(${url})`
+      `extractProduct(${url})`,
     );
   }
 
@@ -202,13 +200,13 @@ export abstract class EnhancedBaseAdapter<T extends RawProduct = RawProduct> imp
       if (!element) {
         return '';
       }
-      
+
       // For description fields, try to get all text content including multiple paragraphs
       if (selector.includes('description') || selector.includes('content') || selector.includes('p')) {
         // Get all text nodes and paragraph content
         const textContent = element.textContent?.trim() || '';
         const innerHTML = element.innerHTML || '';
-        
+
         // If we have HTML content, try to extract meaningful text
         if (innerHTML.includes('<p>') || innerHTML.includes('<br>')) {
           // Extract text from paragraphs and line breaks
@@ -218,16 +216,16 @@ export abstract class EnhancedBaseAdapter<T extends RawProduct = RawProduct> imp
               .map(p => p.textContent?.trim())
               .filter(text => text && text.length > 10) // Filter out very short text
               .join('\n\n');
-            
+
             if (paragraphTexts) {
               return paragraphTexts;
             }
           }
         }
-        
+
         return textContent;
       }
-      
+
       return element.textContent?.trim() || '';
     } catch (error) {
       console.warn(`Failed to extract text from selector '${selector}':`, error);
@@ -313,25 +311,25 @@ export abstract class EnhancedBaseAdapter<T extends RawProduct = RawProduct> imp
   protected extractAttributes(dom: JSDOM, selector: string): Record<string, string[]> {
     try {
       const attributes: Record<string, string[]> = {};
-      
+
       const attributeElements = this.extractElements(dom, selector);
-      
+
       for (const element of attributeElements) {
         const nameElement = element.querySelector('[data-attribute-name], .attribute-name, .attr-name');
         const valueElements = element.querySelectorAll('[data-attribute-value], .attribute-value, .attr-value, option');
-        
+
         if (nameElement && valueElements.length > 0) {
           const name = nameElement.textContent?.trim() || '';
           const values = Array.from(valueElements)
             .map(val => val.textContent?.trim())
             .filter(val => val && val !== 'בחר אפשרות' && val !== 'Select option');
-          
+
           if (name && values.length > 0) {
             attributes[name] = values;
           }
         }
       }
-      
+
       return attributes;
     } catch (error) {
       console.warn(`Failed to extract attributes from selector '${selector}':`, error);
@@ -346,11 +344,11 @@ export abstract class EnhancedBaseAdapter<T extends RawProduct = RawProduct> imp
     try {
       const variations: any[] = [];
       const variationElements = this.extractElements(dom, selector);
-      
+
       for (const element of variationElements) {
         const sku = element.querySelector('[data-sku], .sku, .product-sku')?.textContent?.trim();
         const price = element.querySelector('[data-price], .price, .product-price')?.textContent?.trim();
-        
+
         if (sku) {
           variations.push({
             sku,
@@ -362,7 +360,7 @@ export abstract class EnhancedBaseAdapter<T extends RawProduct = RawProduct> imp
           });
         }
       }
-      
+
       return variations;
     } catch (error) {
       console.warn(`Failed to extract variations from selector '${selector}':`, error);
@@ -378,16 +376,16 @@ export abstract class EnhancedBaseAdapter<T extends RawProduct = RawProduct> imp
       if (url.startsWith('http')) {
         return url;
       }
-      
+
       if (url.startsWith('//')) {
         return `https:${url}`;
       }
-      
+
       if (url.startsWith('/')) {
         const baseUrl = new URL(this.baseUrl);
         return `${baseUrl.protocol}//${baseUrl.host}${url}`;
       }
-      
+
       return `${this.baseUrl}/${url}`;
     } catch (error) {
       console.warn(`Failed to resolve URL '${url}':`, error);
@@ -416,15 +414,15 @@ export abstract class EnhancedBaseAdapter<T extends RawProduct = RawProduct> imp
   protected normalizeStockText(stockText: string): string {
     try {
       const text = stockText.toLowerCase();
-      
+
       if (text.includes('out') || text.includes('unavailable') || text.includes('0')) {
         return 'outofstock';
       }
-      
+
       if (text.includes('in') || text.includes('available') || text.includes('stock')) {
         return 'instock';
       }
-      
+
       return 'instock'; // Default to in stock
     } catch (error) {
       console.warn(`Failed to normalize stock text '${stockText}':`, error);
@@ -452,15 +450,15 @@ export abstract class EnhancedBaseAdapter<T extends RawProduct = RawProduct> imp
     let currentUrl = baseUrl;
     let pageCount = 0;
     const maxPages = 100; // Safety limit - could be configurable in future
-    
+
     while (currentUrl && pageCount < maxPages) {
       try {
         const dom = await this.getDom(currentUrl);
-        
+
         // Extract product URLs from current page
         const productUrls = this.extractProductUrls(dom);
         urls.push(...productUrls);
-        
+
         // Find next page
         const nextPageElement = dom.window.document.querySelector(nextPageSelector);
         if (nextPageElement) {
@@ -479,7 +477,7 @@ export abstract class EnhancedBaseAdapter<T extends RawProduct = RawProduct> imp
         break;
       }
     }
-    
+
     return urls;
   }
 
@@ -505,7 +503,7 @@ export abstract class EnhancedBaseAdapter<T extends RawProduct = RawProduct> imp
    */
   protected applyTransformations(text: string, transformations: string[]): string {
     let result = text;
-    
+
     for (const transform of transformations) {
       try {
         // Simple regex replacement for now
@@ -521,7 +519,7 @@ export abstract class EnhancedBaseAdapter<T extends RawProduct = RawProduct> imp
         console.warn(`Failed to apply transformation: ${transform}`, error);
       }
     }
-    
+
     return result;
   }
 
@@ -532,7 +530,7 @@ export abstract class EnhancedBaseAdapter<T extends RawProduct = RawProduct> imp
     try {
       // Smart Puppeteer usage: use it when explicitly enabled in recipe
       const needsJavaScript = this.config.behavior?.useHeadlessBrowser === true;
-      
+
       if (needsJavaScript && this.puppeteerClient) {
         try {
           console.log('🔍 DEBUG: Using Puppeteer for JavaScript execution:', url);
@@ -550,7 +548,7 @@ export abstract class EnhancedBaseAdapter<T extends RawProduct = RawProduct> imp
         `Failed to get DOM for ${url}: ${error}`,
         ErrorCodes.NETWORK_ERROR,
         true,
-        { url, options }
+        { url, options },
       );
     }
   }
