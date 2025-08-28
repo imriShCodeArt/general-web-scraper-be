@@ -4,8 +4,12 @@ import helmet from 'helmet';
 import compression from 'compression';
 import { ScrapingService } from './lib/scraping-service';
 import { StorageService } from './lib/storage';
+import { rootContainer, RequestContext } from './lib/composition-root';
+import { TOKENS } from './lib/di/tokens';
 import pino from 'pino';
 import recipeRoutes from './app/api/recipes/route';
+import swaggerUi from 'swagger-ui-express';
+import { swaggerSpec } from './app/openapi';
 
 /**
  * Create a clean filename for CSV downloads
@@ -29,8 +33,7 @@ function createCleanFilename(originalFilename: string, type: string): string {
 
 const app = express();
 
-// Initialize services
-const scrapingService = new ScrapingService();
+// Initialize services (legacy singletons kept for non-request endpoints)
 const storageService = new StorageService();
 
 // Logger
@@ -58,6 +61,30 @@ app.use((req, res, next) => {
     ip: req.ip,
     userAgent: req.get('User-Agent'),
   });
+  // attach a scope per request with RequestContext and scoped logger
+  const scope = rootContainer.createScope();
+  const requestId = (Math.random() + 1).toString(36).substring(2);
+  const ctx: RequestContext = {
+    requestId,
+    ip: req.ip,
+    userAgent: req.get('User-Agent') || undefined,
+  };
+  scope.register(TOKENS.RequestContext, {
+    lifetime: 'scoped',
+    factory: () => ctx,
+  });
+  // child logger with request bindings
+  scope.register(TOKENS.Logger, {
+    lifetime: 'scoped',
+    factory: async (c) => {
+      const base = await rootContainer.resolve(TOKENS.Logger);
+      return (base as any).child({ requestId: ctx.requestId, ip: ctx.ip });
+    },
+  });
+  (req as any).containerScope = scope;
+  res.on('finish', async () => {
+    await scope.dispose();
+  });
   next();
 });
 
@@ -77,6 +104,8 @@ app.get('/', (req, res) => {
       recipes: '/api/recipes',
       scrape: '/api/scrape/init',
       storage: '/api/storage',
+      docs: '/docs',
+      openapi: '/openapi.json',
     },
   });
 });
@@ -85,6 +114,12 @@ app.get('/', (req, res) => {
 app.use('/api/recipes', recipeRoutes);
 
 // API Routes
+// OpenAPI and Swagger UI
+app.get('/openapi.json', (req, res) => {
+  res.setHeader('Content-Type', 'application/json');
+  res.send(swaggerSpec);
+});
+app.use('/docs', swaggerUi.serve, swaggerUi.setup(swaggerSpec));
 
 // Start scraping job
 app.post('/api/scrape/init', async (req, res) => {
@@ -98,6 +133,8 @@ app.post('/api/scrape/init', async (req, res) => {
       });
     }
 
+    const scope = (req as any).containerScope || rootContainer.createScope();
+    const scrapingService = (await scope.resolve(TOKENS.ScrapingService)) as ScrapingService;
     const result = await scrapingService.startScraping({
       siteUrl,
       recipe,
@@ -122,6 +159,8 @@ app.post('/api/scrape/init', async (req, res) => {
 app.get('/api/scrape/status/:jobId', async (req, res) => {
   try {
     const { jobId } = req.params;
+    const scope = (req as any).containerScope || rootContainer.createScope();
+    const scrapingService = (await scope.resolve(TOKENS.ScrapingService)) as ScrapingService;
     const result = await scrapingService.getJobStatus(jobId);
 
     if (result.success) {
@@ -141,6 +180,8 @@ app.get('/api/scrape/status/:jobId', async (req, res) => {
 // Get all jobs
 app.get('/api/scrape/jobs', async (req, res) => {
   try {
+    const scope = (req as any).containerScope || rootContainer.createScope();
+    const scrapingService = (await scope.resolve(TOKENS.ScrapingService)) as ScrapingService;
     const result = await scrapingService.getAllJobs();
     return res.json(result);
   } catch (error) {
@@ -155,6 +196,8 @@ app.get('/api/scrape/jobs', async (req, res) => {
 // Get performance metrics
 app.get('/api/scrape/performance', async (req, res) => {
   try {
+    const scope = (req as any).containerScope || rootContainer.createScope();
+    const scrapingService = (await scope.resolve(TOKENS.ScrapingService)) as ScrapingService;
     const result = await scrapingService.getPerformanceMetrics();
     return res.json(result);
   } catch (error) {
@@ -169,6 +212,8 @@ app.get('/api/scrape/performance', async (req, res) => {
 // Get real-time performance monitoring
 app.get('/api/scrape/performance/live', async (req, res) => {
   try {
+    const scope = (req as any).containerScope || rootContainer.createScope();
+    const scrapingService = (await scope.resolve(TOKENS.ScrapingService)) as ScrapingService;
     const result = await scrapingService.getLivePerformanceMetrics();
     return res.json(result);
   } catch (error) {
@@ -183,6 +228,8 @@ app.get('/api/scrape/performance/live', async (req, res) => {
 // Get performance recommendations
 app.get('/api/scrape/performance/recommendations', async (req, res) => {
   try {
+    const scope = (req as any).containerScope || rootContainer.createScope();
+    const scrapingService = (await scope.resolve(TOKENS.ScrapingService)) as ScrapingService;
     const result = await scrapingService.getPerformanceRecommendations();
     return res.json(result);
   } catch (error) {
@@ -198,6 +245,8 @@ app.get('/api/scrape/performance/recommendations', async (req, res) => {
 app.post('/api/scrape/cancel/:jobId', async (req, res) => {
   try {
     const { jobId } = req.params;
+    const scope = (req as any).containerScope || rootContainer.createScope();
+    const scrapingService = (await scope.resolve(TOKENS.ScrapingService)) as ScrapingService;
     const result = await scrapingService.cancelJob(jobId);
 
     if (result.success) {
@@ -318,6 +367,8 @@ app.get('/api/scrape/download/:jobId/:type', async (req, res) => {
 // Get storage statistics
 app.get('/api/storage/stats', async (req, res) => {
   try {
+    const scope = rootContainer.createScope();
+    const scrapingService = await scope.resolve<ScrapingService>(TOKENS.ScrapingService);
     const result = await scrapingService.getStorageStats();
     res.json(result);
   } catch (error) {
@@ -405,6 +456,8 @@ process.on('SIGINT', async () => {
 
   // Clean up scraping service (this will close Puppeteer browsers)
   try {
+    const scope = rootContainer.createScope();
+    const scrapingService = await scope.resolve<ScrapingService>(TOKENS.ScrapingService);
     await scrapingService.cleanup();
     logger.info('Scraping service cleaned up successfully');
   } catch (error) {
@@ -419,6 +472,8 @@ process.on('SIGTERM', async () => {
 
   // Clean up scraping service (this will close Puppeteer browsers)
   try {
+    const scope = rootContainer.createScope();
+    const scrapingService = await scope.resolve<ScrapingService>(TOKENS.ScrapingService);
     await scrapingService.cleanup();
     logger.info('Scraping service cleaned up successfully');
   } catch (error) {

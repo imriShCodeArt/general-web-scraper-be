@@ -1,8 +1,22 @@
 import { Request, Response, Router } from 'express';
 import { RecipeManager } from '../../../lib/recipe-manager';
+import { rootContainer } from '../../../lib/composition-root';
+import { TOKENS } from '../../../lib/di/tokens';
 
 const router = Router();
 const recipeManager = new RecipeManager('./recipes');
+
+// Prefer container resolution when available
+rootContainer
+  .resolve<RecipeManager>(TOKENS.RecipeManager)
+  .then((rm) => {
+    // swap to container-managed instance
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    (recipeManager as any) = rm;
+  })
+  .catch(() => {
+    // fallback to direct instance if container not ready
+  });
 
 // List all available recipes
 router.get('/list', async (req: Request, res: Response) => {

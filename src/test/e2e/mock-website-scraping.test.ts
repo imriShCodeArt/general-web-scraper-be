@@ -325,11 +325,11 @@ describe('E2E Mock Website Scraping Tests', () => {
       // Create a recipe that points to a non-existent server
       const mockRecipe = testUtils.createMockRecipe({
         siteUrl: 'http://localhost:9999', // Port that won't be listening
-        selectors: {
+        selectors: Object.assign({}, testUtils.createMockRecipe().selectors, {
           title: '.product-title',
           price: '.product-price',
           productLinks: '.product-link',
-        },
+        }),
       });
 
       mockRecipeManager.getRecipe.mockResolvedValue(mockRecipe);
@@ -371,11 +371,11 @@ describe('E2E Mock Website Scraping Tests', () => {
       // Create a recipe for a page with malformed HTML
       const mockRecipe = testUtils.createMockRecipe({
         siteUrl: mockServerUrl,
-        selectors: {
+        selectors: Object.assign({}, testUtils.createMockRecipe().selectors, {
           title: '.product-title',
           price: '.product-price',
           productLinks: '.product-link',
-        },
+        }),
       });
 
       mockRecipeManager.getRecipe.mockResolvedValue(mockRecipe);

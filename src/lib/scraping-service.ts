@@ -56,8 +56,13 @@ export class ScrapingService {
     return this.createApiResponse(false, undefined, error, message);
   }
 
-  constructor() {
-    this.logger = pino({
+  constructor(
+    storage?: StorageService,
+    recipeManager?: RecipeManager,
+    csvGenerator?: CsvGenerator,
+    logger?: pino.Logger
+  ) {
+    this.logger = logger || pino({
       level: process.env.LOG_LEVEL || 'warn',
       transport: {
         target: 'pino-pretty',
@@ -68,20 +73,26 @@ export class ScrapingService {
       },
     });
 
-    this.storage = new StorageService();
-    this.recipeManager = new RecipeManager();
-    this.csvGenerator = new CsvGenerator();
+    this.storage = storage || new StorageService();
+    this.recipeManager = recipeManager || new RecipeManager();
+    this.csvGenerator = csvGenerator || new CsvGenerator();
   }
 
   /**
    * Normalize a raw product
+   *
+   * @param rawProduct - Raw product object from adapter
+   * @param url - Optional product URL for context
    */
   private async normalizeProduct(rawProduct: any, url?: string): Promise<NormalizedProduct> {
     return NormalizationToolkit.normalizeProduct(rawProduct, url || '');
   }
 
   /**
-   * Generate filename for CSV
+   * Generate filename for CSV outputs
+   *
+   * @param siteUrl - The site URL being scraped
+   * @param jobId - The job identifier
    */
   private generateFilename(siteUrl: string, jobId: string): string {
     const domain = new URL(siteUrl).hostname;
@@ -89,7 +100,10 @@ export class ScrapingService {
   }
 
   /**
-   * Start a new scraping job
+   * Start a new scraping job.
+   *
+   * @param request - Includes `siteUrl`, `recipe`, and optional `options`.
+   * @returns ApiResponse containing the created `jobId`.
    */
   async startScraping(request: ScrapingRequest): Promise<ApiResponse<{ jobId: string }>> {
     try {
@@ -175,7 +189,9 @@ export class ScrapingService {
       try {
         // Discover products with optional limit
         const productUrls: string[] = [];
-        const maxProducts = job.metadata.options?.maxProducts;
+        const options = (job.metadata as any).options || {};
+        const maxProducts: number | undefined =
+          typeof options.maxProducts === 'number' ? options.maxProducts : undefined;
 
         for await (const url of adapter.discoverProducts()) {
           productUrls.push(url);
@@ -272,15 +288,10 @@ export class ScrapingService {
             `Batch completed in ${batchTime}ms, processed ${validProducts.length}/${batch.length} products successfully`,
           );
 
-          // Optimized delay between batches - only if there are more products to process
+          // Fixed delay between batches to respect configured rateLimit
           if (i + batchSize < productUrls.length && rateLimit > 0) {
-            // Dynamic delay based on batch performance - reduce delay if batch was fast
-            const dynamicDelay = Math.max(
-              10,
-              Math.min(rateLimit, batchTime < 1000 ? rateLimit / 2 : rateLimit),
-            );
-            this.logger.debug(`Waiting ${dynamicDelay}ms before next batch...`);
-            await this.delay(dynamicDelay);
+            this.logger.debug(`Waiting ${rateLimit}ms before next batch...`);
+            await this.delay(rateLimit);
           }
         }
 
@@ -370,7 +381,9 @@ export class ScrapingService {
   }
 
   /**
-   * Create adapter based on recipe
+   * Create adapter based on recipe or auto-detection.
+   * @param recipe - Recipe name to prefer
+   * @param siteUrl - Target website URL
    */
   private async createAdapter(recipe: string, siteUrl: string): Promise<SiteAdapter> {
     try {
@@ -399,6 +412,7 @@ export class ScrapingService {
 
   /**
    * Get job status
+   * @param jobId - The job identifier
    */
   async getJobStatus(jobId: string): Promise<ApiResponse<ScrapingJob>> {
     try {
@@ -439,6 +453,7 @@ export class ScrapingService {
 
   /**
    * Get recipe configuration by name
+   * @param recipeName - Name of the recipe
    */
   async getRecipe(recipeName: string): Promise<ApiResponse<any>> {
     try {
@@ -451,6 +466,7 @@ export class ScrapingService {
 
   /**
    * Get recipe configuration by site URL
+   * @param siteUrl - Site URL
    */
   async getRecipeBySiteUrl(siteUrl: string): Promise<ApiResponse<any>> {
     try {
@@ -467,6 +483,7 @@ export class ScrapingService {
 
   /**
    * Cancel a job
+   * @param jobId - The job identifier
    */
   async cancelJob(jobId: string): Promise<ApiResponse<{ cancelled: boolean }>> {
     try {
@@ -523,6 +540,9 @@ export class ScrapingService {
         activeJobs: this.activeJobs.size,
         queuedJobs: this.jobQueue.length,
         isProcessing: this.isProcessing,
+        // Backward/compat aliases used by some tests
+        currentActiveJobs: this.activeJobs.size,
+        queueLength: this.jobQueue.length,
       });
     } catch (error) {
       return this.createErrorResponse(`Failed to get performance metrics: ${error}`);
@@ -563,8 +583,8 @@ export class ScrapingService {
   }
 
   /**
-   * Get performance recommendations based on current metrics
-   */
+  * Get performance recommendations based on current metrics
+  */
   async getPerformanceRecommendations(): Promise<ApiResponse<any>> {
     try {
       const recommendations = [];
@@ -643,6 +663,7 @@ export class ScrapingService {
 
   /**
    * Utility function to add delay
+   * @param ms - Milliseconds to wait
    */
   private delay(ms: number): Promise<void> {
     return new Promise((resolve) => setTimeout(resolve, ms));
