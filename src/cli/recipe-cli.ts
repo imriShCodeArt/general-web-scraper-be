@@ -2,9 +2,41 @@
 
 import { RecipeManager } from '../lib/recipe-manager';
 import { Command } from 'commander';
+import { rootContainer, TOKENS, initializeServices, cleanupServices } from '../lib/composition-root';
 
 const program = new Command();
-const recipeManager = new RecipeManager('./recipes');
+let recipeManager: RecipeManager;
+
+// Initialize services before running CLI
+async function initializeCLI() {
+  try {
+    await initializeServices();
+    recipeManager = await rootContainer.resolve<RecipeManager>(TOKENS.RecipeManager);
+  } catch (error) {
+    console.error('Failed to initialize services:', error);
+    process.exit(1);
+  }
+}
+
+// Cleanup services when CLI exits
+async function cleanupCLI() {
+  try {
+    await cleanupServices();
+  } catch (error) {
+    console.error('Failed to cleanup services:', error);
+  }
+}
+
+// Handle process termination
+process.on('SIGINT', async () => {
+  await cleanupCLI();
+  process.exit(0);
+});
+
+process.on('SIGTERM', async () => {
+  await cleanupCLI();
+  process.exit(0);
+});
 
 program
   .name('recipe-cli')
@@ -147,4 +179,8 @@ program
     }
   });
 
-program.parse();
+// Initialize CLI and run
+(async () => {
+  await initializeCLI();
+  program.parse();
+})();

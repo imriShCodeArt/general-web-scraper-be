@@ -1,23 +1,22 @@
 import { ScrapingService } from '../../lib/scraping-service';
-import { RecipeManager } from '../../lib/recipe-manager';
-import { StorageService } from '../../lib/storage';
 import { CsvGenerator } from '../../lib/csv-generator';
+import { rootContainer, TOKENS } from '../../lib/composition-root';
+import type { Container } from '../../lib/di/container';
 import { testUtils } from '../setup';
-
-// Mock external dependencies
-jest.mock('../../lib/recipe-manager');
-jest.mock('../../lib/storage');
-jest.mock('../../lib/csv-generator');
 
 describe('Scraping Workflow Integration Tests', () => {
   let scrapingService: ScrapingService;
-  let mockRecipeManager: jest.Mocked<RecipeManager>;
-  let mockStorageService: jest.Mocked<StorageService>;
-  let mockCsvGenerator: jest.Mocked<CsvGenerator>;
+  let scope: Container;
+  let mockRecipeManager: any;
+  let mockStorageService: any;
+  let mockCsvGenerator: any;
 
-  beforeEach(() => {
+  beforeEach(async () => {
     // Clear all mocks
     jest.clearAllMocks();
+
+    // Create request scope and override dependencies at DI level
+    scope = rootContainer.createScope();
 
     // Create mock instances
     mockRecipeManager = {
@@ -25,30 +24,50 @@ describe('Scraping Workflow Integration Tests', () => {
       createAdapter: jest.fn(),
       listRecipes: jest.fn(),
       getRecipeBySiteUrl: jest.fn(),
-    } as any;
+    };
 
     mockStorageService = {
       storeJobResult: jest.fn(),
       getJobResult: jest.fn(),
       getStorageStats: jest.fn(),
-    } as any;
+    };
 
     mockCsvGenerator = {
       generateBothCsvs: jest.fn(),
-    } as any;
+    };
 
-    // Mock static method
-    (CsvGenerator.generateBothCsvs as jest.Mock) = jest.fn();
+    scope.register(TOKENS.RecipeManager, {
+      lifetime: 'scoped',
+      factory: () => mockRecipeManager,
+    });
 
-    // Create service with mocked dependencies
-    scrapingService = new ScrapingService();
-    (scrapingService as any).recipeManager = mockRecipeManager;
-    (scrapingService as any).storage = mockStorageService;
-    (scrapingService as any).csvGenerator = mockCsvGenerator;
+    scope.register(TOKENS.StorageService, {
+      lifetime: 'scoped',
+      factory: () => mockStorageService,
+    });
+
+    scope.register(TOKENS.CsvGenerator, {
+      lifetime: 'scoped',
+      factory: () => mockCsvGenerator,
+    });
+
+    // Register a transient ScrapingService within the scope so it resolves scoped deps
+    scope.register(TOKENS.ScrapingService, {
+      lifetime: 'transient',
+      factory: async (c) => new ScrapingService(
+        await c.resolve(TOKENS.StorageService),
+        await c.resolve(TOKENS.RecipeManager),
+        await c.resolve(TOKENS.CsvGenerator),
+        await c.resolve(TOKENS.Logger),
+      ),
+    });
+
+    scrapingService = await scope.resolve(TOKENS.ScrapingService);
   });
 
   afterEach(async () => {
     await scrapingService.cleanup();
+    await scope.dispose();
   });
 
   describe('Complete Scraping Workflow', () => {
@@ -71,13 +90,13 @@ describe('Scraping Workflow Integration Tests', () => {
 
       mockRecipeManager.createAdapter.mockResolvedValue(mockAdapter);
 
-      // Mock CSV generation
-      const mockCsvResult = {
+      // Mock CSV generation for this test
+      jest.spyOn(CsvGenerator, 'generateBothCsvs').mockResolvedValue({
         parentCsv: 'parent,csv,data',
         variationCsv: 'variation,csv,data',
+        productCount: 2,
         variationCount: 0,
-      };
-      (CsvGenerator.generateBothCsvs as jest.Mock).mockResolvedValue(mockCsvResult);
+      });
 
       // Mock storage
       mockStorageService.storeJobResult.mockResolvedValue(undefined);
@@ -96,8 +115,18 @@ describe('Scraping Workflow Integration Tests', () => {
       expect(response.success).toBe(true);
       expect(response.data?.jobId).toBeDefined();
 
-      // Wait for job to complete
-      await testUtils.wait(100);
+      // Wait for job to complete with polling
+      let attempts = 0;
+      const maxAttempts = 50; // Increase max attempts
+      while (attempts < maxAttempts) {
+        const status = await scrapingService.getJobStatus(response.data!.jobId);
+        console.log(`Job status attempt ${attempts}:`, status.data?.status, status.data?.processedProducts, status.data?.totalProducts);
+        if (status.data?.status === 'completed' || status.data?.status === 'failed') {
+          break;
+        }
+        await testUtils.wait(200); // Increase wait time
+        attempts++;
+      }
 
       // Check job status
       const jobStatus = await scrapingService.getJobStatus(response.data!.jobId);
@@ -187,7 +216,10 @@ describe('Scraping Workflow Integration Tests', () => {
         variationCsv: 'variation,csv,data',
         variationCount: 0,
       };
-      (CsvGenerator.generateBothCsvs as jest.Mock).mockResolvedValue(mockCsvResult);
+      jest.spyOn(CsvGenerator, 'generateBothCsvs').mockResolvedValue({
+        ...mockCsvResult,
+        productCount: 2,
+      } as any);
 
       // Mock storage
       mockStorageService.storeJobResult.mockResolvedValue(undefined);
@@ -201,8 +233,17 @@ describe('Scraping Workflow Integration Tests', () => {
       const response = await scrapingService.startScraping(request);
       expect(response.success).toBe(true);
 
-      // Wait for job to complete (increased due to added delays)
-      await testUtils.wait(600);
+      // Wait for job to complete with polling
+      let attempts = 0;
+      const maxAttempts = 20;
+      while (attempts < maxAttempts) {
+        const status = await scrapingService.getJobStatus(response.data!.jobId);
+        if (status.data?.status === 'completed' || status.data?.status === 'failed') {
+          break;
+        }
+        await testUtils.wait(100);
+        attempts++;
+      }
 
       // Check job status
       const jobStatus = await scrapingService.getJobStatus(response.data!.jobId);
@@ -256,13 +297,7 @@ describe('Scraping Workflow Integration Tests', () => {
 
       mockRecipeManager.createAdapter.mockResolvedValue(mockAdapter);
 
-      // Mock CSV generation
-      const mockCsvResult = {
-        parentCsv: 'parent,csv,data',
-        variationCsv: 'variation,csv,data',
-        variationCount: 0,
-      };
-      (CsvGenerator.generateBothCsvs as jest.Mock).mockResolvedValue(mockCsvResult);
+      // CSV generation is mocked globally
 
       // Mock storage
       mockStorageService.storeJobResult.mockResolvedValue(undefined);
@@ -376,12 +411,7 @@ describe('Scraping Workflow Integration Tests', () => {
 
       mockRecipeManager.createAdapter.mockResolvedValue(mockAdapter);
 
-      const mockCsvResult = {
-        parentCsv: 'parent,csv,data',
-        variationCsv: 'variation,csv,data',
-        variationCount: 0,
-      };
-      (CsvGenerator.generateBothCsvs as jest.Mock).mockResolvedValue(mockCsvResult);
+      // CSV generation is mocked globally
       mockStorageService.storeJobResult.mockResolvedValue(undefined);
 
       const request = { siteUrl: 'https://test.com', recipe: 'test-recipe' };

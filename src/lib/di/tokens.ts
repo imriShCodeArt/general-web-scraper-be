@@ -1,12 +1,23 @@
 export const TOKENS = {
+  // Core services
   Logger: Symbol('Logger'),
   LoggerFactory: Symbol('LoggerFactory'),
   Config: Symbol('Config'),
-  RequestContext: Symbol('RequestContext'),
+  
+  // Storage and data services
   StorageService: Symbol('StorageService'),
-  RecipeManager: Symbol('RecipeManager'),
   CsvGenerator: Symbol('CsvGenerator'),
+  
+  // Recipe services
+  RecipeLoaderService: Symbol('RecipeLoaderService'),
+  RecipeManager: Symbol('RecipeManager'),
+  
+  // Scraping services
   ScrapingService: Symbol('ScrapingService'),
+  HttpClient: Symbol('HttpClient'),
+  
+  // Request context (per-request)
+  RequestContext: Symbol('RequestContext'),
 };
 
 export function createToken<T>(name: string): symbol {

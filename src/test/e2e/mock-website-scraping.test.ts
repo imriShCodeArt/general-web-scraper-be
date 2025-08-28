@@ -1,21 +1,19 @@
 import { ScrapingService } from '../../lib/scraping-service';
-import { RecipeManager } from '../../lib/recipe-manager';
-import { StorageService } from '../../lib/storage';
 import { CsvGenerator } from '../../lib/csv-generator';
+import { rootContainer, TOKENS } from '../../lib/composition-root';
+import type { Container } from '../../lib/di/container';
 import { testUtils } from '../setup';
 import { createServer, Server } from 'http';
 import { AddressInfo } from 'net';
 
-// Mock external dependencies
-jest.mock('../../lib/recipe-manager');
-jest.mock('../../lib/storage');
-jest.mock('../../lib/csv-generator');
+// We will override DI tokens within a request-scoped container per test
 
 describe('E2E Mock Website Scraping Tests', () => {
   let scrapingService: ScrapingService;
-  let mockRecipeManager: jest.Mocked<RecipeManager>;
-  let mockStorageService: jest.Mocked<StorageService>;
-  let mockCsvGenerator: jest.Mocked<CsvGenerator>;
+  let scope: Container;
+  let mockRecipeManager: any;
+  let mockStorageService: any;
+  let mockCsvGenerator: any;
   let mockServer: Server;
   let mockServerUrl: string;
 
@@ -107,7 +105,7 @@ describe('E2E Mock Website Scraping Tests', () => {
     });
   });
 
-  beforeEach(() => {
+  beforeEach(async () => {
     // Clear all mocks
     jest.clearAllMocks();
 
@@ -117,30 +115,39 @@ describe('E2E Mock Website Scraping Tests', () => {
       createAdapter: jest.fn(),
       listRecipes: jest.fn(),
       getRecipeBySiteUrl: jest.fn(),
-    } as any;
+    };
 
     mockStorageService = {
       storeJobResult: jest.fn(),
       getJobResult: jest.fn(),
       getStorageStats: jest.fn(),
-    } as any;
+    };
 
     mockCsvGenerator = {
       generateBothCsvs: jest.fn(),
-    } as any;
+    };
 
-    // Mock static method
-    (CsvGenerator.generateBothCsvs as jest.Mock) = jest.fn();
+    // Create request scope and register overrides
+    scope = rootContainer.createScope();
+    scope.register(TOKENS.RecipeManager, { lifetime: 'scoped', factory: () => mockRecipeManager });
+    scope.register(TOKENS.StorageService, { lifetime: 'scoped', factory: () => mockStorageService });
+    scope.register(TOKENS.CsvGenerator, { lifetime: 'scoped', factory: () => mockCsvGenerator });
+    scope.register(TOKENS.ScrapingService, {
+      lifetime: 'transient',
+      factory: async (c) => new ScrapingService(
+        await c.resolve(TOKENS.StorageService),
+        await c.resolve(TOKENS.RecipeManager),
+        await c.resolve(TOKENS.CsvGenerator),
+        await c.resolve(TOKENS.Logger),
+      ),
+    });
 
-    // Create service with mocked dependencies
-    scrapingService = new ScrapingService();
-    (scrapingService as any).recipeManager = mockRecipeManager;
-    (scrapingService as any).storage = mockStorageService;
-    (scrapingService as any).csvGenerator = mockCsvGenerator;
+    scrapingService = await scope.resolve(TOKENS.ScrapingService);
   });
 
   afterEach(async () => {
     await scrapingService.cleanup();
+    await scope.dispose();
   });
 
   describe('Real Website Scraping Simulation', () => {
@@ -249,7 +256,10 @@ describe('E2E Mock Website Scraping Tests', () => {
         variationCsv: 'variation,csv,data',
         variationCount: 0,
       };
-      (CsvGenerator.generateBothCsvs as jest.Mock).mockResolvedValue(mockCsvResult);
+      jest.spyOn(CsvGenerator, 'generateBothCsvs').mockResolvedValue({
+        ...mockCsvResult,
+        productCount: 3,
+      } as any);
 
       // Mock storage
       mockStorageService.storeJobResult.mockResolvedValue(undefined);
@@ -434,7 +444,10 @@ describe('E2E Mock Website Scraping Tests', () => {
         variationCsv: 'variation,csv,data',
         variationCount: 0,
       };
-      (CsvGenerator.generateBothCsvs as jest.Mock).mockResolvedValue(mockCsvResult);
+      jest.spyOn(CsvGenerator, 'generateBothCsvs').mockResolvedValue({
+        ...mockCsvResult,
+        productCount: 1,
+      } as any);
 
       // Mock storage
       mockStorageService.storeJobResult.mockResolvedValue(undefined);
@@ -501,7 +514,10 @@ describe('E2E Mock Website Scraping Tests', () => {
         variationCsv: 'variation,csv,data',
         variationCount: 0,
       };
-      (CsvGenerator.generateBothCsvs as jest.Mock).mockResolvedValue(mockCsvResult);
+      jest.spyOn(CsvGenerator, 'generateBothCsvs').mockResolvedValue({
+        ...mockCsvResult,
+        productCount: 1,
+      } as any);
       mockStorageService.storeJobResult.mockResolvedValue(undefined);
 
       // Start multiple jobs simultaneously

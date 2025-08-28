@@ -1,4 +1,4 @@
-import { container } from '../lib/di-container';
+import { rootContainer, initializeServices, cleanupServices } from '../lib/composition-root';
 import { RecipeConfig, RawProduct, NormalizedProduct, ScrapingJob } from '../types';
 
 // Define the test utilities interface
@@ -24,15 +24,14 @@ beforeAll(async () => {
   // Set test environment
   process.env.NODE_ENV = 'test';
 
-  // Initialize test container
-  await container.initialize();
+  // Initialize services
+  await initializeServices();
 });
 
 // Global test teardown
 afterAll(async () => {
-  // Clean up test container
-  await container.destroy();
-  container.clear();
+  // Clean up services
+  await cleanupServices();
 });
 
 // Mock console methods to reduce noise in tests
@@ -52,9 +51,6 @@ afterEach(() => {
 
   // Clear all mocks
   jest.clearAllMocks();
-
-  // Clear container for each test
-  container.clear();
 });
 
 // Test utilities

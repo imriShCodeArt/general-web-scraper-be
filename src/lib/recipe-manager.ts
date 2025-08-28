@@ -6,8 +6,8 @@ export class RecipeManager {
   private recipeLoader: RecipeLoaderService;
   private adapterCache: Map<string, SiteAdapter> = new Map();
 
-  constructor(recipesDir: string = './recipes') {
-    this.recipeLoader = new RecipeLoaderService(recipesDir);
+  constructor(recipesDir: string = './recipes', recipeLoader?: RecipeLoaderService) {
+    this.recipeLoader = recipeLoader || new RecipeLoaderService(recipesDir);
   }
 
   /**

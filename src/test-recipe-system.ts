@@ -1,13 +1,17 @@
 #!/usr/bin/env ts-node
 
 import { RecipeManager } from './lib/recipe-manager';
+import { rootContainer, TOKENS, initializeServices, cleanupServices } from './lib/composition-root';
 
 async function testRecipeSystem() {
   console.log('🧪 Testing Recipe System...\n');
 
   try {
-    // Create recipe manager
-    const recipeManager = new RecipeManager('./recipes');
+    // Initialize services
+    await initializeServices();
+    
+    // Get recipe manager from DI container
+    const recipeManager = await rootContainer.resolve<RecipeManager>(TOKENS.RecipeManager);
 
     // Test 1: List available recipes
     console.log('📋 Test 1: Listing available recipes');
@@ -84,6 +88,9 @@ async function testRecipeSystem() {
     console.log('🎉 Recipe system test completed successfully!');
   } catch (error) {
     console.error('❌ Recipe system test failed:', error);
+  } finally {
+    // Cleanup services
+    await cleanupServices();
   }
 }
 

@@ -3,7 +3,6 @@ import cors from 'cors';
 import helmet from 'helmet';
 import compression from 'compression';
 import { ScrapingService } from './lib/scraping-service';
-import { StorageService } from './lib/storage';
 import { rootContainer, RequestContext } from './lib/composition-root';
 import { TOKENS } from './lib/di/tokens';
 import pino from 'pino';
@@ -33,8 +32,7 @@ function createCleanFilename(originalFilename: string, type: string): string {
 
 const app = express();
 
-// Initialize services (legacy singletons kept for non-request endpoints)
-const storageService = new StorageService();
+// Services are now managed by DI container
 
 // Logger
 const logger = pino({
@@ -68,6 +66,7 @@ app.use((req, res, next) => {
     requestId,
     ip: req.ip,
     userAgent: req.get('User-Agent') || undefined,
+    timestamp: new Date(),
   };
   scope.register(TOKENS.RequestContext, {
     lifetime: 'scoped',
@@ -277,6 +276,8 @@ app.get('/api/scrape/download/:jobId/:type', async (req, res) => {
       });
     }
 
+    const scope = (req as any).containerScope || rootContainer.createScope();
+    const storageService = await scope.resolve(TOKENS.StorageService);
     const storageEntry = await storageService.getJobResult(jobId);
     if (!storageEntry) {
       console.log('❌ DEBUG: Storage entry not found for jobId:', jobId);
@@ -386,6 +387,8 @@ app.get('/api/storage/job/:jobId', async (req, res) => {
     const { jobId } = req.params;
     console.log('🔍 DEBUG: Storage job request for jobId:', jobId);
 
+    const scope = (req as any).containerScope || rootContainer.createScope();
+    const storageService = await scope.resolve(TOKENS.StorageService);
     const storageEntry = await storageService.getJobResult(jobId);
 
     if (!storageEntry) {
@@ -419,6 +422,8 @@ app.get('/api/storage/job/:jobId', async (req, res) => {
 // Clear all storage
 app.delete('/api/storage/clear', async (req, res) => {
   try {
+    const scope = (req as any).containerScope || rootContainer.createScope();
+    const storageService = await scope.resolve(TOKENS.StorageService);
     await storageService.clearAll();
     res.json({
       success: true,

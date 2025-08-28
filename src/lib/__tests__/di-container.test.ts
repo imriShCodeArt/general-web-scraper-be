@@ -1,5 +1,5 @@
-import { Container } from '../di-container';
-import { Service } from '../../types';
+import { Container } from '../di/container';
+import { TOKENS } from '../di/tokens';
 
 describe('Container', () => {
   let container: Container;
@@ -8,61 +8,80 @@ describe('Container', () => {
     container = new Container();
   });
 
-  afterEach(() => {
-    container.clear();
+  afterEach(async () => {
+    await container.dispose();
   });
 
   describe('Service Registration', () => {
-    it('should register and resolve a service', () => {
+    it('should register and resolve a service', async () => {
       const mockService = { name: 'test', method: () => 'test' };
-      container.register('testService', mockService);
+      container.register(TOKENS.Logger, {
+        lifetime: 'transient',
+        factory: () => mockService,
+      });
 
-      const resolved = container.resolve('testService');
+      const resolved = await container.resolve(TOKENS.Logger);
       expect(resolved).toBe(mockService);
     });
 
-    it('should check if a service exists', () => {
-      expect(container.has('nonexistent')).toBe(false);
-
-      container.register('testService', {});
-      expect(container.has('testService')).toBe(true);
-    });
-
-    it('should throw error when resolving non-existent service', () => {
-      expect(() => container.resolve('nonexistent')).toThrow('Service not found: nonexistent');
+    it('should throw error when resolving non-existent service', async () => {
+      await expect(container.resolve(TOKENS.Logger)).rejects.toThrow('Service not found for token Symbol(Logger)');
     });
   });
 
-  describe('Singleton Registration', () => {
-    it('should register and resolve a singleton service', () => {
+  describe('Lifetime Management', () => {
+    it('should create singleton instances', async () => {
       let callCount = 0;
       const factory = () => {
         callCount++;
         return { id: callCount };
       };
 
-      container.registerSingleton('singleton:testService', factory);
+      container.register(TOKENS.Logger, {
+        lifetime: 'singleton',
+        factory,
+      });
 
-      const first = container.resolve('singleton:testService') as { id: number };
-      const second = container.resolve('singleton:testService') as { id: number };
+      const first = await container.resolve(TOKENS.Logger) as { id: number };
+      const second = await container.resolve(TOKENS.Logger) as { id: number };
 
       expect(first).toBe(second);
       expect(callCount).toBe(1);
     });
-  });
 
-  describe('Factory Registration', () => {
-    it('should register and resolve a factory service', () => {
+    it('should create scoped instances', async () => {
       let callCount = 0;
       const factory = () => {
         callCount++;
         return { id: callCount };
       };
 
-      container.registerFactory('testFactory', factory);
+      container.register(TOKENS.Logger, {
+        lifetime: 'scoped',
+        factory,
+      });
 
-      const first = container.resolve('testFactory') as { id: number };
-      const second = container.resolve('testFactory') as { id: number };
+      const first = await container.resolve(TOKENS.Logger) as { id: number };
+      const second = await container.resolve(TOKENS.Logger) as { id: number };
+
+      expect(first).toBe(second);
+      expect(callCount).toBe(1);
+    });
+
+    it('should create transient instances', async () => {
+      let callCount = 0;
+      const factory = () => {
+        callCount++;
+        return { id: callCount };
+      };
+
+      container.register(TOKENS.Logger, {
+        lifetime: 'transient',
+        factory,
+      });
+
+      const first = await container.resolve(TOKENS.Logger) as { id: number };
+      const second = await container.resolve(TOKENS.Logger) as { id: number };
 
       expect(first.id).toBe(1);
       expect(second.id).toBe(2);
@@ -70,111 +89,109 @@ describe('Container', () => {
     });
   });
 
-  describe('Service Lifecycle', () => {
-    it('should call initialize on services with lifecycle hooks', async () => {
-      const mockService: Service = {
-        name: 'testService',
-        initialize: jest.fn().mockResolvedValue(undefined),
-        destroy: jest.fn().mockResolvedValue(undefined),
-      };
-
-      container.register('testService', mockService);
-      await container.initialize();
-
-      expect(mockService.initialize).toHaveBeenCalled();
+  describe('Scope Management', () => {
+    it('should create scoped containers', () => {
+      const scope = container.createScope();
+      expect(scope).toBeInstanceOf(Container);
     });
 
-    it('should call destroy on services with lifecycle hooks', async () => {
-      const mockService: Service = {
-        name: 'testService',
-        initialize: jest.fn().mockResolvedValue(undefined),
-        destroy: jest.fn().mockResolvedValue(undefined),
-      };
-
-      container.register('testService', mockService);
-      await container.destroy();
-
-      expect(mockService.destroy).toHaveBeenCalled();
-    });
-
-    it('should handle errors in lifecycle hooks gracefully', async () => {
-      const mockService: Service = {
-        name: 'testService',
-        initialize: jest.fn().mockRejectedValue(new Error('Init failed')),
-        destroy: jest.fn().mockRejectedValue(new Error('Destroy failed')),
-      };
-
-      container.register('testService', mockService);
-
-      // The container should handle errors gracefully and not throw
-      // The errors are logged as warnings but don't cause the container to fail
-      await expect(container.initialize()).rejects.toThrow('Init failed');
-      await expect(container.destroy()).rejects.toThrow('Destroy failed');
-
-      // Verify that the methods were called
-      expect(mockService.initialize).toHaveBeenCalled();
-      expect(mockService.destroy).toHaveBeenCalled();
-    });
-  });
-
-  describe('Child Container', () => {
-    it('should create a child container with copied services', () => {
+    it('should inherit parent registrations', async () => {
       const mockService = { name: 'test' };
-      container.register('testService', mockService);
+      container.register(TOKENS.Logger, {
+        lifetime: 'singleton',
+        factory: () => mockService,
+      });
 
-      const child = container.createChild();
-      expect(child.has('testService')).toBe(true);
-      expect(child.resolve('testService')).toBe(mockService);
+      const scope = container.createScope();
+      const resolved = await scope.resolve(TOKENS.Logger);
+      expect(resolved).toBe(mockService);
     });
 
-    it('should allow child container to be independent', () => {
-      const child = container.createChild();
+    it('should allow scope-specific registrations', async () => {
+      const scope = container.createScope();
+      const scopeService = { name: 'scope' };
+      
+      scope.register(TOKENS.Logger, {
+        lifetime: 'transient',
+        factory: () => scopeService,
+      });
 
-      child.register('childService', { name: 'child' });
-
-      expect(container.has('childService')).toBe(false);
-      expect(child.has('childService')).toBe(true);
+      const resolved = await scope.resolve(TOKENS.Logger);
+      expect(resolved).toBe(scopeService);
     });
   });
 
-  describe('Container Management', () => {
-    it('should clear all services', () => {
-      container.register('service1', {});
-      container.register('service2', {});
-      container.registerFactory('factory1', () => ({}));
+  describe('Disposal', () => {
+    it('should dispose scoped instances', async () => {
+      const mockDestroy = jest.fn();
+      const mockService = { destroy: mockDestroy };
+      
+      container.register(TOKENS.Logger, {
+        lifetime: 'scoped',
+        factory: () => mockService,
+        destroy: mockDestroy,
+      });
 
-      expect(container.has('service1')).toBe(true);
-      expect(container.has('service2')).toBe(true);
-      expect(container.has('factory1')).toBe(true);
+      await container.resolve(TOKENS.Logger);
+      await container.dispose();
 
-      container.clear();
-
-      expect(container.has('service1')).toBe(false);
-      expect(container.has('service2')).toBe(false);
-      expect(container.has('factory1')).toBe(false);
+      expect(mockDestroy).toHaveBeenCalledWith(mockService);
     });
 
-    it('should get all registered service tokens', () => {
-      container.register('service1', {});
-      container.register('service2', {});
-      container.registerFactory('factory1', () => ({}));
+    it('should dispose singleton instances', async () => {
+      const mockDestroy = jest.fn();
+      const mockService = { destroy: mockDestroy };
+      
+      container.register(TOKENS.Logger, {
+        lifetime: 'singleton',
+        factory: () => mockService,
+        destroy: mockDestroy,
+      });
 
-      const services = container.getRegisteredServices();
-      expect(services).toContain('service1');
-      expect(services).toContain('service2');
-      expect(services).toContain('factory1');
+      await container.resolve(TOKENS.Logger);
+      await container.dispose();
+
+      expect(mockDestroy).toHaveBeenCalledWith(mockService);
+    });
+  });
+
+  describe('Circular Dependency Detection', () => {
+    it('should detect circular dependencies', async () => {
+      container.register(TOKENS.Logger, {
+        lifetime: 'transient',
+        factory: async (c) => {
+          // This creates a circular dependency
+          return await c.resolve(TOKENS.Logger);
+        },
+      });
+
+      await expect(container.resolve(TOKENS.Logger)).rejects.toThrow('Circular dependency detected');
+    });
+  });
+
+  describe('withScope', () => {
+    it('should execute function with scope and dispose', async () => {
+      let scopeDisposed = false;
+      
+      // Mock the createScope method to track when dispose is called
+      const originalCreateScope = container.createScope.bind(container);
+      container.createScope = () => {
+        const scope = originalCreateScope();
+        const originalDispose = scope.dispose.bind(scope);
+        scope.dispose = async () => {
+          scopeDisposed = true;
+          return originalDispose();
+        };
+        return scope;
+      };
+
+      const result = await container.withScope(async (s) => {
+        expect(s).toBeInstanceOf(Container);
+        return 'test result';
+      });
+
+      expect(result).toBe('test result');
+      expect(scopeDisposed).toBe(true);
     });
   });
 });
-
-describe('Injectable Decorator', () => {
-  // Note: Decorator tests are removed due to TypeScript decorator compatibility issues
-  // The decorator functionality is still available for use in the application
-  it('should be skipped due to decorator compatibility issues', () => {
-    // This test is intentionally skipped
-    expect(true).toBe(true);
-  });
-});
-
-// Note: Inject decorator tests are removed due to TypeScript decorator compatibility issues
-// The decorator functionality is still available for use in the application

@@ -1,9 +1,20 @@
 import { RecipeManager } from '../../lib/recipe-manager';
+import { rootContainer, TOKENS, initializeServices, cleanupServices } from '../../lib/composition-root';
 import path from 'path';
 
 describe('RecipeManager integration', () => {
+  let manager: RecipeManager;
+
+  beforeAll(async () => {
+    await initializeServices();
+    manager = await rootContainer.resolve<RecipeManager>(TOKENS.RecipeManager);
+  });
+
+  afterAll(async () => {
+    await cleanupServices();
+  });
+
   it('loads a recipe by name and validates site URL matching', async () => {
-    const manager = new RecipeManager(path.resolve('./recipes'));
     const names = await manager.listRecipes();
     expect(Array.isArray(names)).toBe(true);
 
@@ -26,7 +37,6 @@ describe('RecipeManager integration', () => {
   });
 
   it('loads recipe from file and caches adapter', async () => {
-    const manager = new RecipeManager(path.resolve('./recipes'));
     const filePath = path.resolve(__dirname, '../fixtures/mock-recipe.json');
     const siteUrl = 'https://example.com';
 
