@@ -6,6 +6,8 @@ import { ScrapingService } from './lib/scraping-service';
 import { StorageService } from './lib/storage';
 import pino from 'pino';
 import recipeRoutes from './app/api/recipes/route';
+import swaggerUi from 'swagger-ui-express';
+import { swaggerSpec } from './app/openapi';
 
 /**
  * Create a clean filename for CSV downloads
@@ -77,6 +79,8 @@ app.get('/', (req, res) => {
       recipes: '/api/recipes',
       scrape: '/api/scrape/init',
       storage: '/api/storage',
+      docs: '/docs',
+      openapi: '/openapi.json',
     },
   });
 });
@@ -85,6 +89,12 @@ app.get('/', (req, res) => {
 app.use('/api/recipes', recipeRoutes);
 
 // API Routes
+// OpenAPI and Swagger UI
+app.get('/openapi.json', (req, res) => {
+  res.setHeader('Content-Type', 'application/json');
+  res.send(swaggerSpec);
+});
+app.use('/docs', swaggerUi.serve, swaggerUi.setup(swaggerSpec));
 
 // Start scraping job
 app.post('/api/scrape/init', async (req, res) => {
