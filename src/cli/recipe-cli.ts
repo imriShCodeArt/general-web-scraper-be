@@ -21,7 +21,7 @@ program
         console.log('No recipes found.');
         return;
       }
-      
+
       console.log('Available recipes:');
       recipes.forEach((recipe, index) => {
         console.log(`  ${index + 1}. ${recipe}`);
@@ -49,7 +49,7 @@ program
           console.log(`  ${key}: ${value}`);
         }
       });
-      
+
       if (recipe.transforms) {
         console.log('\nTransformations:');
         Object.entries(recipe.transforms).forEach(([key, value]) => {
@@ -62,7 +62,7 @@ program
           }
         });
       }
-      
+
       if (recipe.behavior) {
         console.log('\nBehavior:');
         Object.entries(recipe.behavior).forEach(([key, value]) => {
@@ -81,7 +81,7 @@ program
     try {
       const recipe = await recipeManager.getRecipe(recipeName);
       const isValid = recipeManager.validateRecipe(recipe);
-      
+
       if (isValid) {
         console.log(`✅ Recipe '${recipeName}' is valid`);
       } else {
@@ -122,27 +122,27 @@ program
   .action(async (recipeName: string, siteUrl: string) => {
     try {
       console.log(`Testing recipe '${recipeName}' with ${siteUrl}...`);
-      
+
       // Create adapter to test recipe
       const adapter = await recipeManager.createAdapter(siteUrl, recipeName);
       console.log('✅ Recipe loaded successfully');
-      
+
       const config = adapter.getConfig();
       console.log(`Recipe configuration: ${config.name} v${config.version}`);
-      
+
       // Test basic configuration
       if (config.selectors.title && config.selectors.price && config.selectors.images) {
         console.log('✅ Required selectors present');
       } else {
         console.log('❌ Missing required selectors');
       }
-      
+
       if (config.behavior?.rateLimit) {
         console.log(`✅ Rate limiting configured: ${config.behavior.rateLimit}ms`);
       } else {
         console.log('⚠️  No rate limiting configured');
       }
-      
+
     } catch (error) {
       console.error(`Failed to test recipe '${recipeName}':`, error);
     }

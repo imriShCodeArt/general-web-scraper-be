@@ -3,19 +3,19 @@ import { z } from 'zod';
 // Enhanced Error Types
 export interface ScrapingError extends Error {
   code: string;
-  context?: Record<string, any>;
+  context?: Record<string, unknown>;
   retryable: boolean;
   timestamp: Date;
 }
 
 export interface ValidationError extends Error {
   field: string;
-  value: any;
-  expected: any;
+  value: unknown;
+  expected: unknown;
 }
 
 // Enhanced Result Types with Generics
-export type Result<T, E = ScrapingError> = 
+export type Result<T, E = ScrapingError> =
   | { success: true; data: T }
   | { success: false; error: E };
 
@@ -37,7 +37,7 @@ export interface BaseProduct<T = string> {
   variations: ProductVariation[];
   regularPrice?: T;
   salePrice?: T;
-  metadata?: Record<string, any>;
+  metadata?: Record<string, unknown>;
 }
 
 export interface NormalizedProduct extends BaseProduct<string> {
@@ -90,7 +90,7 @@ export interface RecipeConfig {
   description?: string;
   version: string;
   siteUrl: string;
-  
+
   // Selectors for data extraction
   selectors: {
     // Core product fields
@@ -103,23 +103,23 @@ export interface RecipeConfig {
     descriptionFallbacks?: string[];
     shortDescription?: string | string[];
     category?: string | string[];
-    
+
     // Product discovery
     productLinks: string | string[];
     pagination?: {
       nextPage: string;
       maxPages?: number;
     };
-    
+
     // Attributes and variations
     attributes: string | string[];
     variations?: string | string[];
-    
+
     // Embedded data sources
     embeddedJson?: string[];
     apiEndpoints?: string[];
   };
-  
+
   // Text transformations and cleaning
   transforms?: {
     title?: string[];
@@ -128,7 +128,7 @@ export interface RecipeConfig {
     attributes?: Record<string, string[]>;
     category?: string[];
   };
-  
+
   // Site-specific behavior
   behavior?: {
     waitForSelectors?: string[];
@@ -145,7 +145,7 @@ export interface RecipeConfig {
     skipStyles?: boolean; // Skip CSS processing for speed
     skipScripts?: boolean; // Skip JavaScript processing for speed
   };
-  
+
   // Fallback strategies
   fallbacks?: {
     title?: string[];
@@ -157,7 +157,7 @@ export interface RecipeConfig {
     shortDescription?: string[];
     category?: string[];
   };
-  
+
   // Validation rules
   validation?: {
     requiredFields?: string[];
@@ -188,7 +188,7 @@ export interface RecipeLoader {
 }
 
 // Enhanced Job Management with Generics
-export interface ScrapingJob<T = any> {
+export interface ScrapingJob<T = unknown> {
   id: string;
   status: 'pending' | 'running' | 'completed' | 'failed' | 'cancelled';
   createdAt: Date;
@@ -266,7 +266,7 @@ export const VariationCsvSchema = z.object({
 });
 
 // Enhanced API Response Types with Generics
-export interface ApiResponse<T = any, E = string> {
+export interface ApiResponse<T = unknown, E = string> {
   success: boolean;
   data?: T;
   error?: E;
@@ -276,7 +276,7 @@ export interface ApiResponse<T = any, E = string> {
 }
 
 // Enhanced Scraping Request with Generics
-export interface ScrapingRequest<T = any> {
+export interface ScrapingRequest<T = unknown> {
   siteUrl: string;
   recipe: string;
   options?: T & {
@@ -304,7 +304,7 @@ export interface Service {
 }
 
 // Enhanced Storage Types with Generics
-export interface StorageEntry<T = any> {
+export interface StorageEntry<T = unknown> {
   jobId: string;
   parentCsv: string;
   variationCsv: string;
@@ -332,7 +332,7 @@ export interface RateLimitConfig {
 }
 
 // Performance Metrics with Generics
-export interface PerformanceMetrics<T = any> {
+export interface PerformanceMetrics<T = unknown> {
   totalJobs: number;
   totalProducts: number;
   averageTimePerProduct: number;

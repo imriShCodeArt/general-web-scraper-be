@@ -18,18 +18,18 @@ function createCleanFilename(originalFilename: string, type: string): string {
     .replace(/\s+/g, '-') // Replace spaces with hyphens
     .replace(/-+/g, '-') // Replace multiple hyphens with single
     .trim();
-  
+
   // Limit length and add type prefix
   const maxLength = 50;
-  const truncatedName = cleanName.length > maxLength 
-    ? cleanName.substring(0, maxLength) 
+  const truncatedName = cleanName.length > maxLength
+    ? cleanName.substring(0, maxLength)
     : cleanName;
-  
+
   return `${type}-${truncatedName || 'products'}`;
 }
 
 const app = express();
-const port = process.env.PORT || 3000;
+
 
 // Initialize services
 const scrapingService = new ScrapingService();
@@ -70,16 +70,16 @@ app.get('/health', (req, res) => {
 
 // Root endpoint
 app.get('/', (req, res) => {
-  res.json({ 
-    message: 'Web Scraper v2 API', 
+  res.json({
+    message: 'Web Scraper v2 API',
     status: 'running',
     timestamp: new Date().toISOString(),
     endpoints: {
       health: '/health',
       recipes: '/api/recipes',
       scrape: '/api/scrape/init',
-      storage: '/api/storage'
-    }
+      storage: '/api/storage',
+    },
   });
 });
 
@@ -92,7 +92,7 @@ app.use('/api/recipes', recipeRoutes);
 app.post('/api/scrape/init', async (req, res) => {
   try {
     const { siteUrl, recipe, options } = req.body;
-    
+
     if (!siteUrl || !recipe) {
       return res.status(400).json({
         success: false,
@@ -125,7 +125,7 @@ app.get('/api/scrape/status/:jobId', async (req, res) => {
   try {
     const { jobId } = req.params;
     const result = await scrapingService.getJobStatus(jobId);
-    
+
     if (result.success) {
       return res.json(result);
     } else {
@@ -201,7 +201,7 @@ app.post('/api/scrape/cancel/:jobId', async (req, res) => {
   try {
     const { jobId } = req.params;
     const result = await scrapingService.cancelJob(jobId);
-    
+
     if (result.success) {
       return res.json(result);
     } else {
@@ -220,9 +220,9 @@ app.post('/api/scrape/cancel/:jobId', async (req, res) => {
 app.get('/api/scrape/download/:jobId/:type', async (req, res) => {
   try {
     const { jobId, type } = req.params;
-    
+
     console.log('🔍 DEBUG: Download CSV request:', { jobId, type });
-    
+
     if (!['parent', 'variation'].includes(type)) {
       return res.status(400).json({
         success: false,
@@ -238,12 +238,12 @@ app.get('/api/scrape/download/:jobId/:type', async (req, res) => {
         error: 'Job result not found',
       });
     }
-    
+
     console.log('🔍 DEBUG: Storage entry found:', {
       hasParentCsv: !!storageEntry.parentCsv,
       parentCsvLength: storageEntry.parentCsv?.length || 0,
       hasVariationCsv: !!storageEntry.variationCsv,
-      variationCsvLength: storageEntry.variationCsv?.length || 0
+      variationCsvLength: storageEntry.variationCsv?.length || 0,
     });
 
     let csvContent: string;
@@ -257,15 +257,15 @@ app.get('/api/scrape/download/:jobId/:type', async (req, res) => {
       console.log('🔍 DEBUG: Parent CSV processing:', {
         csvContentLength: csvContent?.length || 0,
         cleanFilename,
-        hasContent: !!csvContent && csvContent.trim() !== ''
+        hasContent: !!csvContent && csvContent.trim() !== '',
       });
     } else {
       csvContent = storageEntry.variationCsv;
       console.log('🔍 DEBUG: Variation CSV processing:', {
         csvContentLength: csvContent?.length || 0,
-        hasContent: !!csvContent && csvContent.trim() !== ''
+        hasContent: !!csvContent && csvContent.trim() !== '',
       });
-      
+
       if (!csvContent || csvContent.trim() === '') {
         console.log('❌ DEBUG: Variation CSV is empty, returning 404');
         return res.status(404).json({
@@ -288,14 +288,14 @@ app.get('/api/scrape/download/:jobId/:type', async (req, res) => {
       type,
       filename,
       contentLength: Buffer.byteLength(csvContent, 'utf8'),
-      hasContent: !!csvContent
+      hasContent: !!csvContent,
     });
-    
+
     // Set headers for CSV download
     res.setHeader('Content-Type', 'text/csv; charset=utf-8');
     res.setHeader('Content-Disposition', `attachment; filename="${filename}"; filename*=UTF-8''${encodeURIComponent(filename)}`);
     res.setHeader('Content-Length', Buffer.byteLength(csvContent, 'utf8'));
-    
+
     // Send CSV content
     res.send(csvContent);
     return;
@@ -328,9 +328,9 @@ app.get('/api/storage/job/:jobId', async (req, res) => {
   try {
     const { jobId } = req.params;
     console.log('🔍 DEBUG: Storage job request for jobId:', jobId);
-    
+
     const storageEntry = await storageService.getJobResult(jobId);
-    
+
     if (!storageEntry) {
       console.log('❌ DEBUG: Storage entry not found for jobId:', jobId);
       return res.status(404).json({
@@ -343,7 +343,7 @@ app.get('/api/storage/job/:jobId', async (req, res) => {
       hasParentCsv: !!storageEntry.parentCsv,
       parentCsvLength: storageEntry.parentCsv?.length || 0,
       hasVariationCsv: !!storageEntry.variationCsv,
-      variationCsvLength: storageEntry.variationCsv?.length || 0
+      variationCsvLength: storageEntry.variationCsv?.length || 0,
     });
 
     return res.json({
@@ -377,7 +377,7 @@ app.delete('/api/storage/clear', async (req, res) => {
 });
 
 // Error handling middleware
-app.use((error: Error, req: express.Request, res: express.Response, next: express.NextFunction) => {
+app.use((error: Error, req: express.Request, res: express.Response) => {
   logger.error('Unhandled error:', error);
   res.status(500).json({
     success: false,
@@ -396,7 +396,7 @@ app.use('*', (req, res) => {
 // Graceful shutdown handling
 process.on('SIGINT', async () => {
   logger.info('Received SIGINT, shutting down gracefully...');
-  
+
   // Clean up scraping service (this will close Puppeteer browsers)
   try {
     await scrapingService.cleanup();
@@ -404,13 +404,13 @@ process.on('SIGINT', async () => {
   } catch (error) {
     logger.error('Failed to cleanup scraping service:', error);
   }
-  
-  process.exit(0);
+
+  // Graceful shutdown completed
 });
 
 process.on('SIGTERM', async () => {
   logger.info('Received SIGTERM, shutting down gracefully...');
-  
+
   // Clean up scraping service (this will close Puppeteer browsers)
   try {
     await scrapingService.cleanup();
@@ -418,8 +418,8 @@ process.on('SIGTERM', async () => {
   } catch (error) {
     logger.error('Failed to cleanup scraping service:', error);
   }
-  
-  process.exit(0);
+
+  // Graceful shutdown completed
 });
 
 // Server startup is now handled in index.ts for Vercel compatibility

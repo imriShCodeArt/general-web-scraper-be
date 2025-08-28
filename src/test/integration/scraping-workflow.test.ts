@@ -9,9 +9,6 @@ jest.mock('../../lib/recipe-manager');
 jest.mock('../../lib/storage');
 jest.mock('../../lib/csv-generator');
 
-const MockRecipeManager = RecipeManager as jest.MockedClass<typeof RecipeManager>;
-const MockStorageService = StorageService as jest.MockedClass<typeof StorageService>;
-const MockCsvGenerator = CsvGenerator as jest.MockedClass<typeof CsvGenerator>;
 
 describe('Scraping Workflow Integration Tests', () => {
   let scrapingService: ScrapingService;
@@ -122,7 +119,7 @@ describe('Scraping Workflow Integration Tests', () => {
             title: 'Test Product',
             sku: 'TEST-001',
           }),
-        ])
+        ]),
       );
 
       // Verify storage was called
@@ -132,7 +129,7 @@ describe('Scraping Workflow Integration Tests', () => {
           jobId: response.data!.jobId,
           productCount: 2,
           variationCount: 0,
-        })
+        }),
       );
     });
 
@@ -224,7 +221,7 @@ describe('Scraping Workflow Integration Tests', () => {
             title: 'Test Product',
             sku: 'TEST-001',
           }),
-        ])
+        ]),
       );
     });
 
@@ -248,7 +245,7 @@ describe('Scraping Workflow Integration Tests', () => {
           yield 'https://test.com/product/2';
           yield 'https://test.com/product/3';
         }),
-        extractProduct: jest.fn().mockImplementation(async (url: string) => {
+        extractProduct: jest.fn().mockImplementation(async () => {
           const extractionTime = Date.now();
           extractionTimes.push(extractionTime);
           return testUtils.createMockRawProduct();
@@ -331,7 +328,7 @@ describe('Scraping Workflow Integration Tests', () => {
           yield 'https://test.com/product/1';
           yield 'https://test.com/product/2';
         }),
-        extractProduct: jest.fn().mockImplementation(async (url: string) => {
+        extractProduct: jest.fn().mockImplementation(async () => {
           // Add a long delay to make the job take time
           await new Promise(resolve => setTimeout(resolve, 200));
           return Promise.resolve(testUtils.createMockRawProduct());

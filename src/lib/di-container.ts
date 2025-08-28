@@ -15,13 +15,13 @@ export class Container implements DIContainer {
    */
   register<T>(token: string, implementation: T): void {
     this.services.set(token, implementation);
-    
+
     // If it's a service with lifecycle hooks, store them
     if (implementation && typeof implementation === 'object' && 'name' in implementation) {
       const service = implementation as Service;
       this.lifecycleHooks.set(token, {
         initialize: service.initialize?.bind(service),
-        destroy: service.destroy?.bind(service)
+        destroy: service.destroy?.bind(service),
       });
     }
   }
@@ -54,12 +54,12 @@ export class Container implements DIContainer {
       const factory = this.factories.get(token);
       if (factory) {
         const instance = factory();
-        
+
         // If it's a singleton factory, store the instance
         if (token.startsWith('singleton:')) {
           this.singletons.set(token, instance);
         }
-        
+
         return instance;
       }
     }
@@ -84,7 +84,7 @@ export class Container implements DIContainer {
    */
   async initialize(): Promise<void> {
     const initPromises: Promise<void>[] = [];
-    
+
     for (const [token, hooks] of this.lifecycleHooks) {
       if (hooks.initialize) {
         try {
@@ -95,7 +95,7 @@ export class Container implements DIContainer {
         }
       }
     }
-    
+
     await Promise.all(initPromises);
   }
 
@@ -104,7 +104,7 @@ export class Container implements DIContainer {
    */
   async destroy(): Promise<void> {
     const destroyPromises: Promise<void>[] = [];
-    
+
     for (const [token, hooks] of this.lifecycleHooks) {
       if (hooks.destroy) {
         try {
@@ -115,7 +115,7 @@ export class Container implements DIContainer {
         }
       }
     }
-    
+
     await Promise.all(destroyPromises);
   }
 
@@ -136,7 +136,7 @@ export class Container implements DIContainer {
     return [
       ...Array.from(this.services.keys()),
       ...Array.from(this.factories.keys()),
-      ...Array.from(this.singletons.keys())
+      ...Array.from(this.singletons.keys()),
     ];
   }
 
@@ -145,12 +145,12 @@ export class Container implements DIContainer {
    */
   createChild(): Container {
     const child = new Container();
-    
+
     // Copy services to child
     for (const [token, service] of this.services) {
       child.register(token, service);
     }
-    
+
     return child;
   }
 }
@@ -180,7 +180,7 @@ export function Inject(token: string) {
         return container.resolve(token);
       },
       enumerable: true,
-      configurable: true
+      configurable: true,
     });
   };
 }

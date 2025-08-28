@@ -12,9 +12,9 @@ export class NormalizationToolkit {
       rawSku: raw.sku,
       rawDescription: raw.description,
       rawAttributes: raw.attributes,
-      rawVariations: raw.variations
+      rawVariations: raw.variations,
     });
-    
+
     const result: NormalizedProduct = {
       id: raw.id || this.generateSku(url),
       title: this.cleanText(raw.title || ''),
@@ -27,7 +27,7 @@ export class NormalizationToolkit {
       category: this.cleanText(raw.category || 'Uncategorized'),
       productType: this.detectProductType(raw),
       attributes: this.normalizeAttributes((raw.attributes || {} as Record<string, (string | undefined)[]>)),
-      variations: this.normalizeVariations(raw.variations || [], raw.sku || ''),
+      variations: this.normalizeVariations(raw.variations || []),
       regularPrice: this.cleanText(raw.price || ''),
       salePrice: this.cleanText(raw.salePrice || ''),
       normalizedAt: new Date(),
@@ -44,14 +44,14 @@ export class NormalizationToolkit {
         result.sku = this.cleanSku(`${base}-PARENT`);
       }
     }
-    
+
     debug('🔍 DEBUG: normalizeProduct result:', {
       title: result.title,
       productType: result.productType,
       attributesCount: Object.keys(result.attributes).length,
-      variationsCount: result.variations.length
+      variationsCount: result.variations.length,
     });
-    
+
     return result;
   }
 
@@ -60,7 +60,7 @@ export class NormalizationToolkit {
    */
   static cleanText(text: string): string {
     if (!text) return '';
-    
+
     return text
       .trim()
       // Decode percent encoding
@@ -75,7 +75,7 @@ export class NormalizationToolkit {
       .replace(/&lt;/g, '<')
       .replace(/&gt;/g, '>')
       .replace(/&quot;/g, '"')
-      .replace(/&#39;/g, "'")
+      .replace(/&#39;/g, '\'')
       .replace(/&nbsp;/g, ' ')
       // Remove extra whitespace
       .replace(/\s+/g, ' ')
@@ -89,7 +89,7 @@ export class NormalizationToolkit {
    */
   static cleanSku(sku: string): string {
     if (!sku) return '';
-    
+
     return sku
       .trim()
       .replace(/[^a-zA-Z0-9\-_]/g, '')
@@ -127,7 +127,7 @@ export class NormalizationToolkit {
    */
   static normalizeStockStatus(status?: string): 'instock' | 'outofstock' {
     if (!status) return 'instock';
-    
+
     const normalized = status.toLowerCase().trim();
     if (normalized.includes('out') || normalized.includes('unavailable') || normalized.includes('0')) {
       return 'outofstock';
@@ -140,7 +140,7 @@ export class NormalizationToolkit {
    */
   static normalizeImages(images: string[], baseUrl?: string): string[] {
     if (!images || images.length === 0) return [];
-    
+
     return images
       .filter(img => img && img.trim())
       .map(img => {
@@ -163,21 +163,21 @@ export class NormalizationToolkit {
       variationsLength: raw.variations?.length || 0,
       hasAttributes: !!raw.attributes,
       attributesKeys: raw.attributes ? Object.keys(raw.attributes) : [],
-      attributesValues: raw.attributes ? Object.values(raw.attributes) : []
+      attributesValues: raw.attributes ? Object.values(raw.attributes) : [],
     });
-    
+
     // If we already have parsed variations (e.g., from WooCommerce JSON), treat as variable
     if (raw.variations && raw.variations.length > 0) {
       debug('✅ DEBUG: Product type = variable (has parsed variations)');
       return 'variable';
     }
-    
+
     // Don't mark as variable just because of multiple attribute values
     if (raw.attributes && Object.keys(raw.attributes).length > 0) {
       debug('ℹ️ DEBUG: Product has attributes but no variations - treating as simple');
       return 'simple';
     }
-    
+
     debug('❌ DEBUG: Product type = simple (no variations or attributes)');
     return 'simple';
   }
@@ -188,23 +188,23 @@ export class NormalizationToolkit {
   static normalizeAttributes(attributes: Record<string, (string | undefined)[]>): Record<string, string[]> {
     debug('🔍 DEBUG: normalizeAttributes called with:', attributes);
     const normalized: Record<string, string[]> = {};
-    
+
     for (const [key, values] of Object.entries(attributes)) {
       debug('🔍 DEBUG: Processing attribute:', key, 'values:', values);
-      
+
       if (!values || values.length === 0) {
         debug('❌ DEBUG: Skipping empty attribute:', key);
         continue;
       }
-      
+
       const cleanKey = this.cleanAttributeName(key);
       const cleanValues = values
         .filter((value): value is string => value !== undefined)
         .map(value => this.cleanText(value))
         .filter(value => value && !this.isPlaceholder(value));
-      
+
       debug('🔍 DEBUG: Cleaned attribute:', cleanKey, 'cleanValues:', cleanValues);
-      
+
       if (cleanValues.length > 0) {
         normalized[cleanKey] = cleanValues;
         debug('✅ DEBUG: Added normalized attribute:', cleanKey, '=', cleanValues);
@@ -212,7 +212,7 @@ export class NormalizationToolkit {
         debug('❌ DEBUG: No clean values for attribute:', cleanKey);
       }
     }
-    
+
     debug('🔍 DEBUG: Final normalized attributes:', normalized);
     return normalized;
   }
@@ -372,24 +372,24 @@ export class NormalizationToolkit {
       'בחירת אפשרותק',  // Hebrew with option prefix
       'בחירת אפשרותר',  // Hebrew with option prefix
       'בחירת אפשרותש',  // Hebrew with option prefix
-      'בחירת אפשרותת'   // Hebrew with option prefix
+      'בחירת אפשרותת',   // Hebrew with option prefix
     ];
-    
-    const isPlaceholder = placeholders.some(placeholder => 
-      text.toLowerCase().includes(placeholder.toLowerCase())
+
+    const isPlaceholder = placeholders.some(placeholder =>
+      text.toLowerCase().includes(placeholder.toLowerCase()),
     );
-    
+
     if (isPlaceholder) {
       debug('🔍 DEBUG: Detected placeholder text:', text);
     }
-    
+
     return isPlaceholder;
   }
 
   /**
    * Normalize product variations
    */
-  static normalizeVariations(variations: RawVariation[], parentSku: string): ProductVariation[] {
+  static normalizeVariations(variations: RawVariation[]): ProductVariation[] {
     return variations
       .filter(variation => variation && variation.sku)
       .map(variation => ({
@@ -407,16 +407,16 @@ export class NormalizationToolkit {
    */
   static cleanAttributeAssignments(assignments: Record<string, string>): Record<string, string> {
     const cleaned: Record<string, string> = {};
-    
+
     for (const [key, value] of Object.entries(assignments)) {
       const cleanKey = this.cleanAttributeName(key);
       const cleanValue = this.cleanText(value);
-      
+
       if (cleanValue && !this.isPlaceholder(cleanValue)) {
         cleaned[cleanKey] = cleanValue;
       }
     }
-    
+
     return cleaned;
   }
 
@@ -425,31 +425,31 @@ export class NormalizationToolkit {
    */
   static parseDimensions(text: string): { width?: number; height?: number; depth?: number } {
     if (!text) return {};
-    
+
     const cleaned = this.cleanText(text);
-    
+
     // Pattern: "140140" -> "140*140"
     const dimensionPattern = /(\d{2,4})(\d{2,4})/g;
     const match = dimensionPattern.exec(cleaned);
-    
+
     if (match) {
       return {
         width: parseInt(match[1] || '0'),
-        height: parseInt(match[2] || '0')
+        height: parseInt(match[2] || '0'),
       };
     }
-    
+
     // Pattern: "140 x 140" or "140*140"
     const xPattern = /(\d+)\s*[xX*]\s*(\d+)/;
     const xMatch = cleaned.match(xPattern);
-    
+
     if (xMatch) {
       return {
         width: parseInt(xMatch[1] || '0'),
-        height: parseInt(xMatch[2] || '0')
+        height: parseInt(xMatch[2] || '0'),
       };
     }
-    
+
     return {};
   }
 }
