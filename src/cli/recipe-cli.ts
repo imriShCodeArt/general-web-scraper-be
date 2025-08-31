@@ -2,9 +2,41 @@
 
 import { RecipeManager } from '../lib/recipe-manager';
 import { Command } from 'commander';
+import { rootContainer, TOKENS, initializeServices, cleanupServices } from '../lib/composition-root';
 
 const program = new Command();
-const recipeManager = new RecipeManager('./recipes');
+let recipeManager: RecipeManager;
+
+// Initialize services before running CLI
+async function initializeCLI() {
+  try {
+    await initializeServices();
+    recipeManager = await rootContainer.resolve<RecipeManager>(TOKENS.RecipeManager);
+  } catch (error) {
+    console.error('Failed to initialize services:', error);
+    process.exit(1);
+  }
+}
+
+// Cleanup services when CLI exits
+async function cleanupCLI() {
+  try {
+    await cleanupServices();
+  } catch (error) {
+    console.error('Failed to cleanup services:', error);
+  }
+}
+
+// Handle process termination
+process.on('SIGINT', async () => {
+  await cleanupCLI();
+  process.exit(0);
+});
+
+process.on('SIGTERM', async () => {
+  await cleanupCLI();
+  process.exit(0);
+});
 
 program
   .name('recipe-cli')
@@ -21,7 +53,7 @@ program
         console.log('No recipes found.');
         return;
       }
-      
+
       console.log('Available recipes:');
       recipes.forEach((recipe, index) => {
         console.log(`  ${index + 1}. ${recipe}`);
@@ -49,7 +81,7 @@ program
           console.log(`  ${key}: ${value}`);
         }
       });
-      
+
       if (recipe.transforms) {
         console.log('\nTransformations:');
         Object.entries(recipe.transforms).forEach(([key, value]) => {
@@ -62,7 +94,7 @@ program
           }
         });
       }
-      
+
       if (recipe.behavior) {
         console.log('\nBehavior:');
         Object.entries(recipe.behavior).forEach(([key, value]) => {
@@ -81,7 +113,7 @@ program
     try {
       const recipe = await recipeManager.getRecipe(recipeName);
       const isValid = recipeManager.validateRecipe(recipe);
-      
+
       if (isValid) {
         console.log(`✅ Recipe '${recipeName}' is valid`);
       } else {
@@ -122,30 +154,33 @@ program
   .action(async (recipeName: string, siteUrl: string) => {
     try {
       console.log(`Testing recipe '${recipeName}' with ${siteUrl}...`);
-      
+
       // Create adapter to test recipe
       const adapter = await recipeManager.createAdapter(siteUrl, recipeName);
       console.log('✅ Recipe loaded successfully');
-      
+
       const config = adapter.getConfig();
       console.log(`Recipe configuration: ${config.name} v${config.version}`);
-      
+
       // Test basic configuration
       if (config.selectors.title && config.selectors.price && config.selectors.images) {
         console.log('✅ Required selectors present');
       } else {
         console.log('❌ Missing required selectors');
       }
-      
+
       if (config.behavior?.rateLimit) {
         console.log(`✅ Rate limiting configured: ${config.behavior.rateLimit}ms`);
       } else {
         console.log('⚠️  No rate limiting configured');
       }
-      
     } catch (error) {
       console.error(`Failed to test recipe '${recipeName}':`, error);
     }
   });
 
-program.parse();
+// Initialize CLI and run
+(async () => {
+  await initializeCLI();
+  program.parse();
+})();

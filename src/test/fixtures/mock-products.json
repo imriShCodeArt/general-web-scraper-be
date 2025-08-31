@@ -1,0 +1,41 @@
+{
+  "rawProducts": [
+    {
+      "id": "p-001",
+      "title": "Alpha Backpack",
+      "slug": "alpha-backpack",
+      "description": "Durable backpack with laptop sleeve",
+      "shortDescription": "Everyday pack",
+      "sku": "ALPHA-001",
+      "stockStatus": "instock",
+      "images": ["https://example.com/img/alpha.jpg"],
+      "category": "Bags",
+      "productType": "simple",
+      "attributes": {"color": ["Black"], "size": ["One"]},
+      "variations": [],
+      "price": "79.90"
+    }
+  ],
+  "normalizedProducts": [
+    {
+      "id": "p-001",
+      "title": "Alpha Backpack",
+      "slug": "alpha-backpack",
+      "description": "Durable backpack with laptop sleeve",
+      "shortDescription": "Everyday pack",
+      "sku": "ALPHA-001",
+      "stockStatus": "instock",
+      "images": ["https://example.com/img/alpha.jpg"],
+      "category": "Bags",
+      "productType": "simple",
+      "attributes": {"color": ["Black"], "size": ["One"]},
+      "variations": [],
+      "regularPrice": "79.90",
+      "normalizedAt": "2024-01-01T00:00:00.000Z",
+      "sourceUrl": "https://example.com/p/alpha",
+      "confidence": 0.99
+    }
+  ]
+}
+
+

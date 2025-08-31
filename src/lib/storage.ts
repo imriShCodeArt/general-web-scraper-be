@@ -33,9 +33,9 @@ export class StorageService {
       parentCsvLength: result.parentCsv.length,
       variationCsvLength: result.variationCsv.length,
       productCount: result.productCount,
-      variationCount: result.variationCount
+      variationCount: result.variationCount,
     });
-    
+
     const entry: StorageEntry = {
       jobId,
       parentCsv: result.parentCsv,
@@ -50,7 +50,7 @@ export class StorageService {
 
     // Store in filesystem
     await this.storeToFilesystem(jobId, entry);
-    
+
     console.log('🔍 DEBUG: storeJobResult completed for jobId:', jobId);
   }
 
@@ -65,7 +65,7 @@ export class StorageService {
         createdAt: entry.createdAt.toISOString(),
         expiresAt: entry.expiresAt.toISOString(),
       };
-      
+
       await fs.writeFile(filePath, JSON.stringify(fileContent, null, 2), 'utf-8');
     } catch (error) {
       console.error(`Failed to store job ${jobId} to filesystem:`, error);
@@ -77,7 +77,7 @@ export class StorageService {
    */
   async getJobResult(jobId: string): Promise<StorageEntry | null> {
     console.log('🔍 DEBUG: getJobResult called for jobId:', jobId);
-    
+
     // Check memory first
     const memoryEntry = this.inMemoryStorage.get(jobId);
     if (memoryEntry) {
@@ -85,7 +85,7 @@ export class StorageService {
         hasParentCsv: !!memoryEntry.parentCsv,
         parentCsvLength: memoryEntry.parentCsv.length,
         hasVariationCsv: !!memoryEntry.variationCsv,
-        variationCsvLength: memoryEntry.variationCsv.length
+        variationCsvLength: memoryEntry.variationCsv.length,
       });
       return memoryEntry;
     }
@@ -93,18 +93,18 @@ export class StorageService {
     console.log('🔍 DEBUG: getJobResult not found in memory, checking filesystem');
     // Check filesystem
     const filesystemEntry = await this.loadFromFilesystem(jobId);
-    
+
     if (filesystemEntry) {
       console.log('🔍 DEBUG: getJobResult found in filesystem:', {
         hasParentCsv: !!filesystemEntry.parentCsv,
         parentCsvLength: filesystemEntry.parentCsv.length,
         hasVariationCsv: !!filesystemEntry.variationCsv,
-        variationCsvLength: filesystemEntry.variationCsv.length
+        variationCsvLength: filesystemEntry.variationCsv.length,
       });
     } else {
       console.log('🔍 DEBUG: getJobResult not found anywhere');
     }
-    
+
     return filesystemEntry;
   }
 
@@ -116,7 +116,7 @@ export class StorageService {
       const filePath = join(this.storageDir, `${jobId}.json`);
       const fileContent = await fs.readFile(filePath, 'utf-8');
       const parsed = JSON.parse(fileContent);
-      
+
       // Convert ISO strings back to Date objects
       const entry: StorageEntry = {
         ...parsed,
@@ -126,7 +126,7 @@ export class StorageService {
 
       // Cache in memory
       this.inMemoryStorage.set(jobId, entry);
-      
+
       return entry;
     } catch (error) {
       return null;
@@ -138,13 +138,13 @@ export class StorageService {
    */
   async getAllJobIds(): Promise<string[]> {
     const memoryIds = Array.from(this.inMemoryStorage.keys());
-    
+
     try {
       const files = await fs.readdir(this.storageDir);
       const fileIds = files
-        .filter(file => file.endsWith('.json'))
-        .map(file => file.replace('.json', ''));
-      
+        .filter((file) => file.endsWith('.json'))
+        .map((file) => file.replace('.json', ''));
+
       // Merge and deduplicate
       const allIds = [...new Set([...memoryIds, ...fileIds])];
       return allIds;
@@ -159,7 +159,7 @@ export class StorageService {
   async deleteJobResult(jobId: string): Promise<boolean> {
     // Remove from memory
     const memoryRemoved = this.inMemoryStorage.delete(jobId);
-    
+
     // Remove from filesystem
     let fileRemoved = false;
     try {
@@ -199,7 +199,7 @@ export class StorageService {
         if (file.endsWith('.json')) {
           const jobId = file.replace('.json', '');
           const entry = await this.loadFromFilesystem(jobId);
-          
+
           if (entry && entry.expiresAt < now) {
             await this.deleteJobResult(jobId);
           }
@@ -214,11 +214,14 @@ export class StorageService {
    * Start cleanup interval
    */
   private startCleanupInterval(): void {
-    this.cleanupInterval = setInterval(() => {
-      this.cleanupExpiredEntries().catch(error => {
-        console.error('Cleanup failed:', error);
-      });
-    }, 60 * 60 * 1000); // Run every hour
+    this.cleanupInterval = setInterval(
+      () => {
+        this.cleanupExpiredEntries().catch((error) => {
+          console.error('Cleanup failed:', error);
+        });
+      },
+      60 * 60 * 1000,
+    ); // Run every hour
   }
 
   /**
@@ -245,8 +248,8 @@ export class StorageService {
 
     try {
       const files = await fs.readdir(this.storageDir);
-      filesystemJobs = files.filter(file => file.endsWith('.json')).length;
-      
+      filesystemJobs = files.filter((file) => file.endsWith('.json')).length;
+
       // Calculate total size
       for (const file of files) {
         if (file.endsWith('.json')) {
@@ -273,7 +276,7 @@ export class StorageService {
   async clearAll(): Promise<void> {
     // Clear memory
     this.inMemoryStorage.clear();
-    
+
     // Clear filesystem
     try {
       const files = await fs.readdir(this.storageDir);

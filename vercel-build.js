@@ -26,7 +26,7 @@ try {
   execSync(installCmd, {
     cwd: backendPath,
     stdio: 'inherit',
-    env: { ...process.env, NODE_ENV: 'development', NPM_CONFIG_PRODUCTION: 'false' }
+    env: { ...process.env, NODE_ENV: 'development', NPM_CONFIG_PRODUCTION: 'false' },
   });
   console.log('✅ Backend dependencies installed\n');
 } catch (error) {
@@ -42,7 +42,7 @@ try {
     execSync('npm install -D typescript', {
       cwd: backendPath,
       stdio: 'inherit',
-      env: { ...process.env, NODE_ENV: 'development', NPM_CONFIG_PRODUCTION: 'false' }
+      env: { ...process.env, NODE_ENV: 'development', NPM_CONFIG_PRODUCTION: 'false' },
     });
   }
 } catch (error) {
@@ -58,7 +58,7 @@ try {
   execSync(cmd, {
     cwd: backendPath,
     stdio: 'inherit',
-    env: { ...process.env, NODE_ENV: 'development', NPM_CONFIG_PRODUCTION: 'false' }
+    env: { ...process.env, NODE_ENV: 'development', NPM_CONFIG_PRODUCTION: 'false' },
   });
   console.log('✅ Backend built successfully\n');
 } catch (error) {
@@ -92,7 +92,7 @@ const copyRecursive = (src, dest) => {
     if (!fs.existsSync(dest)) {
       fs.mkdirSync(dest, { recursive: true });
     }
-    fs.readdirSync(src).forEach(file => {
+    fs.readdirSync(src).forEach((file) => {
       copyRecursive(path.join(src, file), path.join(dest, file));
     });
   } else {

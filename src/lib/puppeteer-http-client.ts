@@ -39,11 +39,12 @@ export class PuppeteerHttpClient {
           '--safebrowsing-disable-auto-update',
           '--disable-web-security',
           '--disable-features=VizDisplayCompositor',
-        ]
+        ],
       });
       this.isInitialized = true;
     } catch (error) {
-      if (process.env.SCRAPER_DEBUG === '1') console.error('Failed to initialize Puppeteer browser:', error);
+      if (process.env.SCRAPER_DEBUG === '1')
+        console.error('Failed to initialize Puppeteer browser:', error);
       throw error;
     }
   }
@@ -53,41 +54,49 @@ export class PuppeteerHttpClient {
    */
   async getDom(url: string, options?: { waitForSelectors?: string[] }): Promise<JSDOM> {
     await this.initialize();
-    
+
     if (!this.browser) {
       throw new Error('Browser not initialized');
     }
 
     const page = await this.browser.newPage();
-    
+
     try {
       // Set user agent to avoid detection
-      await page.setUserAgent('Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36');
-      
+      await page.setUserAgent(
+        'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36',
+      );
+
       // Enhanced performance optimizations - block more unnecessary resources
       await page.setRequestInterception(true);
       page.on('request', (req) => {
         const type = req.resourceType();
         const url = req.url();
-        
+
         // Block more resource types for faster loading
         if (['font', 'media', 'stylesheet', 'image'].includes(type)) {
           return req.abort();
         }
-        
+
         // Block analytics and tracking scripts
-        if (url.includes('google-analytics') || url.includes('facebook') || url.includes('doubleclick') || 
-            url.includes('googletagmanager') || url.includes('hotjar') || url.includes('mixpanel')) {
+        if (
+          url.includes('google-analytics') ||
+          url.includes('facebook') ||
+          url.includes('doubleclick') ||
+          url.includes('googletagmanager') ||
+          url.includes('hotjar') ||
+          url.includes('mixpanel')
+        ) {
           return req.abort();
         }
-        
+
         return req.continue();
       });
-      
+
       // Navigate to the page with optimized wait strategy
-      await page.goto(url, { 
+      await page.goto(url, {
         waitUntil: 'domcontentloaded', // Changed from 'networkidle2' to 'domcontentloaded' for faster loading
-        timeout: 20000 // Reduced from 30000ms to 20000ms
+        timeout: 20000, // Reduced from 30000ms to 20000ms
       });
 
       // Smart selector waiting with reduced timeout
@@ -103,16 +112,21 @@ export class PuppeteerHttpClient {
 
       // Faster image loading strategy - only wait for critical selectors
       try {
-        await page.waitForSelector('.product-gallery, .product__media-list, .product__media-item img, picture source', { timeout: 5000 }); // Reduced timeout
-      } catch {}
+        await page.waitForSelector(
+          '.product-gallery, .product__media-list, .product__media-item img, picture source',
+          { timeout: 5000 },
+        ); // Reduced timeout
+      } catch {
+        // Ignore timeout errors and continue
+      }
 
       // Optimized scrolling - single scroll instead of multiple
       await page.evaluate(() => {
         window.scrollTo(0, document.body.scrollHeight);
       });
-      
+
       // Reduced wait time for images
-      await new Promise(resolve => setTimeout(resolve, 500)); // Reduced from 1000ms to 500ms
+      await new Promise((resolve) => setTimeout(resolve, 500)); // Reduced from 1000ms to 500ms
 
       // Extra: dump selector counts when debugging
       if (process.env.SCRAPER_DEBUG === '1') {
@@ -132,7 +146,7 @@ export class PuppeteerHttpClient {
 
       // Get the final HTML after JavaScript execution
       const html = await page.content();
-      
+
       // Create JSDOM from the rendered HTML
       const dom = new JSDOM(html, { url });
 
@@ -143,14 +157,14 @@ export class PuppeteerHttpClient {
           if (!existsSync('./debug')) mkdirSync('./debug');
           const ts = Date.now();
           writeFileSync(`./debug/page-${ts}.html`, html);
-          if (process.env.SCRAPER_DEBUG === '1') console.log(`[puppeteer] HTML snapshot saved: debug/page-${ts}.html`);
+          if (process.env.SCRAPER_DEBUG === '1')
+            console.log(`[puppeteer] HTML snapshot saved: debug/page-${ts}.html`);
         } catch (e) {
           if (process.env.SCRAPER_DEBUG === '1') console.warn('Failed to write HTML snapshot', e);
         }
       }
 
       return dom;
-      
     } finally {
       await page.close();
     }
@@ -163,23 +177,28 @@ export class PuppeteerHttpClient {
     try {
       // Quick check for variation forms (most common case)
       const hasVariations = await page.evaluate(() => {
-        const variationForms = document.querySelectorAll('.variations_form, .woocommerce-variations, form[class*="variations"]');
+        const variationForms = document.querySelectorAll(
+          '.variations_form, .woocommerce-variations, form[class*="variations"]',
+        );
         return variationForms.length > 0;
       });
-      
+
       if (hasVariations) {
         // Only wait for essential elements if variations exist
-        await page.waitForFunction(() => {
-          const forms = document.querySelectorAll('.variations_form, .woocommerce-variations');
-          return forms.length > 0;
-        }, { timeout: 2000 }); // Reduced from 3000
-        
+        await page.waitForFunction(
+          () => {
+            const forms = document.querySelectorAll('.variations_form, .woocommerce-variations');
+            return forms.length > 0;
+          },
+          { timeout: 2000 },
+        ); // Reduced from 3000
+
         // Minimal wait for dynamic content
-        await new Promise(resolve => setTimeout(resolve, 200)); // Reduced from 500
+        await new Promise((resolve) => setTimeout(resolve, 200)); // Reduced from 500
       }
-      
     } catch (error) {
-      if (process.env.SCRAPER_DEBUG === '1') console.warn('WooCommerce variations not detected, continuing without waiting');
+      if (process.env.SCRAPER_DEBUG === '1')
+        console.warn('WooCommerce variations not detected, continuing without waiting');
     }
   }
 

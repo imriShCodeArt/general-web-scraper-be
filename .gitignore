@@ -134,7 +134,9 @@ Thumbs.db
 # Storage files (scraped data)
 storage/
 *.csv
-*.json
+# Exclude JSON data files but allow test fixtures and config files
+storage/*.json
+data/*.json
 
 # Test outputs
 test-results/

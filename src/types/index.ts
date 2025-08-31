@@ -3,23 +3,64 @@ import { z } from 'zod';
 // Enhanced Error Types
 export interface ScrapingError extends Error {
   code: string;
-  context?: Record<string, any>;
+  context?: Record<string, unknown>;
   retryable: boolean;
   timestamp: Date;
 }
 
 export interface ValidationError extends Error {
   field: string;
-  value: any;
-  expected: any;
+  value: unknown;
+  expected: unknown;
 }
 
 // Enhanced Result Types with Generics
-export type Result<T, E = ScrapingError> = 
+export type Result<T, E = ScrapingError> =
   | { success: true; data: T }
   | { success: false; error: E };
 
 export type AsyncResult<T, E = ScrapingError> = Promise<Result<T, E>>;
+
+// Generic Raw Product Data Types
+export interface BaseRawProductData {
+  id?: string;
+  title?: string;
+  slug?: string;
+  description?: string;
+  shortDescription?: string;
+  sku?: string;
+  stockStatus?: string;
+  images?: (string | undefined)[];
+  category?: string;
+  productType?: string;
+  attributes?: Record<string, (string | undefined)[]>;
+  variations?: RawVariation[];
+  price?: string;
+  salePrice?: string;
+  metadata?: Record<string, unknown>;
+}
+
+// Specific raw product types for different data sources
+export interface JsonLdProductData extends BaseRawProductData {
+  '@type': 'Product';
+  '@context'?: string;
+  '@graph'?: JsonLdProductData[];
+  image?: string | string[] | { src?: string; url?: string }[];
+  media?: { src?: string; preview_image?: { src?: string }; image?: string; url?: string }[];
+}
+
+export interface ShopifyProductData extends BaseRawProductData {
+  images?: string[];
+  media?: { src?: string; preview_image?: { src?: string }; image?: string; url?: string }[];
+}
+
+export interface GenericProductData extends BaseRawProductData {
+  // Additional generic fields
+  [key: string]: unknown;
+}
+
+// Union type for all possible raw product data sources
+export type RawProductData = JsonLdProductData | ShopifyProductData | GenericProductData | BaseRawProductData;
 
 // Enhanced Product Types with Generics
 export interface BaseProduct<T = string> {
@@ -37,7 +78,7 @@ export interface BaseProduct<T = string> {
   variations: ProductVariation[];
   regularPrice?: T;
   salePrice?: T;
-  metadata?: Record<string, any>;
+  metadata?: Record<string, unknown>;
 }
 
 export interface NormalizedProduct extends BaseProduct<string> {
@@ -75,12 +116,20 @@ export interface RawVariation {
 }
 
 // Enhanced Adapter Interface with Generics
-export interface SiteAdapter<T = RawProduct> {
+export interface SiteAdapter<T extends RawProductData = RawProductData> {
   discoverProducts(): AsyncIterable<string>;
   extractProduct(url: string): Promise<T>;
   getConfig(): RecipeConfig;
   cleanup?(): Promise<void>;
   validateProduct(product: T): ValidationError[];
+}
+
+// Generic constraint for product data that can be normalized
+export interface NormalizableProductData extends BaseRawProductData {
+  // Must have at least some basic product information
+  title?: string;
+  description?: string;
+  sku?: string;
 }
 
 // Enhanced Recipe Configuration with Validation
@@ -90,7 +139,7 @@ export interface RecipeConfig {
   description?: string;
   version: string;
   siteUrl: string;
-  
+
   // Selectors for data extraction
   selectors: {
     // Core product fields
@@ -103,23 +152,23 @@ export interface RecipeConfig {
     descriptionFallbacks?: string[];
     shortDescription?: string | string[];
     category?: string | string[];
-    
+
     // Product discovery
     productLinks: string | string[];
     pagination?: {
       nextPage: string;
       maxPages?: number;
     };
-    
+
     // Attributes and variations
     attributes: string | string[];
     variations?: string | string[];
-    
+
     // Embedded data sources
     embeddedJson?: string[];
     apiEndpoints?: string[];
   };
-  
+
   // Text transformations and cleaning
   transforms?: {
     title?: string[];
@@ -128,7 +177,7 @@ export interface RecipeConfig {
     attributes?: Record<string, string[]>;
     category?: string[];
   };
-  
+
   // Site-specific behavior
   behavior?: {
     waitForSelectors?: string[];
@@ -145,7 +194,7 @@ export interface RecipeConfig {
     skipStyles?: boolean; // Skip CSS processing for speed
     skipScripts?: boolean; // Skip JavaScript processing for speed
   };
-  
+
   // Fallback strategies
   fallbacks?: {
     title?: string[];
@@ -157,7 +206,7 @@ export interface RecipeConfig {
     shortDescription?: string[];
     category?: string[];
   };
-  
+
   // Validation rules
   validation?: {
     requiredFields?: string[];
@@ -188,7 +237,7 @@ export interface RecipeLoader {
 }
 
 // Enhanced Job Management with Generics
-export interface ScrapingJob<T = any> {
+export interface ScrapingJob<T = unknown> {
   id: string;
   status: 'pending' | 'running' | 'completed' | 'failed' | 'cancelled';
   createdAt: Date;
@@ -266,7 +315,7 @@ export const VariationCsvSchema = z.object({
 });
 
 // Enhanced API Response Types with Generics
-export interface ApiResponse<T = any, E = string> {
+export interface ApiResponse<T = unknown, E = string> {
   success: boolean;
   data?: T;
   error?: E;
@@ -276,7 +325,7 @@ export interface ApiResponse<T = any, E = string> {
 }
 
 // Enhanced Scraping Request with Generics
-export interface ScrapingRequest<T = any> {
+export interface ScrapingRequest<T = unknown> {
   siteUrl: string;
   recipe: string;
   options?: T & {
@@ -304,7 +353,7 @@ export interface Service {
 }
 
 // Enhanced Storage Types with Generics
-export interface StorageEntry<T = any> {
+export interface StorageEntry<T = unknown> {
   jobId: string;
   parentCsv: string;
   variationCsv: string;
@@ -332,11 +381,41 @@ export interface RateLimitConfig {
 }
 
 // Performance Metrics with Generics
-export interface PerformanceMetrics<T = any> {
+export interface PerformanceMetrics<T = unknown> {
   totalJobs: number;
   totalProducts: number;
   averageTimePerProduct: number;
   totalProcessingTime: number;
   customMetrics?: T;
   lastUpdated: Date;
+}
+
+// Generic HTTP Response Types
+export interface GenericHttpResponse<T = unknown> {
+  data: T;
+  status: number;
+  statusText: string;
+  headers: Record<string, string>;
+}
+
+// Generic JSON Data Types
+export interface JsonData<T = unknown> {
+  [key: string]: T;
+}
+
+export interface JsonArray<T = unknown> extends Array<T> {}
+
+// Generic Product Options
+export interface ProductOptions {
+  maxProducts?: number;
+  categories?: string[];
+  enableEnrichment?: boolean;
+  retryOnFailure?: boolean;
+  maxRetries?: number;
+  [key: string]: unknown;
+}
+
+// Generic Metadata Types
+export interface GenericMetadata<T = unknown> {
+  [key: string]: T;
 }

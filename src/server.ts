@@ -3,9 +3,13 @@ import cors from 'cors';
 import helmet from 'helmet';
 import compression from 'compression';
 import { ScrapingService } from './lib/scraping-service';
-import { StorageService } from './lib/storage';
+import { rootContainer, RequestContext } from './lib/composition-root';
+import { Container } from './lib/di/container';
+import { TOKENS } from './lib/di/tokens';
 import pino from 'pino';
 import recipeRoutes from './app/api/recipes/route';
+import swaggerUi from 'swagger-ui-express';
+import { swaggerSpec } from './app/openapi';
 
 /**
  * Create a clean filename for CSV downloads
@@ -18,22 +22,18 @@ function createCleanFilename(originalFilename: string, type: string): string {
     .replace(/\s+/g, '-') // Replace spaces with hyphens
     .replace(/-+/g, '-') // Replace multiple hyphens with single
     .trim();
-  
+
   // Limit length and add type prefix
   const maxLength = 50;
-  const truncatedName = cleanName.length > maxLength 
-    ? cleanName.substring(0, maxLength) 
-    : cleanName;
-  
+  const truncatedName =
+    cleanName.length > maxLength ? cleanName.substring(0, maxLength) : cleanName;
+
   return `${type}-${truncatedName || 'products'}`;
 }
 
 const app = express();
-const port = process.env.PORT || 3000;
 
-// Initialize services
-const scrapingService = new ScrapingService();
-const storageService = new StorageService();
+// Services are now managed by DI container
 
 // Logger
 const logger = pino({
@@ -60,6 +60,31 @@ app.use((req, res, next) => {
     ip: req.ip,
     userAgent: req.get('User-Agent'),
   });
+  // attach a scope per request with RequestContext and scoped logger
+  const scope = rootContainer.createScope();
+  const requestId = (Math.random() + 1).toString(36).substring(2);
+  const ctx: RequestContext = {
+    requestId,
+    ip: req.ip,
+    userAgent: req.get('User-Agent') || undefined,
+    timestamp: new Date(),
+  };
+  scope.register(TOKENS.RequestContext, {
+    lifetime: 'scoped',
+    factory: () => ctx,
+  });
+  // child logger with request bindings
+  scope.register(TOKENS.Logger, {
+    lifetime: 'scoped',
+    factory: async (_c) => {
+      const base = await rootContainer.resolve(TOKENS.Logger);
+      return (base as unknown as { child: (bindings: Record<string, unknown>) => unknown }).child({ requestId: ctx.requestId, ip: ctx.ip });
+    },
+  });
+  (req as unknown as { containerScope?: Container }).containerScope = scope;
+  res.on('finish', async () => {
+    await scope.dispose();
+  });
   next();
 });
 
@@ -70,16 +95,18 @@ app.get('/health', (req, res) => {
 
 // Root endpoint
 app.get('/', (req, res) => {
-  res.json({ 
-    message: 'Web Scraper v2 API', 
+  res.json({
+    message: 'Web Scraper v2 API',
     status: 'running',
     timestamp: new Date().toISOString(),
     endpoints: {
       health: '/health',
       recipes: '/api/recipes',
       scrape: '/api/scrape/init',
-      storage: '/api/storage'
-    }
+      storage: '/api/storage',
+      docs: '/docs',
+      openapi: '/openapi.json',
+    },
   });
 });
 
@@ -87,12 +114,18 @@ app.get('/', (req, res) => {
 app.use('/api/recipes', recipeRoutes);
 
 // API Routes
+// OpenAPI and Swagger UI
+app.get('/openapi.json', (req, res) => {
+  res.setHeader('Content-Type', 'application/json');
+  res.send(swaggerSpec);
+});
+app.use('/docs', swaggerUi.serve, swaggerUi.setup(swaggerSpec));
 
 // Start scraping job
 app.post('/api/scrape/init', async (req, res) => {
   try {
     const { siteUrl, recipe, options } = req.body;
-    
+
     if (!siteUrl || !recipe) {
       return res.status(400).json({
         success: false,
@@ -100,6 +133,14 @@ app.post('/api/scrape/init', async (req, res) => {
       });
     }
 
+    const scope = (req as unknown as { containerScope?: Container }).containerScope;
+    if (!scope) {
+      return res.status(500).json({
+        success: false,
+        error: 'Container scope not available',
+      });
+    }
+    const scrapingService = await scope.resolve(TOKENS.ScrapingService) as ScrapingService;
     const result = await scrapingService.startScraping({
       siteUrl,
       recipe,
@@ -124,8 +165,16 @@ app.post('/api/scrape/init', async (req, res) => {
 app.get('/api/scrape/status/:jobId', async (req, res) => {
   try {
     const { jobId } = req.params;
+    const scope = (req as unknown as { containerScope?: Container }).containerScope;
+    if (!scope) {
+      return res.status(500).json({
+        success: false,
+        error: 'Container scope not available',
+      });
+    }
+    const scrapingService = await scope.resolve(TOKENS.ScrapingService) as ScrapingService;
     const result = await scrapingService.getJobStatus(jobId);
-    
+
     if (result.success) {
       return res.json(result);
     } else {
@@ -143,6 +192,14 @@ app.get('/api/scrape/status/:jobId', async (req, res) => {
 // Get all jobs
 app.get('/api/scrape/jobs', async (req, res) => {
   try {
+    const scope = (req as unknown as { containerScope?: Container }).containerScope;
+    if (!scope) {
+      return res.status(500).json({
+        success: false,
+        error: 'Container scope not available',
+      });
+    }
+    const scrapingService = await scope.resolve(TOKENS.ScrapingService) as ScrapingService;
     const result = await scrapingService.getAllJobs();
     return res.json(result);
   } catch (error) {
@@ -157,6 +214,14 @@ app.get('/api/scrape/jobs', async (req, res) => {
 // Get performance metrics
 app.get('/api/scrape/performance', async (req, res) => {
   try {
+    const scope = (req as unknown as { containerScope?: Container }).containerScope;
+    if (!scope) {
+      return res.status(500).json({
+        success: false,
+        error: 'Container scope not available',
+      });
+    }
+    const scrapingService = await scope.resolve(TOKENS.ScrapingService) as ScrapingService;
     const result = await scrapingService.getPerformanceMetrics();
     return res.json(result);
   } catch (error) {
@@ -171,6 +236,14 @@ app.get('/api/scrape/performance', async (req, res) => {
 // Get real-time performance monitoring
 app.get('/api/scrape/performance/live', async (req, res) => {
   try {
+    const scope = (req as unknown as { containerScope?: Container }).containerScope;
+    if (!scope) {
+      return res.status(500).json({
+        success: false,
+        error: 'Container scope not available',
+      });
+    }
+    const scrapingService = await scope.resolve(TOKENS.ScrapingService) as ScrapingService;
     const result = await scrapingService.getLivePerformanceMetrics();
     return res.json(result);
   } catch (error) {
@@ -185,6 +258,14 @@ app.get('/api/scrape/performance/live', async (req, res) => {
 // Get performance recommendations
 app.get('/api/scrape/performance/recommendations', async (req, res) => {
   try {
+    const scope = (req as unknown as { containerScope?: Container }).containerScope;
+    if (!scope) {
+      return res.status(500).json({
+        success: false,
+        error: 'Container scope not available',
+      });
+    }
+    const scrapingService = await scope.resolve(TOKENS.ScrapingService) as ScrapingService;
     const result = await scrapingService.getPerformanceRecommendations();
     return res.json(result);
   } catch (error) {
@@ -200,8 +281,16 @@ app.get('/api/scrape/performance/recommendations', async (req, res) => {
 app.post('/api/scrape/cancel/:jobId', async (req, res) => {
   try {
     const { jobId } = req.params;
+    const scope = (req as unknown as { containerScope?: Container }).containerScope;
+    if (!scope) {
+      return res.status(500).json({
+        success: false,
+        error: 'Container scope not available',
+      });
+    }
+    const scrapingService = await scope.resolve(TOKENS.ScrapingService) as ScrapingService;
     const result = await scrapingService.cancelJob(jobId);
-    
+
     if (result.success) {
       return res.json(result);
     } else {
@@ -220,9 +309,9 @@ app.post('/api/scrape/cancel/:jobId', async (req, res) => {
 app.get('/api/scrape/download/:jobId/:type', async (req, res) => {
   try {
     const { jobId, type } = req.params;
-    
+
     console.log('🔍 DEBUG: Download CSV request:', { jobId, type });
-    
+
     if (!['parent', 'variation'].includes(type)) {
       return res.status(400).json({
         success: false,
@@ -230,6 +319,14 @@ app.get('/api/scrape/download/:jobId/:type', async (req, res) => {
       });
     }
 
+    const scope = (req as unknown as { containerScope?: Container }).containerScope;
+    if (!scope) {
+      return res.status(500).json({
+        success: false,
+        error: 'Container scope not available',
+      });
+    }
+    const storageService = await scope.resolve(TOKENS.StorageService) as any;
     const storageEntry = await storageService.getJobResult(jobId);
     if (!storageEntry) {
       console.log('❌ DEBUG: Storage entry not found for jobId:', jobId);
@@ -238,12 +335,12 @@ app.get('/api/scrape/download/:jobId/:type', async (req, res) => {
         error: 'Job result not found',
       });
     }
-    
+
     console.log('🔍 DEBUG: Storage entry found:', {
       hasParentCsv: !!storageEntry.parentCsv,
       parentCsvLength: storageEntry.parentCsv?.length || 0,
       hasVariationCsv: !!storageEntry.variationCsv,
-      variationCsvLength: storageEntry.variationCsv?.length || 0
+      variationCsvLength: storageEntry.variationCsv?.length || 0,
     });
 
     let csvContent: string;
@@ -252,20 +349,23 @@ app.get('/api/scrape/download/:jobId/:type', async (req, res) => {
     if (type === 'parent') {
       csvContent = storageEntry.parentCsv;
       // Create a clean filename without Hebrew characters and excessive length
-      const cleanFilename = createCleanFilename(storageEntry.metadata?.filename || 'products', type);
+      const cleanFilename = createCleanFilename(
+        storageEntry.metadata?.filename || 'products',
+        type,
+      );
       filename = `parent-${cleanFilename}`;
       console.log('🔍 DEBUG: Parent CSV processing:', {
         csvContentLength: csvContent?.length || 0,
         cleanFilename,
-        hasContent: !!csvContent && csvContent.trim() !== ''
+        hasContent: !!csvContent && csvContent.trim() !== '',
       });
     } else {
       csvContent = storageEntry.variationCsv;
       console.log('🔍 DEBUG: Variation CSV processing:', {
         csvContentLength: csvContent?.length || 0,
-        hasContent: !!csvContent && csvContent.trim() !== ''
+        hasContent: !!csvContent && csvContent.trim() !== '',
       });
-      
+
       if (!csvContent || csvContent.trim() === '') {
         console.log('❌ DEBUG: Variation CSV is empty, returning 404');
         return res.status(404).json({
@@ -273,7 +373,10 @@ app.get('/api/scrape/download/:jobId/:type', async (req, res) => {
           error: `${type} CSV not found for this job`,
         });
       }
-      const cleanFilename = createCleanFilename(storageEntry.metadata?.filename || 'products', type);
+      const cleanFilename = createCleanFilename(
+        storageEntry.metadata?.filename || 'products',
+        type,
+      );
       filename = `variation-${cleanFilename}`;
     }
 
@@ -288,18 +391,20 @@ app.get('/api/scrape/download/:jobId/:type', async (req, res) => {
       type,
       filename,
       contentLength: Buffer.byteLength(csvContent, 'utf8'),
-      hasContent: !!csvContent
+      hasContent: !!csvContent,
     });
-    
+
     // Set headers for CSV download
     res.setHeader('Content-Type', 'text/csv; charset=utf-8');
-    res.setHeader('Content-Disposition', `attachment; filename="${filename}"; filename*=UTF-8''${encodeURIComponent(filename)}`);
+    res.setHeader(
+      'Content-Disposition',
+      `attachment; filename="${filename}"; filename*=UTF-8''${encodeURIComponent(filename)}`,
+    );
     res.setHeader('Content-Length', Buffer.byteLength(csvContent, 'utf8'));
-    
+
     // Send CSV content
     res.send(csvContent);
     return;
-
   } catch (error) {
     logger.error('Failed to download CSV:', error);
     return res.status(500).json({
@@ -312,6 +417,14 @@ app.get('/api/scrape/download/:jobId/:type', async (req, res) => {
 // Get storage statistics
 app.get('/api/storage/stats', async (req, res) => {
   try {
+    const scope = (req as unknown as { containerScope?: Container }).containerScope;
+    if (!scope) {
+      return res.status(500).json({
+        success: false,
+        error: 'Container scope not available',
+      });
+    }
+    const scrapingService = await scope.resolve(TOKENS.ScrapingService) as ScrapingService;
     const result = await scrapingService.getStorageStats();
     res.json(result);
   } catch (error) {
@@ -328,9 +441,17 @@ app.get('/api/storage/job/:jobId', async (req, res) => {
   try {
     const { jobId } = req.params;
     console.log('🔍 DEBUG: Storage job request for jobId:', jobId);
-    
+
+    const scope = (req as unknown as { containerScope?: Container }).containerScope;
+    if (!scope) {
+      return res.status(500).json({
+        success: false,
+        error: 'Container scope not available',
+      });
+    }
+    const storageService = await scope.resolve(TOKENS.StorageService) as any;
     const storageEntry = await storageService.getJobResult(jobId);
-    
+
     if (!storageEntry) {
       console.log('❌ DEBUG: Storage entry not found for jobId:', jobId);
       return res.status(404).json({
@@ -343,7 +464,7 @@ app.get('/api/storage/job/:jobId', async (req, res) => {
       hasParentCsv: !!storageEntry.parentCsv,
       parentCsvLength: storageEntry.parentCsv?.length || 0,
       hasVariationCsv: !!storageEntry.variationCsv,
-      variationCsvLength: storageEntry.variationCsv?.length || 0
+      variationCsvLength: storageEntry.variationCsv?.length || 0,
     });
 
     return res.json({
@@ -362,6 +483,14 @@ app.get('/api/storage/job/:jobId', async (req, res) => {
 // Clear all storage
 app.delete('/api/storage/clear', async (req, res) => {
   try {
+    const scope = (req as unknown as { containerScope?: Container }).containerScope;
+    if (!scope) {
+      return res.status(500).json({
+        success: false,
+        error: 'Container scope not available',
+      });
+    }
+    const storageService = await scope.resolve(TOKENS.StorageService) as any;
     await storageService.clearAll();
     res.json({
       success: true,
@@ -377,7 +506,7 @@ app.delete('/api/storage/clear', async (req, res) => {
 });
 
 // Error handling middleware
-app.use((error: Error, req: express.Request, res: express.Response, next: express.NextFunction) => {
+app.use((error: Error, req: express.Request, res: express.Response) => {
   logger.error('Unhandled error:', error);
   res.status(500).json({
     success: false,
@@ -396,30 +525,34 @@ app.use('*', (req, res) => {
 // Graceful shutdown handling
 process.on('SIGINT', async () => {
   logger.info('Received SIGINT, shutting down gracefully...');
-  
+
   // Clean up scraping service (this will close Puppeteer browsers)
   try {
+    const scope = rootContainer.createScope();
+    const scrapingService = await scope.resolve<ScrapingService>(TOKENS.ScrapingService);
     await scrapingService.cleanup();
     logger.info('Scraping service cleaned up successfully');
   } catch (error) {
     logger.error('Failed to cleanup scraping service:', error);
   }
-  
-  process.exit(0);
+
+  // Graceful shutdown completed
 });
 
 process.on('SIGTERM', async () => {
   logger.info('Received SIGTERM, shutting down gracefully...');
-  
+
   // Clean up scraping service (this will close Puppeteer browsers)
   try {
+    const scope = rootContainer.createScope();
+    const scrapingService = await scope.resolve<ScrapingService>(TOKENS.ScrapingService);
     await scrapingService.cleanup();
     logger.info('Scraping service cleaned up successfully');
   } catch (error) {
     logger.error('Failed to cleanup scraping service:', error);
   }
-  
-  process.exit(0);
+
+  // Graceful shutdown completed
 });
 
 // Server startup is now handled in index.ts for Vercel compatibility

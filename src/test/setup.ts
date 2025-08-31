@@ -1,19 +1,21 @@
-import { container } from '../lib/di-container';
+import { initializeServices, cleanupServices } from '../lib/composition-root';
+import { RecipeConfig, RawProduct, NormalizedProduct, ScrapingJob } from '../types';
 
 // Define the test utilities interface
 interface TestUtils {
-  createMockRecipe: (overrides?: Partial<any>) => any;
-  createMockRawProduct: (overrides?: Partial<any>) => any;
-  createMockNormalizedProduct: (overrides?: Partial<any>) => any;
-  createMockScrapingJob: (overrides?: Partial<any>) => any;
+  createMockRecipe: (overrides?: Partial<RecipeConfig>) => RecipeConfig;
+  createMockRawProduct: (overrides?: Partial<RawProduct>) => RawProduct;
+  createMockNormalizedProduct: (overrides?: Partial<NormalizedProduct>) => NormalizedProduct;
+  createMockScrapingJob: (overrides?: Partial<ScrapingJob>) => ScrapingJob;
   wait: (ms: number) => Promise<void>;
-  createMockHttpResponse: (html: string, status?: number) => any;
+  createMockHttpResponse: (html: string, status?: number) => { body: string; status: number };
   createMockHtml: (content: string) => string;
   resetMocks: () => void;
 }
 
 // Extend global types for Jest
 declare global {
+  // eslint-disable-next-line no-var
   var testUtils: TestUtils;
 }
 
@@ -21,26 +23,18 @@ declare global {
 beforeAll(async () => {
   // Set test environment
   process.env.NODE_ENV = 'test';
-  
-  // Initialize test container
-  await container.initialize();
+
+  // Initialize services
+  await initializeServices();
 });
 
 // Global test teardown
 afterAll(async () => {
-  // Clean up test container
-  await container.destroy();
-  container.clear();
+  // Clean up services
+  await cleanupServices();
 });
 
 // Mock console methods to reduce noise in tests
-const originalConsole = {
-  log: console.log,
-  warn: console.warn,
-  error: console.error,
-  info: console.info,
-  debug: console.debug
-};
 
 beforeEach(() => {
   // Suppress console output during tests unless explicitly needed
@@ -54,12 +48,9 @@ beforeEach(() => {
 afterEach(() => {
   // Restore console methods
   jest.restoreAllMocks();
-  
+
   // Clear all mocks
   jest.clearAllMocks();
-  
-  // Clear container for each test
-  container.clear();
 });
 
 // Test utilities
@@ -67,7 +58,7 @@ export const testUtils: TestUtils = {
   /**
    * Create a mock recipe configuration for testing
    */
-  createMockRecipe: (overrides: Partial<any> = {}) => ({
+  createMockRecipe: (overrides: Partial<RecipeConfig> = {}) => ({
     name: 'test-recipe',
     description: 'Test recipe for unit testing',
     version: '1.0.0',
@@ -94,13 +85,13 @@ export const testUtils: TestUtils = {
       minDescriptionLength: 10,
       maxTitleLength: 100,
     },
-    ...overrides
+    ...overrides,
   }),
 
   /**
    * Create a mock raw product for testing
    */
-  createMockRawProduct: (overrides: Partial<any> = {}) => ({
+  createMockRawProduct: (overrides: Partial<RawProduct> = {}) => ({
     id: 'test-001',
     title: 'Test Product',
     slug: 'test-product',
@@ -114,13 +105,13 @@ export const testUtils: TestUtils = {
     attributes: { color: ['Red', 'Blue'] },
     variations: [],
     price: '99.99',
-    ...overrides
+    ...overrides,
   }),
 
   /**
    * Create a mock normalized product for testing
    */
-  createMockNormalizedProduct: (overrides: Partial<any> = {}) => ({
+  createMockNormalizedProduct: (overrides: Partial<NormalizedProduct> = {}) => ({
     id: 'test-001',
     title: 'Test Product',
     slug: 'test-product',
@@ -137,13 +128,13 @@ export const testUtils: TestUtils = {
     normalizedAt: new Date(),
     sourceUrl: 'https://test-site.com/product/test',
     confidence: 0.95,
-    ...overrides
+    ...overrides,
   }),
 
   /**
    * Create a mock scraping job for testing
    */
-  createMockScrapingJob: (overrides: Partial<any> = {}) => ({
+  createMockScrapingJob: (overrides: Partial<ScrapingJob> = {}) => ({
     id: 'test-job-001',
     status: 'pending',
     createdAt: new Date(),
@@ -155,21 +146,20 @@ export const testUtils: TestUtils = {
       recipe: 'test-recipe',
       categories: ['test-category'],
     },
-    ...overrides
+    ...overrides,
   }),
 
   /**
    * Wait for a specified time (useful for testing async operations)
    */
-  wait: (ms: number) => new Promise(resolve => setTimeout(resolve, ms)),
+  wait: (ms: number) => new Promise((resolve) => setTimeout(resolve, ms)),
 
   /**
    * Create a mock HTTP response
    */
-  createMockHttpResponse: (html: string, status: number = 200) => ({
+  createMockHttpResponse: (html: string, status: number = 200): { body: string; status: number } => ({
+    body: html,
     status,
-    data: html,
-    headers: { 'content-type': 'text/html' }
   }),
 
   /**
@@ -193,8 +183,8 @@ export const testUtils: TestUtils = {
   resetMocks: () => {
     jest.restoreAllMocks();
     jest.clearAllMocks();
-  }
+  },
 };
 
-// Global test helpers
-global.testUtils = testUtils;
+// Attach to global for convenience in tests
+(globalThis as unknown as { testUtils: TestUtils }).testUtils = testUtils;

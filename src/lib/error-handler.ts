@@ -5,7 +5,7 @@ import { ScrapingError, ValidationError, RetryConfig } from '../types';
  */
 export class ScrapingErrorImpl extends Error implements ScrapingError {
   public readonly code: string;
-  public readonly context?: Record<string, any>;
+  public readonly context?: Record<string, unknown>;
   public readonly retryable: boolean;
   public readonly timestamp: Date;
 
@@ -13,7 +13,7 @@ export class ScrapingErrorImpl extends Error implements ScrapingError {
     message: string,
     code: string,
     retryable: boolean = false,
-    context?: Record<string, any>
+    context?: Record<string, unknown>,
   ) {
     super(message);
     this.name = 'ScrapingError';
@@ -26,10 +26,10 @@ export class ScrapingErrorImpl extends Error implements ScrapingError {
 
 export class ValidationErrorImpl extends Error implements ValidationError {
   public readonly field: string;
-  public readonly value: any;
-  public readonly expected: any;
+  public readonly value: unknown;
+  public readonly expected: unknown;
 
-  constructor(field: string, value: any, expected: any, message?: string) {
+  constructor(field: string, value: unknown, expected: unknown, message?: string) {
     super(message || `Validation failed for field '${field}': expected ${expected}, got ${value}`);
     this.name = 'ValidationError';
     this.field = field;
@@ -51,7 +51,7 @@ export enum ErrorCodes {
   PRODUCT_NOT_FOUND = 'PRODUCT_NOT_FOUND',
   RECIPE_ERROR = 'RECIPE_ERROR',
   STORAGE_ERROR = 'STORAGE_ERROR',
-  UNKNOWN_ERROR = 'UNKNOWN_ERROR'
+  UNKNOWN_ERROR = 'UNKNOWN_ERROR',
 }
 
 /**
@@ -92,7 +92,7 @@ export class ErrorBoundary {
    */
   private async handleError(error: Error, context?: string): Promise<void> {
     const errorType = this.getErrorType(error);
-    
+
     // Try to find a specific handler
     const handler = this.errorHandlers.get(errorType);
     if (handler) {
@@ -149,8 +149,8 @@ export class RetryManager {
     retryableErrors: [
       ErrorCodes.NETWORK_ERROR,
       ErrorCodes.RATE_LIMIT_ERROR,
-      ErrorCodes.TIMEOUT_ERROR
-    ]
+      ErrorCodes.TIMEOUT_ERROR,
+    ],
   };
 
   /**
@@ -159,7 +159,7 @@ export class RetryManager {
   async executeWithRetry<T>(
     fn: () => Promise<T>,
     config?: Partial<RetryConfig>,
-    context?: string
+    context?: string,
   ): Promise<T> {
     const finalConfig = { ...this.defaultConfig, ...config };
     let lastError: Error;
@@ -170,7 +170,7 @@ export class RetryManager {
         return await fn();
       } catch (error) {
         lastError = error as Error;
-        
+
         // Check if error is retryable
         if (!this.isRetryableError(error as Error, finalConfig.retryableErrors)) {
           throw error;
@@ -182,18 +182,18 @@ export class RetryManager {
             `Operation failed after ${finalConfig.maxAttempts} attempts: ${lastError.message}`,
             ErrorCodes.UNKNOWN_ERROR,
             false,
-            { attempts: attempt, lastError: lastError.message, context }
+            { attempts: attempt, lastError: lastError.message, context },
           );
         }
 
         // Log retry attempt
         console.warn(
-          `Retry attempt ${attempt}/${finalConfig.maxAttempts} for ${context || 'operation'} after ${delay}ms`
+          `Retry attempt ${attempt}/${finalConfig.maxAttempts} for ${context || 'operation'} after ${delay}ms`,
         );
 
         // Wait before retry
         await this.delay(delay);
-        
+
         // Calculate next delay with exponential backoff
         delay = Math.min(delay * finalConfig.backoffMultiplier, finalConfig.maxDelay);
       }
@@ -209,19 +209,17 @@ export class RetryManager {
     if (error instanceof ScrapingErrorImpl) {
       return error.retryable && retryableErrors.includes(error.code);
     }
-    
+
     // Check error name and message for retryable patterns
     const errorText = `${error.name} ${error.message}`.toLowerCase();
-    return retryableErrors.some(code => 
-      errorText.includes(code.toLowerCase().replace('_', ' '))
-    );
+    return retryableErrors.some((code) => errorText.includes(code.toLowerCase().replace('_', ' ')));
   }
 
   /**
    * Delay execution for a specified time
    */
   private delay(ms: number): Promise<void> {
-    return new Promise(resolve => setTimeout(resolve, ms));
+    return new Promise((resolve) => setTimeout(resolve, ms));
   }
 }
 
@@ -243,29 +241,29 @@ export class ErrorFactory {
     message: string,
     code: ErrorCodes,
     retryable: boolean = false,
-    context?: Record<string, any>
+    context?: Record<string, unknown>,
   ): ScrapingErrorImpl {
     return new ScrapingErrorImpl(message, code, retryable, context);
   }
 
   static createValidationError(
     field: string,
-    value: any,
-    expected: any,
-    message?: string
+    value: unknown,
+    expected: unknown,
+    message?: string,
   ): ValidationErrorImpl {
     return new ValidationErrorImpl(field, value, expected, message);
   }
 
-  static createNetworkError(message: string, context?: Record<string, any>): ScrapingErrorImpl {
+  static createNetworkError(message: string, context?: Record<string, unknown>): ScrapingErrorImpl {
     return new ScrapingErrorImpl(message, ErrorCodes.NETWORK_ERROR, true, context);
   }
 
-  static createParseError(message: string, context?: Record<string, any>): ScrapingErrorImpl {
+  static createParseError(message: string, context?: Record<string, unknown>): ScrapingErrorImpl {
     return new ScrapingErrorImpl(message, ErrorCodes.PARSE_ERROR, false, context);
   }
 
-  static createTimeoutError(message: string, context?: Record<string, any>): ScrapingErrorImpl {
+  static createTimeoutError(message: string, context?: Record<string, unknown>): ScrapingErrorImpl {
     return new ScrapingErrorImpl(message, ErrorCodes.TIMEOUT_ERROR, true, context);
   }
 }

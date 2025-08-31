@@ -1,13 +1,15 @@
-import { RecipeLoaderService } from './recipe-loader';
+import { RecipeLoader } from './recipe-loader';
 import { GenericAdapter } from './generic-adapter';
-import { RecipeConfig, SiteAdapter } from '../types';
+import { RecipeConfig, SiteAdapter, RawProductData } from '../types';
 
 export class RecipeManager {
-  private recipeLoader: RecipeLoaderService;
-  private adapterCache: Map<string, SiteAdapter> = new Map();
+  private recipesDir: string;
+  private recipeLoader: RecipeLoader;
+  private adapterCache = new Map<string, SiteAdapter<RawProductData>>();
 
-  constructor(recipesDir: string = './recipes') {
-    this.recipeLoader = new RecipeLoaderService(recipesDir);
+  constructor(recipesDir: string = './recipes', recipeLoader?: RecipeLoader) {
+    this.recipesDir = recipesDir;
+    this.recipeLoader = recipeLoader || new RecipeLoader(recipesDir);
   }
 
   /**
@@ -30,7 +32,9 @@ export class RecipeManager {
 
     // Validate that the recipe matches the site URL
     if (!this.validateSiteUrl(recipe.siteUrl, siteUrl)) {
-      throw new Error(`Recipe '${recipe.name}' is configured for ${recipe.siteUrl}, not ${siteUrl}`);
+      throw new Error(
+        `Recipe '${recipe.name}' is configured for ${recipe.siteUrl}, not ${siteUrl}`,
+      );
     }
 
     // Create cache key
@@ -43,7 +47,7 @@ export class RecipeManager {
 
     // Create new adapter
     const adapter = new GenericAdapter(recipe, siteUrl);
-    
+
     // Cache the adapter
     this.adapterCache.set(cacheKey, adapter);
 
@@ -55,10 +59,12 @@ export class RecipeManager {
    */
   async createAdapterFromFile(siteUrl: string, recipeFilePath: string): Promise<SiteAdapter> {
     const recipe = await this.recipeLoader.loadRecipeFromFile(recipeFilePath);
-    
+
     // Validate that the recipe matches the site URL
     if (!this.validateSiteUrl(recipe.siteUrl, siteUrl)) {
-      throw new Error(`Recipe '${recipe.name}' is configured for ${recipe.siteUrl}, not ${siteUrl}`);
+      throw new Error(
+        `Recipe '${recipe.name}' is configured for ${recipe.siteUrl}, not ${siteUrl}`,
+      );
     }
 
     // Create cache key
@@ -71,7 +77,7 @@ export class RecipeManager {
 
     // Create new adapter
     const adapter = new GenericAdapter(recipe, siteUrl);
-    
+
     // Cache the adapter
     this.adapterCache.set(cacheKey, adapter);
 
@@ -104,6 +110,18 @@ export class RecipeManager {
    */
   async getRecipeBySiteUrl(siteUrl: string): Promise<RecipeConfig | null> {
     return await this.recipeLoader.getRecipeBySiteUrl(siteUrl);
+  }
+
+  /**
+   * Get recipe details by name
+   */
+  async getRecipeDetails(recipeName: string): Promise<RecipeConfig | null> {
+    try {
+      return await this.recipeLoader.loadRecipe(recipeName);
+    } catch (error) {
+      console.warn(`Failed to get recipe details for '${recipeName}':`, error);
+      return null;
+    }
   }
 
   /**
@@ -150,17 +168,17 @@ export class RecipeManager {
   private validateSiteUrl(recipeUrl: string, siteUrl: string): boolean {
     try {
       // Handle wildcard URLs
-      if (recipeUrl === "*") {
+      if (recipeUrl === '*') {
         return true; // Generic recipe matches any site
       }
-      
-      if (recipeUrl.startsWith("*.")) {
+
+      if (recipeUrl.startsWith('*.')) {
         // Wildcard subdomain matching (e.g., *.co.il)
         const recipeDomain = recipeUrl.substring(2); // Remove "*."
         const siteHost = new URL(siteUrl).hostname;
         return siteHost.endsWith(recipeDomain);
       }
-      
+
       // Exact hostname matching
       const recipeHost = new URL(recipeUrl).hostname;
       const siteHost = new URL(siteUrl).hostname;
@@ -173,7 +191,7 @@ export class RecipeManager {
   /**
    * Get recipe loader instance
    */
-  getRecipeLoader(): RecipeLoaderService {
+  getRecipeLoader(): RecipeLoader {
     return this.recipeLoader;
   }
 }

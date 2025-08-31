@@ -1,22 +1,18 @@
 import { ScrapingService } from '../../lib/scraping-service';
+import { CsvGenerator } from '../../lib/csv-generator';
+import { rootContainer, TOKENS } from '../../lib/composition-root';
+import type { Container } from '../../lib/di/container';
 import { RecipeManager } from '../../lib/recipe-manager';
 import { StorageService } from '../../lib/storage';
-import { CsvGenerator } from '../../lib/csv-generator';
 import { testUtils } from '../setup';
 import { createServer, Server } from 'http';
 import { AddressInfo } from 'net';
 
-// Mock external dependencies
-jest.mock('../../lib/recipe-manager');
-jest.mock('../../lib/storage');
-jest.mock('../../lib/csv-generator');
-
-const MockRecipeManager = RecipeManager as jest.MockedClass<typeof RecipeManager>;
-const MockStorageService = StorageService as jest.MockedClass<typeof StorageService>;
-const MockCsvGenerator = CsvGenerator as jest.MockedClass<typeof CsvGenerator>;
+// We will override DI tokens within a request-scoped container per test
 
 describe('E2E Mock Website Scraping Tests', () => {
   let scrapingService: ScrapingService;
+  let scope: Container;
   let mockRecipeManager: jest.Mocked<RecipeManager>;
   let mockStorageService: jest.Mocked<StorageService>;
   let mockCsvGenerator: jest.Mocked<CsvGenerator>;
@@ -27,7 +23,7 @@ describe('E2E Mock Website Scraping Tests', () => {
     // Create a mock HTTP server to simulate a real website
     mockServer = createServer((req, res) => {
       const url = req.url || '/';
-      
+
       if (url === '/') {
         // Homepage with product links
         res.writeHead(200, { 'Content-Type': 'text/html' });
@@ -111,7 +107,7 @@ describe('E2E Mock Website Scraping Tests', () => {
     });
   });
 
-  beforeEach(() => {
+  beforeEach(async () => {
     // Clear all mocks
     jest.clearAllMocks();
 
@@ -121,30 +117,62 @@ describe('E2E Mock Website Scraping Tests', () => {
       createAdapter: jest.fn(),
       listRecipes: jest.fn(),
       getRecipeBySiteUrl: jest.fn(),
+      createAdapterFromFile: jest.fn(),
+      listRecipesWithDetails: jest.fn(),
+      loadRecipeFromFile: jest.fn(),
+      validateRecipe: jest.fn(),
+      clearCaches: jest.fn(),
+      getCachedAdapter: jest.fn(),
+      removeCachedAdapter: jest.fn(),
+      getRecipeLoader: jest.fn(),
+      getRecipeDetails: jest.fn(),
+      // Add missing properties
+      recipesDir: './recipes',
+      recipeLoader: {} as any,
+      adapterCache: new Map(),
+      validateSiteUrl: jest.fn(),
     } as any;
 
     mockStorageService = {
       storeJobResult: jest.fn(),
       getJobResult: jest.fn(),
       getStorageStats: jest.fn(),
+      getAllJobIds: jest.fn(),
+      deleteJobResult: jest.fn(),
+      stopCleanupInterval: jest.fn(),
+      clearAll: jest.fn(),
+      // Add missing properties
+      inMemoryStorage: new Map(),
+      storageDir: './storage',
+      cleanupInterval: {} as any,
+      ensureStorageDir: jest.fn(),
     } as any;
 
     mockCsvGenerator = {
       generateBothCsvs: jest.fn(),
-    } as any;
+    };
 
-    // Mock static method
-    (CsvGenerator.generateBothCsvs as jest.Mock) = jest.fn();
+    // Create request scope and register overrides
+    scope = rootContainer.createScope();
+    scope.register(TOKENS.RecipeManager, { lifetime: 'scoped', factory: () => mockRecipeManager });
+    scope.register(TOKENS.StorageService, { lifetime: 'scoped', factory: () => mockStorageService });
+    scope.register(TOKENS.CsvGenerator, { lifetime: 'scoped', factory: () => mockCsvGenerator });
+    scope.register(TOKENS.ScrapingService, {
+      lifetime: 'transient',
+      factory: async (c) => new ScrapingService(
+        await c.resolve(TOKENS.StorageService),
+        await c.resolve(TOKENS.RecipeManager),
+        await c.resolve(TOKENS.CsvGenerator),
+        await c.resolve(TOKENS.Logger),
+      ),
+    });
 
-    // Create service with mocked dependencies
-    scrapingService = new ScrapingService();
-    (scrapingService as any).recipeManager = mockRecipeManager;
-    (scrapingService as any).storage = mockStorageService;
-    (scrapingService as any).csvGenerator = mockCsvGenerator;
+    scrapingService = await scope.resolve(TOKENS.ScrapingService);
   });
 
   afterEach(async () => {
     await scrapingService.cleanup();
+    await scope.dispose();
   });
 
   describe('Real Website Scraping Simulation', () => {
@@ -171,7 +199,7 @@ describe('E2E Mock Website Scraping Tests', () => {
           requiredFields: ['title', 'sku', 'description'],
           minDescriptionLength: 10,
           maxTitleLength: 100,
-        }
+        },
       });
 
       mockRecipeManager.getRecipe.mockResolvedValue(mockRecipe);
@@ -183,7 +211,7 @@ describe('E2E Mock Website Scraping Tests', () => {
           const response = await fetch(`${mockServerUrl}/`);
           const html = await response.text();
           const dom = new (await import('jsdom')).JSDOM(html);
-          
+
           const productLinks = dom.window.document.querySelectorAll('.product-link');
           for (const link of productLinks) {
             const href = link.getAttribute('href');
@@ -197,26 +225,32 @@ describe('E2E Mock Website Scraping Tests', () => {
           const response = await fetch(url);
           const html = await response.text();
           const dom = new (await import('jsdom')).JSDOM(html);
-          
-          const title = dom.window.document.querySelector('.product-title')?.textContent?.trim() || '';
-          const price = dom.window.document.querySelector('.product-price')?.textContent?.trim() || '';
+
+          const title =
+            dom.window.document.querySelector('.product-title')?.textContent?.trim() || '';
+          const price =
+            dom.window.document.querySelector('.product-price')?.textContent?.trim() || '';
           const sku = dom.window.document.querySelector('.product-sku')?.textContent?.trim() || '';
-          const stock = dom.window.document.querySelector('.product-stock')?.textContent?.trim() || '';
-          const description = dom.window.document.querySelector('.product-description')?.textContent?.trim() || '';
-          
+          const stock =
+            dom.window.document.querySelector('.product-stock')?.textContent?.trim() || '';
+          const description =
+            dom.window.document.querySelector('.product-description')?.textContent?.trim() || '';
+
           const images = Array.from(dom.window.document.querySelectorAll('.product-image'))
-            .map(img => img.getAttribute('src'))
-            .filter(src => src)
-            .map(src => `${mockServerUrl}${src}`);
+            .map((img) => img.getAttribute('src'))
+            .filter((src) => src)
+            .map((src) => `${mockServerUrl}${src}`);
 
           const attributes: Record<string, string[]> = {};
-          const attributeElements = dom.window.document.querySelectorAll('.product-attributes .attribute');
+          const attributeElements = dom.window.document.querySelectorAll(
+            '.product-attributes .attribute',
+          );
           for (const element of attributeElements) {
             const name = element.querySelector('.attribute-name')?.textContent?.trim();
             const values = Array.from(element.querySelectorAll('.attribute-value'))
-              .map(val => val.textContent?.trim())
-              .filter(val => val);
-            
+              .map((val) => val.textContent?.trim())
+              .filter((val) => val);
+
             if (name && values.length > 0) {
               attributes[name] = values;
             }
@@ -247,7 +281,10 @@ describe('E2E Mock Website Scraping Tests', () => {
         variationCsv: 'variation,csv,data',
         variationCount: 0,
       };
-      (CsvGenerator.generateBothCsvs as jest.Mock).mockResolvedValue(mockCsvResult);
+      jest.spyOn(CsvGenerator, 'generateBothCsvs').mockResolvedValue({
+        ...mockCsvResult,
+        productCount: 3,
+      });
 
       // Mock storage
       mockStorageService.storeJobResult.mockResolvedValue(undefined);
@@ -305,7 +342,7 @@ describe('E2E Mock Website Scraping Tests', () => {
             title: 'Product 3 Title',
             sku: 'SKU-003',
           }),
-        ])
+        ]),
       );
 
       // Verify storage was called
@@ -315,7 +352,7 @@ describe('E2E Mock Website Scraping Tests', () => {
           jobId: response.data!.jobId,
           productCount: 3,
           variationCount: 0,
-        })
+        }),
       );
     });
 
@@ -323,11 +360,11 @@ describe('E2E Mock Website Scraping Tests', () => {
       // Create a recipe that points to a non-existent server
       const mockRecipe = testUtils.createMockRecipe({
         siteUrl: 'http://localhost:9999', // Port that won't be listening
-        selectors: {
+        selectors: Object.assign({}, testUtils.createMockRecipe().selectors, {
           title: '.product-title',
           price: '.product-price',
           productLinks: '.product-link',
-        },
+        }),
       });
 
       mockRecipeManager.getRecipe.mockResolvedValue(mockRecipe);
@@ -335,6 +372,7 @@ describe('E2E Mock Website Scraping Tests', () => {
       // Create an adapter that will fail to connect
       const failingAdapter = {
         discoverProducts: jest.fn().mockImplementation(async function* () {
+          yield 'dummy-url'; // Required by require-yield rule
           throw new Error('Connection refused');
         }),
         extractProduct: jest.fn(),
@@ -368,11 +406,11 @@ describe('E2E Mock Website Scraping Tests', () => {
       // Create a recipe for a page with malformed HTML
       const mockRecipe = testUtils.createMockRecipe({
         siteUrl: mockServerUrl,
-        selectors: {
+        selectors: Object.assign({}, testUtils.createMockRecipe().selectors, {
           title: '.product-title',
           price: '.product-price',
           productLinks: '.product-link',
-        },
+        }),
       });
 
       mockRecipeManager.getRecipe.mockResolvedValue(mockRecipe);
@@ -382,7 +420,7 @@ describe('E2E Mock Website Scraping Tests', () => {
         discoverProducts: jest.fn().mockImplementation(async function* () {
           yield `${mockServerUrl}/product/1`;
         }),
-        extractProduct: jest.fn().mockImplementation(async (url: string) => {
+        extractProduct: jest.fn().mockImplementation(async () => {
           // Return malformed HTML
           const malformedHtml = `
             <html>
@@ -394,14 +432,17 @@ describe('E2E Mock Website Scraping Tests', () => {
               </body>
             </html>
           `;
-          
+
           const dom = new (await import('jsdom')).JSDOM(malformedHtml);
-          
+
           // Try to extract data even from malformed HTML
-          const title = dom.window.document.querySelector('.product-title')?.textContent?.trim() || '';
-          const price = dom.window.document.querySelector('.product-price')?.textContent?.trim() || '';
+          const title =
+            dom.window.document.querySelector('.product-title')?.textContent?.trim() || '';
+          const price =
+            dom.window.document.querySelector('.product-price')?.textContent?.trim() || '';
           const sku = dom.window.document.querySelector('.product-sku')?.textContent?.trim() || '';
-          const description = dom.window.document.querySelector('.product-description')?.textContent?.trim() || '';
+          const description =
+            dom.window.document.querySelector('.product-description')?.textContent?.trim() || '';
 
           return {
             title,
@@ -428,7 +469,10 @@ describe('E2E Mock Website Scraping Tests', () => {
         variationCsv: 'variation,csv,data',
         variationCount: 0,
       };
-      (CsvGenerator.generateBothCsvs as jest.Mock).mockResolvedValue(mockCsvResult);
+      jest.spyOn(CsvGenerator, 'generateBothCsvs').mockResolvedValue({
+        ...mockCsvResult,
+        productCount: 1,
+      });
 
       // Mock storage
       mockStorageService.storeJobResult.mockResolvedValue(undefined);
@@ -459,7 +503,7 @@ describe('E2E Mock Website Scraping Tests', () => {
             sku: expect.stringContaining('SKU-001'),
             regularPrice: expect.stringContaining('99.99'),
           }),
-        ])
+        ]),
       );
     });
   });
@@ -495,20 +539,23 @@ describe('E2E Mock Website Scraping Tests', () => {
         variationCsv: 'variation,csv,data',
         variationCount: 0,
       };
-      (CsvGenerator.generateBothCsvs as jest.Mock).mockResolvedValue(mockCsvResult);
+      jest.spyOn(CsvGenerator, 'generateBothCsvs').mockResolvedValue({
+        ...mockCsvResult,
+        productCount: 1,
+      });
       mockStorageService.storeJobResult.mockResolvedValue(undefined);
 
       // Start multiple jobs simultaneously
       const startTime = Date.now();
-      const jobPromises = Array.from({ length: 5 }, (_, i) => 
+      const jobPromises = Array.from({ length: 5 }, () =>
         scrapingService.startScraping({
           siteUrl: mockServerUrl, // Use the same mock server for all jobs
           recipe: 'concurrent-recipe',
-        })
+        }),
       );
 
       const responses = await Promise.all(jobPromises);
-      expect(responses.every(r => r.success)).toBe(true);
+      expect(responses.every((r) => r.success)).toBe(true);
 
       // Wait for all jobs to complete
       await testUtils.wait(500);
@@ -521,7 +568,7 @@ describe('E2E Mock Website Scraping Tests', () => {
 
       const totalTime = Date.now() - startTime;
       console.log(`Completed 5 concurrent jobs in ${totalTime}ms`);
-      
+
       // Should complete relatively quickly due to concurrency
       expect(totalTime).toBeLessThan(1000);
     });

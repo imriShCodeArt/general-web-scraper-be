@@ -1,102 +1,102 @@
-name: "Generic E-commerce"
-description: "A generic recipe for most standard e-commerce sites"
-version: "1.0.0"
-siteUrl: "*"
+name: 'Generic E-commerce'
+description: 'A generic recipe for most standard e-commerce sites'
+version: '1.0.0'
+siteUrl: '*'
 
 selectors:
   # Core product fields
-  title: 
-    - "h1.product-title"
-    - "h1.product-name"
-    - ".product-title"
-    - ".product-name"
-    - "h1"
-  
+  title:
+    - 'h1.product-title'
+    - 'h1.product-name'
+    - '.product-title'
+    - '.product-name'
+    - 'h1'
+
   price:
-    - ".product-price .price"
-    - ".price .amount"
-    - ".product-price"
-    - ".price"
-    - "[data-price]"
-  
+    - '.product-price .price'
+    - '.price .amount'
+    - '.product-price'
+    - '.price'
+    - '[data-price]'
+
   sku:
-    - ".product-sku"
-    - ".sku"
-    - "[data-sku]"
-    - ".product-code"
-  
+    - '.product-sku'
+    - '.sku'
+    - '[data-sku]'
+    - '.product-code'
+
   description:
-    - ".product-description"
-    - ".description"
-    - ".product-details"
-    - "#description"
-  
+    - '.product-description'
+    - '.description'
+    - '.product-details'
+    - '#description'
+
   shortDescription:
-    - ".product-summary"
-    - ".short-description"
-    - ".excerpt"
-  
+    - '.product-summary'
+    - '.short-description'
+    - '.excerpt'
+
   images:
-    - ".product-gallery img"
-    - ".product-images img"
-    - ".gallery img"
-    - ".product-photos img"
-  
+    - '.product-gallery img'
+    - '.product-images img'
+    - '.gallery img'
+    - '.product-photos img'
+
   stock:
-    - ".stock-status"
-    - ".availability"
-    - ".in-stock"
-    - ".out-of-stock"
-  
+    - '.stock-status'
+    - '.availability'
+    - '.in-stock'
+    - '.out-of-stock'
+
   category:
-    - ".breadcrumb"
-    - ".category"
-    - ".product-category"
-  
+    - '.breadcrumb'
+    - '.category'
+    - '.product-category'
+
   # Product discovery
   productLinks:
-    - ".product-item a"
-    - ".product-card a"
-    - ".product a"
+    - '.product-item a'
+    - '.product-card a'
+    - '.product a'
     - "a[href*='/product/']"
     - "a[href*='/item/']"
-  
+
   # Pagination
   pagination:
-    nextPage: ".pagination .next"
+    nextPage: '.pagination .next'
     maxPages: 50
-  
+
   # Attributes and variations
   attributes:
-    - ".product-options"
-    - ".product-attributes"
-    - ".variations"
-    - ".options"
-  
+    - '.product-options'
+    - '.product-attributes'
+    - '.variations'
+    - '.options'
+
   variations:
-    - ".product-variants"
-    - ".variants"
-    - ".product-options select"
-  
+    - '.product-variants'
+    - '.variants'
+    - '.product-options select'
+
   # Embedded data sources
   embeddedJson:
     - "script[type='application/ld+json']"
-    - "script[data-json]"
-    - "#__NEXT_DATA__"
+    - 'script[data-json]'
+    - '#__NEXT_DATA__'
 
 transforms:
   title:
-    - "trim: "
+    - 'trim: '
     - "replace:^\\s+|\\s+$"
-  
+
   price:
     - "replace:[^\\d.,]"
-    - "replace:,|."
-  
+    - 'replace:,|.'
+
   description:
     - "trim: \n\t"
     - "replace:\\s+ | "
-  
+
   attributes:
     Color:
       - "replace:^\\s+|\\s+$"
@@ -107,34 +107,34 @@ transforms:
 
 behavior:
   waitForSelectors:
-    - ".product-title"
-    - ".product-price"
+    - '.product-title'
+    - '.product-price'
   scrollToLoad: false
   useHeadlessBrowser: false
-  rateLimit: 25  # Further reduced from 100ms to 25ms for maximum speed
-  maxConcurrent: 15  # Increased from 8 to 15 for better concurrent processing
+  rateLimit: 25 # Further reduced from 100ms to 25ms for maximum speed
+  maxConcurrent: 15 # Increased from 8 to 15 for better concurrent processing
   # New performance optimizations
-  fastMode: true  # Enable fast mode for better performance
-  skipImages: false  # Keep images but optimize loading
-  skipStyles: true  # Skip CSS for faster processing
-  skipScripts: true  # Skip non-essential JavaScript
-  timeout: 10000  # Reduced timeout for faster failure detection
+  fastMode: true # Enable fast mode for better performance
+  skipImages: false # Keep images but optimize loading
+  skipStyles: true # Skip CSS for faster processing
+  skipScripts: true # Skip non-essential JavaScript
+  timeout: 10000 # Reduced timeout for faster failure detection
 
 fallbacks:
   title:
-    - "h1"
-    - ".title"
+    - 'h1'
+    - '.title'
   price:
-    - ".price"
-    - "[data-price]"
+    - '.price'
+    - '[data-price]'
   images:
     - "img[src*='product']"
-    - "img"
+    - 'img'
 
 validation:
   requiredFields:
-    - "title"
-    - "price"
-    - "images"
+    - 'title'
+    - 'price'
+    - 'images'
   priceFormat: "\\d+(\\.\\d{2})?"
-  skuFormat: "[A-Za-z0-9-_]+"
+  skuFormat: '[A-Za-z0-9-_]+'

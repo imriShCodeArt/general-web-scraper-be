@@ -23,6 +23,7 @@ general-web-scraper-be/
 ## 🚀 Quick Start
 
 ### **Development**
+
 ```bash
 # Install dependencies
 npm install

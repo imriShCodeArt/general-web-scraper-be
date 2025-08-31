@@ -1,24 +1,42 @@
-import { NextRequest, NextResponse } from 'next/server';
+// Avoid Next.js dependency for type-checking in Node-only env
+type NextRequest = unknown;
+type NextResponseInit = { status?: number };
+type NextResponseBody = { body: unknown; status?: number };
+
+const NextResponse = {
+  json: (body: unknown, init?: NextResponseInit): NextResponseBody => ({ body, ...init }),
+};
 
 /**
  * Health check endpoint for monitoring and CI/CD pipeline
  * Returns service status and health information
  */
-export async function GET(request: NextRequest) {
+function getErrorMessage(error: unknown): string {
+  return error instanceof Error ? error.message : 'Unknown error';
+}
+
+function getStackInfo(error: unknown): string | undefined {
+  if (process.env.NODE_ENV === 'development' && error instanceof Error) {
+    return error.stack;
+  }
+  return undefined;
+}
+
+export async function GET(_request: NextRequest) {
   try {
     const startTime = Date.now();
-    
+
     // Perform health checks
     const checks = await Promise.all([
       checkSystemResources(),
       checkDatabase(),
       checkExternalServices(),
     ]);
-    
+
     const duration = Date.now() - startTime;
-    const isHealthy = checks.every(check => check.status === 'healthy');
+    const isHealthy = checks.every((check) => check.status === 'healthy');
     const statusCode = isHealthy ? 200 : 503;
-    
+
     const response = {
       status: isHealthy ? 'healthy' : 'unhealthy',
       timestamp: new Date().toISOString(),
@@ -27,16 +45,16 @@ export async function GET(request: NextRequest) {
       version: process.env.npm_package_version || '1.0.0',
       environment: process.env.NODE_ENV || 'development',
     };
-    
+
     return NextResponse.json(response, { status: statusCode });
   } catch (error) {
     const errorResponse = {
       status: 'unhealthy',
       timestamp: new Date().toISOString(),
-      error: error instanceof Error ? error.message : 'Unknown error',
-      stack: process.env.NODE_ENV === 'development' ? error instanceof Error ? error.stack : undefined : undefined,
+      error: getErrorMessage(error),
+      stack: getStackInfo(error),
     };
-    
+
     return NextResponse.json(errorResponse, { status: 503 });
   }
 }
@@ -48,12 +66,13 @@ async function checkSystemResources() {
   try {
     const memoryUsage = process.memoryUsage();
     const cpuUsage = process.cpuUsage();
-    
+
     const isHealthy = memoryUsage.heapUsed < 500 * 1024 * 1024; // 500MB limit
-    
+    const status = isHealthy ? 'healthy' : 'warning';
+
     return {
       name: 'system_resources',
-      status: isHealthy ? 'healthy' : 'warning',
+      status,
       details: {
         memory: {
           heapUsed: `${Math.round(memoryUsage.heapUsed / 1024 / 1024)}MB`,
@@ -70,7 +89,7 @@ async function checkSystemResources() {
     return {
       name: 'system_resources',
       status: 'unhealthy',
-      error: error instanceof Error ? error.message : 'Unknown error',
+      error: getErrorMessage(error),
     };
   }
 }
@@ -79,44 +98,28 @@ async function checkSystemResources() {
  * Check database connectivity
  */
 async function checkDatabase() {
-  try {
-    // TODO: Implement actual database health check
-    // For now, return a mock healthy status
-    return {
-      name: 'database',
-      status: 'healthy',
-      details: {
-        message: 'Database connection check not implemented yet',
-      },
-    };
-  } catch (error) {
-    return {
-      name: 'database',
-      status: 'unhealthy',
-      error: error instanceof Error ? error.message : 'Unknown error',
-    };
-  }
+  // TODO: Implement actual database health check
+  // For now, return a mock healthy status
+  return {
+    name: 'database',
+    status: 'healthy',
+    details: {
+      message: 'Database connection check not implemented yet',
+    },
+  };
 }
 
 /**
  * Check external services
  */
 async function checkExternalServices() {
-  try {
-    // TODO: Implement actual external service health checks
-    // For now, return a mock healthy status
-    return {
-      name: 'external_services',
-      status: 'healthy',
-      details: {
-        message: 'External service checks not implemented yet',
-      },
-    };
-  } catch (error) {
-    return {
-      name: 'external_services',
-      status: 'unhealthy',
-      error: error instanceof Error ? error.message : 'Unknown error',
-    };
-  }
+  // TODO: Implement actual external service health checks
+  // For now, return a mock healthy status
+  return {
+    name: 'external_services',
+    status: 'healthy',
+    details: {
+      message: 'External service checks not implemented yet',
+    },
+  };
 }

@@ -1,5 +1,5 @@
 import { writeToBuffer } from 'fast-csv';
-import { NormalizedProduct, ProductVariation } from '../types';
+import { NormalizedProduct } from '../types';
 import { debug } from './logger';
 
 export class CsvGenerator {
@@ -8,11 +8,11 @@ export class CsvGenerator {
    */
   static async generateParentCsv(products: NormalizedProduct[]): Promise<string> {
     debug('🔍 DEBUG: generateParentCsv called with products:', products.length);
-    
+
     // Deduplicate products by SKU to prevent CSV duplicates
     const uniqueProducts = this.deduplicateProducts(products);
     debug(`🔍 DEBUG: Deduplicated from ${products.length} to ${uniqueProducts.length} products`);
-    
+
     const csvData = uniqueProducts.map((product, index) => {
       // Build attributes from product.attributes plus union of variation attributeAssignments
       const aggregatedAttributes: Record<string, string[]> = {};
@@ -32,14 +32,19 @@ export class CsvGenerator {
 
       const row: Record<string, string> = {
         post_title: product.title,
-        post_name: product.slug && product.slug.trim() !== '' ? product.slug : (product.sku ? product.sku.toLowerCase() : `product-${index + 1}`),
+        post_name:
+          product.slug && product.slug.trim() !== ''
+            ? product.slug
+            : product.sku
+              ? product.sku.toLowerCase()
+              : `product-${index + 1}`,
         post_status: 'publish',
         sku: product.sku,
-        stock_status: (product as any).stock_status || product.stockStatus,
+        stock_status: product.stockStatus,
         images: product.images.join('|'),
         'tax:product_type': product.productType,
         'tax:product_cat': product.category,
-      } as any;
+      };
 
       // Add attributes per Woo CSV Import Suite rules
       // attribute:<Name> = pipe-separated values
@@ -58,14 +63,16 @@ export class CsvGenerator {
         const isTaxonomy = /^pa_/i.test(rawName) ? 1 : 0;
         const inVariations = isVariable ? 1 : 0;
         // position|visible|is_taxonomy|in_variations
-        row[`attribute_data:${headerName}`] = `${position}|${visible}|${isTaxonomy}|${inVariations}`;
+        row[`attribute_data:${headerName}`] =
+          `${position}|${visible}|${isTaxonomy}|${inVariations}`;
 
         // Default attribute per first variation when variable
         if (isVariable && firstVariation && firstVariation.attributeAssignments) {
-          const fv = firstVariation.attributeAssignments[rawName]
-            || firstVariation.attributeAssignments[this.cleanAttributeName(rawName)]
-            || firstVariation.attributeAssignments[`pa_${this.cleanAttributeName(rawName)}`]
-            || '';
+          const fv =
+            firstVariation.attributeAssignments[rawName] ||
+            firstVariation.attributeAssignments[this.cleanAttributeName(rawName)] ||
+            firstVariation.attributeAssignments[`pa_${this.cleanAttributeName(rawName)}`] ||
+            '';
           if (fv) {
             row[`attribute_default:${headerName}`] = fv;
           }
@@ -78,10 +85,10 @@ export class CsvGenerator {
     });
 
     debug('🔍 DEBUG: generateParentCsv completed, rows:', csvData.length);
-    
+
     return new Promise((resolve, reject) => {
       writeToBuffer(csvData, { headers: true })
-        .then(buffer => resolve(buffer.toString()))
+        .then((buffer) => resolve(buffer.toString()))
         .catch(reject);
     });
   }
@@ -92,20 +99,19 @@ export class CsvGenerator {
   static async generateVariationCsv(products: NormalizedProduct[]): Promise<string> {
     const variationRows: Record<string, string>[] = [];
     const attributeHeadersSet = new Set<string>();
-    let variationId = 1;
 
     // DEBUG: Log what we're processing
     debug('🔍 DEBUG: generateVariationCsv called with products:', products.length);
-    
+
     for (const product of products) {
       debug('🔍 DEBUG: Processing product for variations:', {
         title: product.title.substring(0, 50),
         productType: product.productType,
         variationsCount: product.variations.length,
         attributesCount: Object.keys(product.attributes).length,
-        attributes: product.attributes
+        attributes: product.attributes,
       });
-      
+
       if (product.productType === 'variable' && product.variations.length > 0) {
         // Collect attribute header names from product + variations
         const aggregatedAttributes: Record<string, string[]> = {};
@@ -146,18 +152,17 @@ export class CsvGenerator {
           }
 
           variationRows.push(row);
-          variationId++;
         }
       } else {
         debug('❌ DEBUG: Product is NOT variable or has no variations:', {
           productType: product.productType,
-          variationsCount: product.variations.length
+          variationsCount: product.variations.length,
         });
       }
     }
 
     debug('🔍 DEBUG: Final variation rows count:', variationRows.length);
-    
+
     if (variationRows.length === 0) {
       return '';
     }
@@ -174,11 +179,16 @@ export class CsvGenerator {
     const dynamicHeaders = Array.from(attributeHeadersSet).sort();
     const headers = [...baseHeaders, ...dynamicHeaders];
 
-    debug('🔍 DEBUG: generateVariationCsv completed, rows:', variationRows.length, 'headers:', headers);
+    debug(
+      '🔍 DEBUG: generateVariationCsv completed, rows:',
+      variationRows.length,
+      'headers:',
+      headers,
+    );
 
     return new Promise((resolve, reject) => {
       writeToBuffer(variationRows, { headers })
-        .then(buffer => resolve(buffer.toString()))
+        .then((buffer) => resolve(buffer.toString()))
         .catch(reject);
     });
   }
@@ -193,14 +203,14 @@ export class CsvGenerator {
     variationCount: number;
   }> {
     debug('🔍 DEBUG: generateBothCsvs called with products:', products.length);
-    
+
     const [parentCsv, variationCsv] = await Promise.all([
       this.generateParentCsv(products),
       this.generateVariationCsv(products),
     ]);
 
     const variationCount = products
-      .filter(p => p.productType === 'variable')
+      .filter((p) => p.productType === 'variable')
       .reduce((sum, p) => sum + p.variations.length, 0);
 
     debug('🔍 DEBUG: generateBothCsvs results:', {
@@ -208,8 +218,8 @@ export class CsvGenerator {
       variationCount,
       parentCsvLength: parentCsv.length,
       variationCsvLength: variationCsv.length,
-      productsWithVariations: products.filter(p => p.productType === 'variable').length,
-      productTypes: products.map(p => p.productType)
+      productsWithVariations: products.filter((p) => p.productType === 'variable').length,
+      productTypes: products.map((p) => p.productType),
     });
 
     return {
@@ -236,11 +246,8 @@ export class CsvGenerator {
    */
   private static attributeDisplayName(rawName: string): string {
     const withoutPrefix = rawName.replace(/^pa_/i, '');
-    const cleaned = withoutPrefix
-      .replace(/[_\-]+/g, ' ')
-      .trim()
-      .toLowerCase();
-    return cleaned.replace(/\b\w/g, c => c.toUpperCase());
+    const cleaned = withoutPrefix.replace(/[_-]+/g, ' ').trim().toLowerCase();
+    return cleaned.replace(/\b\w/g, (c) => c.toUpperCase());
   }
 
   /**
@@ -252,18 +259,16 @@ export class CsvGenerator {
 
     for (const product of products) {
       if (!product.sku || !product.title) {
-        console.warn('⚠️ DEBUG: Skipping product without SKU or title:', product);
+        // Skip products without SKU or title silently
         continue;
       }
-      
+
       const key = `${product.sku}-${product.title}`;
       if (!seen.has(key)) {
         seen.set(key, product);
         uniqueProducts.push(product);
-        console.log(`✅ DEBUG: Added unique product: ${product.sku} - ${product.title.substring(0, 50)}`);
-      } else {
-        console.log(`⚠️ DEBUG: Skipping duplicate product: ${product.sku} - ${product.title.substring(0, 50)}`);
       }
+      // Skip duplicate products silently
     }
 
     return uniqueProducts;
@@ -279,8 +284,8 @@ export class CsvGenerator {
 
     // Try to extract category from products
     const categories = products
-      .map(p => p.category)
-      .filter(cat => cat && cat !== 'Uncategorized')
+      .map((p) => p.category)
+      .filter((cat) => cat && cat !== 'Uncategorized')
       .slice(0, 3); // Take first 3 categories
 
     if (categories.length > 0) {
@@ -303,11 +308,11 @@ export class CsvGenerator {
 
     for (let i = 0; i < products.length; i++) {
       const product = products[i];
-      
+
       if (!product?.sku) {
         errors.push(`Product ${i + 1}: Missing SKU`);
       }
-      
+
       if (!product?.title) {
         errors.push(`Product ${i + 1}: Missing title`);
       }

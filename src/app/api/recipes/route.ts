@@ -1,12 +1,18 @@
 import { Request, Response, Router } from 'express';
 import { RecipeManager } from '../../../lib/recipe-manager';
+import { createRequestScope, TOKENS } from '../../../lib/composition-root';
+
+// Simple request ID generator
+const generateRequestId = () => `${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
 
 const router = Router();
-const recipeManager = new RecipeManager('./recipes');
 
 // List all available recipes
 router.get('/list', async (req: Request, res: Response) => {
+  const requestScope = createRequestScope(generateRequestId(), req.ip, req.get('User-Agent'));
+
   try {
+    const recipeManager = await requestScope.resolve<RecipeManager>(TOKENS.RecipeManager);
     const recipes = await recipeManager.listRecipes();
     res.json({ success: true, data: recipes });
   } catch (error) {
@@ -15,11 +21,15 @@ router.get('/list', async (req: Request, res: Response) => {
       success: false,
       error: 'Failed to list recipes',
     });
+  } finally {
+    await requestScope.dispose();
   }
 });
 
 // Get specific recipe by name
 router.get('/get/:recipeName', async (req: Request, res: Response) => {
+  const requestScope = createRequestScope(generateRequestId(), req.ip, req.get('User-Agent'));
+
   try {
     const { recipeName } = req.params;
     if (!recipeName) {
@@ -28,8 +38,10 @@ router.get('/get/:recipeName', async (req: Request, res: Response) => {
         error: 'Recipe name is required',
       });
     }
+
+    const recipeManager = await requestScope.resolve<RecipeManager>(TOKENS.RecipeManager);
     const recipe = await recipeManager.getRecipe(recipeName);
-    
+
     if (recipe) {
       return res.json({ success: true, data: recipe });
     } else {
@@ -44,14 +56,18 @@ router.get('/get/:recipeName', async (req: Request, res: Response) => {
       success: false,
       error: 'Failed to get recipe',
     });
+  } finally {
+    await requestScope.dispose();
   }
 });
 
 // Get recipe by site URL
 router.get('/getBySite', async (req: Request, res: Response) => {
+  const requestScope = createRequestScope(generateRequestId(), req.ip, req.get('User-Agent'));
+
   try {
     const { siteUrl } = req.query;
-    
+
     if (!siteUrl || typeof siteUrl !== 'string') {
       return res.status(400).json({
         success: false,
@@ -59,8 +75,9 @@ router.get('/getBySite', async (req: Request, res: Response) => {
       });
     }
 
+    const recipeManager = await requestScope.resolve<RecipeManager>(TOKENS.RecipeManager);
     const siteRecipe = await recipeManager.getRecipeBySiteUrl(siteUrl);
-    
+
     if (siteRecipe) {
       return res.json({ success: true, data: siteRecipe });
     } else {
@@ -70,17 +87,22 @@ router.get('/getBySite', async (req: Request, res: Response) => {
       });
     }
   } catch (error) {
-    console.error(`Failed to find recipe for site:`, error);
+    console.error('Failed to find recipe for site:', error);
     return res.status(500).json({
       success: false,
       error: 'Failed to find recipe for site',
     });
+  } finally {
+    await requestScope.dispose();
   }
 });
 
 // List all recipes with details
 router.get('/all', async (req: Request, res: Response) => {
+  const requestScope = createRequestScope(generateRequestId(), req.ip, req.get('User-Agent'));
+
   try {
+    const recipeManager = await requestScope.resolve<RecipeManager>(TOKENS.RecipeManager);
     const allRecipes = await recipeManager.listRecipesWithDetails();
     return res.json({ success: true, data: allRecipes });
   } catch (error) {
@@ -89,12 +111,17 @@ router.get('/all', async (req: Request, res: Response) => {
       success: false,
       error: 'Failed to get all recipes',
     });
+  } finally {
+    await requestScope.dispose();
   }
 });
 
 // List all recipe names (backward compatibility)
 router.get('/names', async (req: Request, res: Response) => {
+  const requestScope = createRequestScope(generateRequestId(), req.ip, req.get('User-Agent'));
+
   try {
+    const recipeManager = await requestScope.resolve<RecipeManager>(TOKENS.RecipeManager);
     const recipeNames = await recipeManager.listRecipes();
     return res.json({ success: true, data: recipeNames });
   } catch (error) {
@@ -103,14 +130,18 @@ router.get('/names', async (req: Request, res: Response) => {
       success: false,
       error: 'Failed to get recipe names',
     });
+  } finally {
+    await requestScope.dispose();
   }
 });
 
 // Validate recipe
 router.post('/validate', async (req: Request, res: Response) => {
+  const requestScope = createRequestScope(generateRequestId(), req.ip, req.get('User-Agent'));
+
   try {
     const { recipeName } = req.body;
-    
+
     if (!recipeName) {
       return res.status(400).json({
         success: false,
@@ -118,8 +149,9 @@ router.post('/validate', async (req: Request, res: Response) => {
       });
     }
 
+    const recipeManager = await requestScope.resolve<RecipeManager>(TOKENS.RecipeManager);
     const recipe = await recipeManager.getRecipe(recipeName);
-    
+
     if (!recipe) {
       return res.status(404).json({
         success: false,
@@ -135,14 +167,18 @@ router.post('/validate', async (req: Request, res: Response) => {
       success: false,
       error: 'Failed to validate recipe',
     });
+  } finally {
+    await requestScope.dispose();
   }
 });
 
 // Load recipe from file
 router.post('/loadFromFile', async (req: Request, res: Response) => {
+  const requestScope = createRequestScope(generateRequestId(), req.ip, req.get('User-Agent'));
+
   try {
     const { filePath } = req.body;
-    
+
     if (!filePath) {
       return res.status(400).json({
         success: false,
@@ -150,6 +186,7 @@ router.post('/loadFromFile', async (req: Request, res: Response) => {
       });
     }
 
+    const recipeManager = await requestScope.resolve<RecipeManager>(TOKENS.RecipeManager);
     const recipe = await recipeManager.loadRecipeFromFile(filePath);
     return res.json({ success: true, data: recipe });
   } catch (error) {
@@ -158,6 +195,8 @@ router.post('/loadFromFile', async (req: Request, res: Response) => {
       success: false,
       error: 'Failed to load recipe from file',
     });
+  } finally {
+    await requestScope.dispose();
   }
 });
 
