@@ -26,13 +26,36 @@ describe('Scraping Workflow Integration Tests', () => {
       createAdapter: jest.fn(),
       listRecipes: jest.fn(),
       getRecipeBySiteUrl: jest.fn(),
-    };
+      createAdapterFromFile: jest.fn(),
+      listRecipesWithDetails: jest.fn(),
+      loadRecipeFromFile: jest.fn(),
+      validateRecipe: jest.fn(),
+      clearCaches: jest.fn(),
+      getCachedAdapter: jest.fn(),
+      removeCachedAdapter: jest.fn(),
+      getRecipeLoader: jest.fn(),
+      getRecipeDetails: jest.fn(),
+      // Add missing properties
+      recipesDir: './recipes',
+      recipeLoader: {} as any,
+      adapterCache: new Map(),
+      validateSiteUrl: jest.fn(),
+    } as any;
 
     mockStorageService = {
       storeJobResult: jest.fn(),
       getJobResult: jest.fn(),
       getStorageStats: jest.fn(),
-    };
+      getAllJobIds: jest.fn(),
+      deleteJobResult: jest.fn(),
+      stopCleanupInterval: jest.fn(),
+      clearAll: jest.fn(),
+      // Add missing properties
+      inMemoryStorage: new Map(),
+      storageDir: './storage',
+      cleanupInterval: {} as any,
+      ensureStorageDir: jest.fn(),
+    } as any;
 
     mockCsvGenerator = {
       generateBothCsvs: jest.fn(),

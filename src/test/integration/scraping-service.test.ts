@@ -72,6 +72,7 @@ describe('ScrapingService integration', () => {
     jest.spyOn(CsvGenerator, 'generateBothCsvs').mockResolvedValue({
       parentCsv: 'id,title\n1,Alpha',
       variationCsv: 'id,parent_id,title\n2,1,Alpha Var',
+      productCount: 1,
       variationCount: 1,
     });
 

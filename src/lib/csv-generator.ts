@@ -259,7 +259,7 @@ export class CsvGenerator {
 
     for (const product of products) {
       if (!product.sku || !product.title) {
-        console.warn('⚠️ DEBUG: Skipping product without SKU or title:', product);
+        // Skip products without SKU or title silently
         continue;
       }
 
@@ -267,14 +267,8 @@ export class CsvGenerator {
       if (!seen.has(key)) {
         seen.set(key, product);
         uniqueProducts.push(product);
-        console.log(
-          `✅ DEBUG: Added unique product: ${product.sku} - ${product.title.substring(0, 50)}`,
-        );
-      } else {
-        console.log(
-          `⚠️ DEBUG: Skipping duplicate product: ${product.sku} - ${product.title.substring(0, 50)}`,
-        );
       }
+      // Skip duplicate products silently
     }
 
     return uniqueProducts;
