@@ -3,12 +3,12 @@ on:
   workflow_run:
     workflows: ['CI/CD Pipeline']
     types: [completed]
-    branches: [main, develop]
+    branches: [main, development]
 
 jobs:
   deploy-staging:
     runs-on: ubuntu-latest
-    if: ${{ github.event.workflow_run.conclusion == 'success' && github.event.workflow_run.head_branch == 'develop' }}
+    if: ${{ github.event.workflow_run.conclusion == 'success' && github.event.workflow_run.head_branch == 'development' }}
     steps:
       - uses: actions/checkout@v3
       - uses: amondnet/vercel-action@v20
