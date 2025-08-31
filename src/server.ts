@@ -132,8 +132,8 @@ app.post('/api/scrape/init', async (req, res) => {
       });
     }
 
-    const scope = (req as any).containerScope || rootContainer.createScope();
-    const scrapingService = (await scope.resolve(TOKENS.ScrapingService)) as ScrapingService;
+    const scope = (req as any).containerScope;
+    const scrapingService = await scope.resolve(TOKENS.ScrapingService) as ScrapingService;
     const result = await scrapingService.startScraping({
       siteUrl,
       recipe,
@@ -158,8 +158,8 @@ app.post('/api/scrape/init', async (req, res) => {
 app.get('/api/scrape/status/:jobId', async (req, res) => {
   try {
     const { jobId } = req.params;
-    const scope = (req as any).containerScope || rootContainer.createScope();
-    const scrapingService = (await scope.resolve(TOKENS.ScrapingService)) as ScrapingService;
+    const scope = (req as any).containerScope;
+    const scrapingService = await scope.resolve(TOKENS.ScrapingService) as ScrapingService;
     const result = await scrapingService.getJobStatus(jobId);
 
     if (result.success) {
@@ -179,8 +179,8 @@ app.get('/api/scrape/status/:jobId', async (req, res) => {
 // Get all jobs
 app.get('/api/scrape/jobs', async (req, res) => {
   try {
-    const scope = (req as any).containerScope || rootContainer.createScope();
-    const scrapingService = (await scope.resolve(TOKENS.ScrapingService)) as ScrapingService;
+    const scope = (req as any).containerScope;
+    const scrapingService = await scope.resolve(TOKENS.ScrapingService) as ScrapingService;
     const result = await scrapingService.getAllJobs();
     return res.json(result);
   } catch (error) {
@@ -195,8 +195,8 @@ app.get('/api/scrape/jobs', async (req, res) => {
 // Get performance metrics
 app.get('/api/scrape/performance', async (req, res) => {
   try {
-    const scope = (req as any).containerScope || rootContainer.createScope();
-    const scrapingService = (await scope.resolve(TOKENS.ScrapingService)) as ScrapingService;
+    const scope = (req as any).containerScope;
+    const scrapingService = await scope.resolve(TOKENS.ScrapingService) as ScrapingService;
     const result = await scrapingService.getPerformanceMetrics();
     return res.json(result);
   } catch (error) {
@@ -211,8 +211,8 @@ app.get('/api/scrape/performance', async (req, res) => {
 // Get real-time performance monitoring
 app.get('/api/scrape/performance/live', async (req, res) => {
   try {
-    const scope = (req as any).containerScope || rootContainer.createScope();
-    const scrapingService = (await scope.resolve(TOKENS.ScrapingService)) as ScrapingService;
+    const scope = (req as any).containerScope;
+    const scrapingService = await scope.resolve(TOKENS.ScrapingService) as ScrapingService;
     const result = await scrapingService.getLivePerformanceMetrics();
     return res.json(result);
   } catch (error) {
@@ -227,8 +227,8 @@ app.get('/api/scrape/performance/live', async (req, res) => {
 // Get performance recommendations
 app.get('/api/scrape/performance/recommendations', async (req, res) => {
   try {
-    const scope = (req as any).containerScope || rootContainer.createScope();
-    const scrapingService = (await scope.resolve(TOKENS.ScrapingService)) as ScrapingService;
+    const scope = (req as any).containerScope;
+    const scrapingService = await scope.resolve(TOKENS.ScrapingService) as ScrapingService;
     const result = await scrapingService.getPerformanceRecommendations();
     return res.json(result);
   } catch (error) {
@@ -244,8 +244,8 @@ app.get('/api/scrape/performance/recommendations', async (req, res) => {
 app.post('/api/scrape/cancel/:jobId', async (req, res) => {
   try {
     const { jobId } = req.params;
-    const scope = (req as any).containerScope || rootContainer.createScope();
-    const scrapingService = (await scope.resolve(TOKENS.ScrapingService)) as ScrapingService;
+    const scope = (req as any).containerScope;
+    const scrapingService = await scope.resolve(TOKENS.ScrapingService) as ScrapingService;
     const result = await scrapingService.cancelJob(jobId);
 
     if (result.success) {
@@ -276,7 +276,7 @@ app.get('/api/scrape/download/:jobId/:type', async (req, res) => {
       });
     }
 
-    const scope = (req as any).containerScope || rootContainer.createScope();
+    const scope = (req as any).containerScope;
     const storageService = await scope.resolve(TOKENS.StorageService);
     const storageEntry = await storageService.getJobResult(jobId);
     if (!storageEntry) {
@@ -368,8 +368,8 @@ app.get('/api/scrape/download/:jobId/:type', async (req, res) => {
 // Get storage statistics
 app.get('/api/storage/stats', async (req, res) => {
   try {
-    const scope = rootContainer.createScope();
-    const scrapingService = await scope.resolve<ScrapingService>(TOKENS.ScrapingService);
+    const scope = (req as any).containerScope;
+    const scrapingService = await scope.resolve(TOKENS.ScrapingService) as ScrapingService;
     const result = await scrapingService.getStorageStats();
     res.json(result);
   } catch (error) {
@@ -387,7 +387,7 @@ app.get('/api/storage/job/:jobId', async (req, res) => {
     const { jobId } = req.params;
     console.log('🔍 DEBUG: Storage job request for jobId:', jobId);
 
-    const scope = (req as any).containerScope || rootContainer.createScope();
+    const scope = (req as any).containerScope;
     const storageService = await scope.resolve(TOKENS.StorageService);
     const storageEntry = await storageService.getJobResult(jobId);
 
@@ -422,7 +422,7 @@ app.get('/api/storage/job/:jobId', async (req, res) => {
 // Clear all storage
 app.delete('/api/storage/clear', async (req, res) => {
   try {
-    const scope = (req as any).containerScope || rootContainer.createScope();
+    const scope = (req as any).containerScope;
     const storageService = await scope.resolve(TOKENS.StorageService);
     await storageService.clearAll();
     res.json({

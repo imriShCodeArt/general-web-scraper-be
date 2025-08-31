@@ -2,7 +2,6 @@
 
 import app from './server';
 import { rootContainer } from './lib/composition-root';
-import { Container } from './lib/di/container';
 
 // Export recipe system components
 export { RecipeManager } from './lib/recipe-manager';

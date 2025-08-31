@@ -1,4 +1,4 @@
-import { rootContainer, initializeServices, cleanupServices } from '../lib/composition-root';
+import { initializeServices, cleanupServices } from '../lib/composition-root';
 import { RecipeConfig, RawProduct, NormalizedProduct, ScrapingJob } from '../types';
 
 // Define the test utilities interface
