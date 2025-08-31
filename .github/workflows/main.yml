@@ -9,6 +9,15 @@ jobs:
   test:
     runs-on: ubuntu-latest
     steps:
+      - name: Debug branch information
+        run: |
+          echo "=== TEST JOB DEBUG ==="
+          echo "github.ref = ${{ github.ref }}"
+          echo "github.head_ref = ${{ github.head_ref }}"
+          echo "github.base_ref = ${{ github.base_ref }}"
+          echo "github.event_name = ${{ github.event_name }}"
+          echo "Current branch: $(git branch --show-current)"
+          echo "======================"
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
         with:
@@ -24,6 +33,15 @@ jobs:
   security:
     runs-on: ubuntu-latest
     steps:
+      - name: Debug branch information
+        run: |
+          echo "=== SECURITY JOB DEBUG ==="
+          echo "github.ref = ${{ github.ref }}"
+          echo "github.head_ref = ${{ github.head_ref }}"
+          echo "github.base_ref = ${{ github.base_ref }}"
+          echo "github.event_name = ${{ github.event_name }}"
+          echo "Current branch: $(git branch --show-current)"
+          echo "========================"
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
         with:
