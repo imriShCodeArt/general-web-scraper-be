@@ -9,7 +9,7 @@ async function testRecipeSystem() {
   try {
     // Initialize services
     await initializeServices();
-    
+
     // Get recipe manager from DI container
     const recipeManager = await rootContainer.resolve<RecipeManager>(TOKENS.RecipeManager);
 

@@ -1,9 +1,11 @@
 import { readFileSync, existsSync, readdirSync } from 'fs';
 import { join, extname } from 'path';
 import { parse } from 'yaml';
-import { RecipeConfig, RecipeLoader } from '../types';
+import { RecipeConfig } from '../types';
 
-export class RecipeLoaderService implements RecipeLoader {
+
+
+export class RecipeLoader implements RecipeLoader {
   private recipesDir: string;
   private recipesCache: Map<string, RecipeConfig> = new Map();
 
@@ -49,7 +51,7 @@ export class RecipeLoaderService implements RecipeLoader {
     const fileContent = readFileSync(filePath, 'utf-8');
     const ext = extname(filePath).toLowerCase();
 
-    let recipeData: any;
+    let recipeData: Record<string, unknown>;
 
     try {
       if (ext === '.yaml' || ext === '.yml') {
@@ -70,10 +72,10 @@ export class RecipeLoaderService implements RecipeLoader {
       if (recipeData.recipes.length === 0) {
         throw new Error(`No recipes found in ${filePath}`);
       }
-      recipe = recipeData.recipes[0]; // Return first recipe for now
+      recipe = recipeData.recipes[0] as unknown as RecipeConfig; // Return first recipe for now
     } else if (recipeData.name && recipeData.selectors) {
       // Single recipe file
-      recipe = recipeData;
+      recipe = recipeData as unknown as RecipeConfig;
     } else {
       throw new Error(`Invalid recipe format in ${filePath}`);
     }
@@ -259,5 +261,19 @@ export class RecipeLoaderService implements RecipeLoader {
    */
   getCachedRecipe(recipeName: string): RecipeConfig | undefined {
     return this.recipesCache.get(recipeName);
+  }
+
+  /**
+   * Set the directory for recipe files
+   */
+  setRecipeDirectory(directory: string): void {
+    this.recipesDir = directory;
+  }
+
+  /**
+   * Get the current directory for recipe files
+   */
+  getRecipeDirectory(): string {
+    return this.recipesDir;
   }
 }

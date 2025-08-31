@@ -8,7 +8,7 @@ interface TestUtils {
   createMockNormalizedProduct: (overrides?: Partial<NormalizedProduct>) => NormalizedProduct;
   createMockScrapingJob: (overrides?: Partial<ScrapingJob>) => ScrapingJob;
   wait: (ms: number) => Promise<void>;
-  createMockHttpResponse: (html: string, status?: number) => any;
+  createMockHttpResponse: (html: string, status?: number) => { body: string; status: number };
   createMockHtml: (content: string) => string;
   resetMocks: () => void;
 }
@@ -157,10 +157,9 @@ export const testUtils: TestUtils = {
   /**
    * Create a mock HTTP response
    */
-  createMockHttpResponse: (html: string, status: number = 200): any => ({
+  createMockHttpResponse: (html: string, status: number = 200): { body: string; status: number } => ({
+    body: html,
     status,
-    data: html,
-    headers: { 'content-type': 'text/html' },
   }),
 
   /**
@@ -188,4 +187,4 @@ export const testUtils: TestUtils = {
 };
 
 // Attach to global for convenience in tests
-(globalThis as any).testUtils = testUtils;
+(globalThis as unknown as { testUtils: TestUtils }).testUtils = testUtils;

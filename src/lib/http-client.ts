@@ -1,200 +1,117 @@
-import axios, { AxiosInstance, AxiosRequestConfig } from 'axios';
+import axios, { AxiosRequestConfig, AxiosResponse } from 'axios';
 import { JSDOM } from 'jsdom';
+import { JsonData } from '../types';
 
 export class HttpClient {
-  private client: AxiosInstance;
-  private userAgents: string[] = [
+  private userAgents = [
     'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36',
     'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36',
     'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36',
-    'Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:89.0) Gecko/20100101 Firefox/89.0',
-    'Mozilla/5.0 (Macintosh; Intel Mac OS X 10.15; rv:89.0) Gecko/20100101 Firefox/89.0',
   ];
 
   constructor() {
-    this.client = axios.create({
-      timeout: 15000, // Reduced from 30000ms to 15000ms for faster failure detection
-      maxRedirects: 3, // Reduced from 5 to 3 for faster processing
-      validateStatus: (status) => status < 500, // Accept 4xx status codes
-      // Connection pooling and performance optimizations
-      maxContentLength: 50 * 1024 * 1024, // 50MB max content length
-      maxBodyLength: 50 * 1024 * 1024, // 50MB max body length
-      // HTTP/2 support for better performance
-      httpAgent: new (require('http').Agent)({
-        keepAlive: true,
-        keepAliveMsecs: 30000,
-        maxSockets: 50, // Increased connection pool
-        maxFreeSockets: 10,
-        timeout: 60000,
-        freeSocketTimeout: 30000,
-      }),
-      httpsAgent: new (require('https').Agent)({
-        keepAlive: true,
-        keepAliveMsecs: 30000,
-        maxSockets: 50, // Increased connection pool
-        maxFreeSockets: 10,
-        timeout: 60000,
-        freeSocketTimeout: 30000,
-      }),
-    });
+    // Set default axios configuration
+    axios.defaults.timeout = 30000;
+    axios.defaults.maxRedirects = 5;
+    axios.defaults.validateStatus = (status) => status < 400;
+  }
 
-    // Add request interceptor for rotating user agents
-    this.client.interceptors.request.use((config) => {
-      const randomUserAgent = this.userAgents[Math.floor(Math.random() * this.userAgents.length)];
-      if (randomUserAgent) {
-        config.headers['User-Agent'] = randomUserAgent;
+  /**
+   * Get a random user agent
+   */
+  private getRandomUserAgent(): string {
+    return this.userAgents[Math.floor(Math.random() * this.userAgents.length)];
+  }
+
+  /**
+   * Make a GET request with proper generic typing
+   */
+  async get<T = string>(url: string, config?: AxiosRequestConfig): Promise<T> {
+    try {
+      const response: AxiosResponse<T> = await axios.get(url, {
+        ...config,
+        headers: {
+          'User-Agent': this.getRandomUserAgent(),
+          'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8',
+          'Accept-Language': 'en-US,en;q=0.5',
+          'Accept-Encoding': 'gzip, deflate',
+          'Connection': 'keep-alive',
+          'Upgrade-Insecure-Requests': '1',
+          ...config?.headers,
+        },
+      });
+
+      return response.data;
+    } catch (error) {
+      if (axios.isAxiosError(error)) {
+        throw new Error(`HTTP GET request failed: ${error.message} (${error.response?.status})`);
       }
-      config.headers['Accept'] =
-        'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8';
-      config.headers['Accept-Language'] = 'en-US,en;q=0.5,he;q=0.3';
-      config.headers['Accept-Encoding'] = 'gzip, deflate, br'; // Added brotli support
-      config.headers['Connection'] = 'keep-alive';
-      config.headers['Upgrade-Insecure-Requests'] = '1';
-      // Performance headers
-      config.headers['Cache-Control'] = 'no-cache';
-      config.headers['Pragma'] = 'no-cache';
-      return config;
-    });
-
-    // Add response interceptor for error handling
-    this.client.interceptors.response.use(
-      (response) => response,
-      (error) => {
-        if (error.response) {
-          console.error(`HTTP ${error.response.status}: ${error.response.statusText}`);
-        } else if (error.request) {
-          console.error('Request failed: No response received');
-        } else {
-          console.error('Request setup failed:', error.message);
-        }
-        return Promise.reject(error);
-      },
-    );
-  }
-
-  /**
-   * Make a GET request and return HTML content
-   */
-  async getHtml(url: string, config?: AxiosRequestConfig): Promise<string> {
-    try {
-      const response = await this.client.get(url, {
-        ...config,
-        responseType: 'text',
-      });
-
-      return response.data;
-    } catch (error) {
-      throw new Error(`Failed to fetch HTML from ${url}: ${error}`);
+      throw new Error(`HTTP GET request failed: ${error}`);
     }
   }
 
   /**
-   * Make a GET request and return JSON content
+   * Make a POST request with proper generic typing
    */
-  async getJson<T = any>(url: string, config?: AxiosRequestConfig): Promise<T> {
+  async post<T = JsonData<unknown>>(url: string, data?: JsonData<unknown>, config?: AxiosRequestConfig): Promise<T> {
     try {
-      const response = await this.client.get(url, {
+      const response: AxiosResponse<T> = await axios.post(url, data, {
         ...config,
-        responseType: 'json',
+        headers: {
+          'User-Agent': this.getRandomUserAgent(),
+          'Content-Type': 'application/json',
+          'Accept': 'application/json, text/plain, */*',
+          ...config?.headers,
+        },
       });
 
       return response.data;
     } catch (error) {
-      throw new Error(`Failed to fetch JSON from ${url}: ${error}`);
+      if (axios.isAxiosError(error)) {
+        throw new Error(`HTTP POST request failed: ${error.message} (${error.response?.status})`);
+      }
+      throw new Error(`HTTP POST request failed: ${error}`);
     }
   }
 
   /**
-   * Make a GET request and return JSDOM document
+   * Get DOM from URL with proper error handling
    */
-  async getDom(url: string, config?: AxiosRequestConfig): Promise<JSDOM> {
+  async getDom(url: string): Promise<JSDOM> {
     try {
-      const html = await this.getHtml(url, config);
+      const html = await this.get<string>(url);
       return new JSDOM(html, { url });
     } catch (error) {
-      throw new Error(`Failed to create DOM from ${url}: ${error}`);
+      throw new Error(`Failed to get DOM from ${url}: ${error}`);
     }
   }
 
   /**
-   * Make a POST request
+   * Extract embedded JSON data with proper generic typing
    */
-  async post<T = any>(url: string, data?: any, config?: AxiosRequestConfig): Promise<T> {
-    try {
-      const response = await this.client.post(url, data, config);
-      return response.data;
-    } catch (error) {
-      throw new Error(`Failed to POST to ${url}: ${error}`);
-    }
-  }
-
-  /**
-   * Check if URL is accessible
-   */
-  async checkUrl(url: string): Promise<boolean> {
-    try {
-      await this.client.head(url, { timeout: 10000 });
-      return true;
-    } catch (error) {
-      return false;
-    }
-  }
-
-  /**
-   * Get response headers
-   */
-  async getHeaders(url: string): Promise<Record<string, string>> {
-    try {
-      const response = await this.client.head(url);
-      const headers: Record<string, string> = {};
-      Object.entries(response.headers).forEach(([key, value]) => {
-        if (value !== undefined) {
-          headers[key] = String(value);
-        }
-      });
-      return headers;
-    } catch (error) {
-      throw new Error(`Failed to get headers from ${url}: ${error}`);
-    }
-  }
-
-  /**
-   * Follow redirects and get final URL
-   */
-  async getFinalUrl(url: string): Promise<string> {
-    try {
-      const response = await this.client.get(url, {
-        maxRedirects: 10,
-        validateStatus: (status) => status < 400,
-      });
-      return response.request.res.responseUrl || url;
-    } catch (error) {
-      return url; // Return original URL if redirect fails
-    }
-  }
-
-  /**
-   * Extract embedded JSON from HTML
-   */
-  async extractEmbeddedJson(url: string, selectors: string[]): Promise<any[]> {
+  async extractEmbeddedJson(url: string, selectors: string[]): Promise<JsonData<unknown>[]> {
     try {
       const dom = await this.getDom(url);
-      const results: any[] = [];
+      const results: JsonData<unknown>[] = [];
 
       for (const selector of selectors) {
-        const elements = dom.window.document.querySelectorAll(selector);
+        try {
+          const elements = dom.window.document.querySelectorAll(selector);
 
-        for (const element of elements) {
-          try {
-            const text = element.textContent?.trim();
-            if (text) {
-              const json = JSON.parse(text);
-              results.push(json);
+          for (const element of elements) {
+            const textContent = element.textContent?.trim();
+            if (textContent) {
+              try {
+                const json = JSON.parse(textContent);
+                results.push(json);
+              } catch (parseError) {
+                // Skip invalid JSON
+                console.warn(`Failed to parse JSON from selector '${selector}':`, parseError);
+              }
             }
-          } catch (parseError) {
-            // Skip invalid JSON
-            continue;
           }
+        } catch (selectorError) {
+          console.warn(`Failed to process selector '${selector}':`, selectorError);
         }
       }
 
@@ -205,69 +122,164 @@ export class HttpClient {
   }
 
   /**
-   * Extract sitemap URLs
+   * Extract structured data (JSON-LD) with proper generic typing
    */
-  async extractSitemapUrls(sitemapUrl: string): Promise<string[]> {
+  async extractStructuredData(url: string): Promise<JsonData<unknown>[]> {
     try {
-      const dom = await this.getDom(sitemapUrl);
-      const urls: string[] = [];
+      const dom = await this.getDom(url);
+      const results: JsonData<unknown>[] = [];
 
-      // Look for sitemap entries
-      const locElements = dom.window.document.querySelectorAll('loc');
-      for (const element of locElements) {
-        const url = element.textContent?.trim();
-        if (url) {
-          urls.push(url);
+      const scripts = dom.window.document.querySelectorAll('script[type="application/ld+json"]');
+
+      for (const script of scripts) {
+        const textContent = script.textContent?.trim();
+        if (textContent) {
+          try {
+            const json = JSON.parse(textContent);
+            if (Array.isArray(json)) {
+              results.push(...json);
+            } else {
+              results.push(json);
+            }
+          } catch (parseError) {
+            console.warn('Failed to parse JSON-LD:', parseError);
+          }
         }
       }
 
-      return urls;
+      return results;
     } catch (error) {
-      throw new Error(`Failed to extract sitemap URLs from ${sitemapUrl}: ${error}`);
+      throw new Error(`Failed to extract structured data from ${url}: ${error}`);
     }
   }
 
   /**
-   * Set custom headers
+   * Extract meta tags with proper typing
    */
-  setCustomHeaders(headers: Record<string, string>): void {
-    this.client.defaults.headers.common = {
-      ...this.client.defaults.headers.common,
-      ...headers,
-    };
+  async extractMetaTags(url: string): Promise<Record<string, string>> {
+    try {
+      const dom = await this.getDom(url);
+      const metaTags: Record<string, string> = {};
+
+      const metaElements = dom.window.document.querySelectorAll('meta');
+
+      for (const meta of metaElements) {
+        const name = meta.getAttribute('name') || meta.getAttribute('property');
+        const content = meta.getAttribute('content');
+
+        if (name && content) {
+          metaTags[name] = content;
+        }
+      }
+
+      return metaTags;
+    } catch (error) {
+      throw new Error(`Failed to extract meta tags from ${url}: ${error}`);
+    }
   }
 
   /**
-   * Set proxy configuration
+   * Check if a URL is accessible
    */
-  setProxy(proxy: string): void {
-    this.client.defaults.proxy = {
-      host: proxy.split(':')[0] || 'localhost',
-      port: parseInt(proxy.split(':')[1] || '8080'),
-    };
+  async isAccessible(url: string): Promise<boolean> {
+    try {
+      await this.get(url, { timeout: 10000 });
+      return true;
+    } catch (error) {
+      return false;
+    }
   }
 
   /**
-   * Set timeout
+   * Get response headers for a URL
    */
-  setTimeout(timeout: number): void {
-    this.client.defaults.timeout = timeout;
+  async getHeaders(url: string): Promise<Record<string, string>> {
+    try {
+      const response = await axios.head(url, {
+        headers: {
+          'User-Agent': this.getRandomUserAgent(),
+        },
+        timeout: 10000,
+      });
+
+      return response.headers as Record<string, string>;
+    } catch (error) {
+      throw new Error(`Failed to get headers from ${url}: ${error}`);
+    }
   }
 
   /**
-   * Get request statistics
+   * Follow redirects and get final URL
    */
-  getStats(): {
-    totalRequests: number;
-    successfulRequests: number;
-    failedRequests: number;
-  } {
-    // This would need to be implemented with request/response interceptors
-    // For now, return placeholder data
-    return {
-      totalRequests: 0,
-      successfulRequests: 0,
-      failedRequests: 0,
-    };
+  async getFinalUrl(url: string): Promise<string> {
+    try {
+      const response = await axios.get(url, {
+        maxRedirects: 0,
+        validateStatus: (status) => status >= 200 && status < 400,
+        headers: {
+          'User-Agent': this.getRandomUserAgent(),
+        },
+      });
+
+      return response.request.res.responseUrl || url;
+    } catch (error) {
+      if (axios.isAxiosError(error) && (error.response?.status === 301 || error.response?.status === 302)) {
+        const location = error.response?.headers?.location;
+        if (location) {
+          return this.resolveUrl(location, url);
+        }
+      }
+      return url;
+    }
+  }
+
+  /**
+   * Resolve relative URL to absolute URL
+   */
+  private resolveUrl(relativeUrl: string, baseUrl: string): string {
+    try {
+      if (relativeUrl.startsWith('http')) {
+        return relativeUrl;
+      }
+
+      if (relativeUrl.startsWith('//')) {
+        const base = new URL(baseUrl);
+        return `${base.protocol}${relativeUrl}`;
+      }
+
+      if (relativeUrl.startsWith('/')) {
+        const base = new URL(baseUrl);
+        return `${base.protocol}//${base.host}${relativeUrl}`;
+      }
+
+      const base = new URL(baseUrl);
+      return `${base.protocol}//${base.host}${base.pathname.replace(/\/[^/]*$/, '')}/${relativeUrl}`;
+    } catch (error) {
+      console.warn(`Failed to resolve URL '${relativeUrl}' with base '${baseUrl}':`, error);
+      return relativeUrl;
+    }
+  }
+
+  /**
+   * Set custom user agents
+   */
+  setUserAgents(userAgents: string[]): void {
+    if (userAgents.length > 0) {
+      this.userAgents = [...userAgents];
+    }
+  }
+
+  /**
+   * Add custom user agent
+   */
+  addUserAgent(userAgent: string): void {
+    this.userAgents.push(userAgent);
+  }
+
+  /**
+   * Get current user agents
+   */
+  getUserAgents(): string[] {
+    return [...this.userAgents];
   }
 }

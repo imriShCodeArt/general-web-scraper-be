@@ -40,11 +40,11 @@ export class CsvGenerator {
               : `product-${index + 1}`,
         post_status: 'publish',
         sku: product.sku,
-        stock_status: (product as any).stock_status || product.stockStatus,
+        stock_status: product.stockStatus,
         images: product.images.join('|'),
         'tax:product_type': product.productType,
         'tax:product_cat': product.category,
-      } as any;
+      };
 
       // Add attributes per Woo CSV Import Suite rules
       // attribute:<Name> = pipe-separated values

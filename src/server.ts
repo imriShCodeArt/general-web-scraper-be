@@ -4,6 +4,7 @@ import helmet from 'helmet';
 import compression from 'compression';
 import { ScrapingService } from './lib/scraping-service';
 import { rootContainer, RequestContext } from './lib/composition-root';
+import { Container } from './lib/di/container';
 import { TOKENS } from './lib/di/tokens';
 import pino from 'pino';
 import recipeRoutes from './app/api/recipes/route';
@@ -75,12 +76,12 @@ app.use((req, res, next) => {
   // child logger with request bindings
   scope.register(TOKENS.Logger, {
     lifetime: 'scoped',
-    factory: async (c) => {
+    factory: async (_c) => {
       const base = await rootContainer.resolve(TOKENS.Logger);
-      return (base as any).child({ requestId: ctx.requestId, ip: ctx.ip });
+      return (base as unknown as { child: (bindings: Record<string, unknown>) => unknown }).child({ requestId: ctx.requestId, ip: ctx.ip });
     },
   });
-  (req as any).containerScope = scope;
+  (req as unknown as { containerScope?: Container }).containerScope = scope;
   res.on('finish', async () => {
     await scope.dispose();
   });
@@ -132,7 +133,13 @@ app.post('/api/scrape/init', async (req, res) => {
       });
     }
 
-    const scope = (req as any).containerScope;
+    const scope = (req as unknown as { containerScope?: Container }).containerScope;
+    if (!scope) {
+      return res.status(500).json({
+        success: false,
+        error: 'Container scope not available',
+      });
+    }
     const scrapingService = await scope.resolve(TOKENS.ScrapingService) as ScrapingService;
     const result = await scrapingService.startScraping({
       siteUrl,
@@ -158,7 +165,13 @@ app.post('/api/scrape/init', async (req, res) => {
 app.get('/api/scrape/status/:jobId', async (req, res) => {
   try {
     const { jobId } = req.params;
-    const scope = (req as any).containerScope;
+    const scope = (req as unknown as { containerScope?: Container }).containerScope;
+    if (!scope) {
+      return res.status(500).json({
+        success: false,
+        error: 'Container scope not available',
+      });
+    }
     const scrapingService = await scope.resolve(TOKENS.ScrapingService) as ScrapingService;
     const result = await scrapingService.getJobStatus(jobId);
 
@@ -179,7 +192,13 @@ app.get('/api/scrape/status/:jobId', async (req, res) => {
 // Get all jobs
 app.get('/api/scrape/jobs', async (req, res) => {
   try {
-    const scope = (req as any).containerScope;
+    const scope = (req as unknown as { containerScope?: Container }).containerScope;
+    if (!scope) {
+      return res.status(500).json({
+        success: false,
+        error: 'Container scope not available',
+      });
+    }
     const scrapingService = await scope.resolve(TOKENS.ScrapingService) as ScrapingService;
     const result = await scrapingService.getAllJobs();
     return res.json(result);
@@ -195,7 +214,13 @@ app.get('/api/scrape/jobs', async (req, res) => {
 // Get performance metrics
 app.get('/api/scrape/performance', async (req, res) => {
   try {
-    const scope = (req as any).containerScope;
+    const scope = (req as unknown as { containerScope?: Container }).containerScope;
+    if (!scope) {
+      return res.status(500).json({
+        success: false,
+        error: 'Container scope not available',
+      });
+    }
     const scrapingService = await scope.resolve(TOKENS.ScrapingService) as ScrapingService;
     const result = await scrapingService.getPerformanceMetrics();
     return res.json(result);
@@ -211,7 +236,13 @@ app.get('/api/scrape/performance', async (req, res) => {
 // Get real-time performance monitoring
 app.get('/api/scrape/performance/live', async (req, res) => {
   try {
-    const scope = (req as any).containerScope;
+    const scope = (req as unknown as { containerScope?: Container }).containerScope;
+    if (!scope) {
+      return res.status(500).json({
+        success: false,
+        error: 'Container scope not available',
+      });
+    }
     const scrapingService = await scope.resolve(TOKENS.ScrapingService) as ScrapingService;
     const result = await scrapingService.getLivePerformanceMetrics();
     return res.json(result);
@@ -227,7 +258,13 @@ app.get('/api/scrape/performance/live', async (req, res) => {
 // Get performance recommendations
 app.get('/api/scrape/performance/recommendations', async (req, res) => {
   try {
-    const scope = (req as any).containerScope;
+    const scope = (req as unknown as { containerScope?: Container }).containerScope;
+    if (!scope) {
+      return res.status(500).json({
+        success: false,
+        error: 'Container scope not available',
+      });
+    }
     const scrapingService = await scope.resolve(TOKENS.ScrapingService) as ScrapingService;
     const result = await scrapingService.getPerformanceRecommendations();
     return res.json(result);
@@ -244,7 +281,13 @@ app.get('/api/scrape/performance/recommendations', async (req, res) => {
 app.post('/api/scrape/cancel/:jobId', async (req, res) => {
   try {
     const { jobId } = req.params;
-    const scope = (req as any).containerScope;
+    const scope = (req as unknown as { containerScope?: Container }).containerScope;
+    if (!scope) {
+      return res.status(500).json({
+        success: false,
+        error: 'Container scope not available',
+      });
+    }
     const scrapingService = await scope.resolve(TOKENS.ScrapingService) as ScrapingService;
     const result = await scrapingService.cancelJob(jobId);
 
@@ -276,8 +319,14 @@ app.get('/api/scrape/download/:jobId/:type', async (req, res) => {
       });
     }
 
-    const scope = (req as any).containerScope;
-    const storageService = await scope.resolve(TOKENS.StorageService);
+    const scope = (req as unknown as { containerScope?: Container }).containerScope;
+    if (!scope) {
+      return res.status(500).json({
+        success: false,
+        error: 'Container scope not available',
+      });
+    }
+    const storageService = await scope.resolve(TOKENS.StorageService) as any;
     const storageEntry = await storageService.getJobResult(jobId);
     if (!storageEntry) {
       console.log('❌ DEBUG: Storage entry not found for jobId:', jobId);
@@ -368,7 +417,13 @@ app.get('/api/scrape/download/:jobId/:type', async (req, res) => {
 // Get storage statistics
 app.get('/api/storage/stats', async (req, res) => {
   try {
-    const scope = (req as any).containerScope;
+    const scope = (req as unknown as { containerScope?: Container }).containerScope;
+    if (!scope) {
+      return res.status(500).json({
+        success: false,
+        error: 'Container scope not available',
+      });
+    }
     const scrapingService = await scope.resolve(TOKENS.ScrapingService) as ScrapingService;
     const result = await scrapingService.getStorageStats();
     res.json(result);
@@ -387,8 +442,14 @@ app.get('/api/storage/job/:jobId', async (req, res) => {
     const { jobId } = req.params;
     console.log('🔍 DEBUG: Storage job request for jobId:', jobId);
 
-    const scope = (req as any).containerScope;
-    const storageService = await scope.resolve(TOKENS.StorageService);
+    const scope = (req as unknown as { containerScope?: Container }).containerScope;
+    if (!scope) {
+      return res.status(500).json({
+        success: false,
+        error: 'Container scope not available',
+      });
+    }
+    const storageService = await scope.resolve(TOKENS.StorageService) as any;
     const storageEntry = await storageService.getJobResult(jobId);
 
     if (!storageEntry) {
@@ -422,8 +483,14 @@ app.get('/api/storage/job/:jobId', async (req, res) => {
 // Clear all storage
 app.delete('/api/storage/clear', async (req, res) => {
   try {
-    const scope = (req as any).containerScope;
-    const storageService = await scope.resolve(TOKENS.StorageService);
+    const scope = (req as unknown as { containerScope?: Container }).containerScope;
+    if (!scope) {
+      return res.status(500).json({
+        success: false,
+        error: 'Container scope not available',
+      });
+    }
+    const storageService = await scope.resolve(TOKENS.StorageService) as any;
     await storageService.clearAll();
     res.json({
       success: true,

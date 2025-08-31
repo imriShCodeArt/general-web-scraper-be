@@ -48,13 +48,13 @@ export class GenericAdapter extends BaseAdapter {
           // Support multiple potential selectors for "next" including <link rel="next">
           const selectorCandidates: string[] = [
             pagination.nextPage,
-            "a[rel='next']",
-            "link[rel='next']",
+            'a[rel=\'next\']',
+            'link[rel=\'next\']',
             '.pagination__next',
             '.pagination .next a',
             '.pagination__item--next a',
-            "a[aria-label='Next']",
-            "a[aria-label='Weiter']",
+            'a[aria-label=\'Next\']',
+            'a[aria-label=\'Weiter\']',
           ];
 
           let nextPageHref: string | null = null;
@@ -112,31 +112,26 @@ export class GenericAdapter extends BaseAdapter {
           .replace(/[^a-z0-9-]/g, '') || 'product',
       description: fastMode
         ? this.extractWithFallbacks(
-            dom,
-            selectors.description,
-            selectors.descriptionFallbacks,
-          )?.substring(0, 500)
+          dom,
+          selectors.description,
+          selectors.descriptionFallbacks,
+        )?.substring(0, 500)
         : this.extractWithFallbacks(dom, selectors.description, selectors.descriptionFallbacks),
       shortDescription: selectors.shortDescription
         ? this.extractWithFallbacks(dom, selectors.shortDescription)
         : undefined,
       sku: this.extractWithFallbacks(dom, selectors.sku, fallbacks?.sku),
-      stockStatus: this.extractStockStatus(dom, selectors.stock),
+      stockStatus: this.extractStockStatusFromSelector(dom, selectors.stock),
       images: fastMode
-        ? this.extractImages(dom, selectors.images).slice(0, 3)
-        : this.extractImages(dom, selectors.images), // Limit images in fast mode
+        ? this.extractImagesFromSelector(dom, selectors.images).slice(0, 3)
+        : this.extractImagesFromSelector(dom, selectors.images), // Limit images in fast mode
       category: selectors.category ? this.extractWithFallbacks(dom, selectors.category) : undefined,
       productType: 'simple', // Default to simple, could be enhanced to detect variable products
-      attributes: fastMode ? {} : this.extractAttributes(dom, selectors.attributes), // Skip attributes in fast mode
+      attributes: fastMode ? {} : this.extractAttributesFromSelector(dom, selectors.attributes), // Skip attributes in fast mode
       variations: fastMode
         ? []
-        : selectors.variations
-          ? this.extractVariations(dom, selectors.variations)
-          : [], // Skip variations in fast mode
-      price: this.extractPrice(
-        dom,
-        Array.isArray(selectors.price) ? selectors.price[0] : selectors.price,
-      ),
+        : this.extractVariationsFromSelector(dom, selectors.variations || []), // Skip variations in fast mode
+      price: this.extractPriceFromSelector(dom, selectors.price),
       salePrice: this.extractSalePrice(dom, selectors.price),
     };
 
@@ -373,22 +368,22 @@ export class GenericAdapter extends BaseAdapter {
 
     // 0) Try LD+JSON Product images first
     try {
-      const ldScripts = Array.from(doc.querySelectorAll("script[type='application/ld+json']"));
+      const ldScripts = Array.from(doc.querySelectorAll('script[type=\'application/ld+json\']'));
       const ldImages: string[] = [];
       for (const s of ldScripts) {
         const raw = s.textContent?.trim();
         if (!raw) continue;
-        let json: any;
+        let json: Record<string, unknown>;
         try {
           json = JSON.parse(raw);
         } catch {
           continue;
         }
-        const products: any[] = [];
+        const products: Record<string, unknown>[] = [];
         if (json && json['@type'] === 'Product') products.push(json);
         if (Array.isArray(json)) products.push(...json.filter((j) => j['@type'] === 'Product'));
         if (Array.isArray(json['@graph']))
-          products.push(...json['@graph'].filter((g: any) => g['@type'] === 'Product'));
+          products.push(...json['@graph'].filter((g: Record<string, unknown>) => g['@type'] === 'Product'));
         for (const p of products) {
           if (p.image) {
             if (typeof p.image === 'string') {
@@ -416,12 +411,12 @@ export class GenericAdapter extends BaseAdapter {
 
     // 0b) Try Shopify Product JSON (script id starts with ProductJson)
     try {
-      const productJsonScripts = Array.from(doc.querySelectorAll("script[id^='ProductJson']"));
+      const productJsonScripts = Array.from(doc.querySelectorAll('script[id^=\'ProductJson\']'));
       const jsonImages: string[] = [];
       for (const s of productJsonScripts) {
         const raw = s.textContent?.trim();
         if (!raw) continue;
-        let json: any;
+        let json: Record<string, unknown>;
         try {
           json = JSON.parse(raw);
         } catch {
@@ -475,7 +470,7 @@ export class GenericAdapter extends BaseAdapter {
         }
       });
       // Also extract background-image URLs
-      const bgNodes = scope.querySelectorAll("[style*='background-image']");
+      const bgNodes = scope.querySelectorAll('[style*=\'background-image\']');
       bgNodes.forEach((n) => {
         const style = (n as HTMLElement).getAttribute('style') || '';
         const match = style.match(/background-image:\s*url\((['"]?)([^)'"]+)\1\)/i);
@@ -577,7 +572,7 @@ export class GenericAdapter extends BaseAdapter {
     }
 
     // 3) Last resort: OpenGraph image
-    const og = doc.querySelector("meta[property='og:image']")?.getAttribute('content');
+    const og = doc.querySelector('meta[property=\'og:image\']')?.getAttribute('content');
     if (og && productCdnFilter(og) && notIconFilter(og)) {
       return [this.resolveUrl(og)];
     }
@@ -599,6 +594,91 @@ export class GenericAdapter extends BaseAdapter {
     }
 
     return 'instock'; // Default
+  }
+
+  /**
+   * Extract stock status from a selector that can be either a string or array of strings
+   */
+  private extractStockStatusFromSelector(dom: JSDOM, selector: string | string[]): string {
+    if (Array.isArray(selector)) {
+      // Try each selector until one works
+      for (const sel of selector) {
+        const status = this.extractStockStatus(dom, sel);
+        if (status && status.trim()) {
+          return status;
+        }
+      }
+      return 'instock';
+    }
+    return this.extractStockStatus(dom, selector);
+  }
+
+  /**
+   * Extract images from a selector that can be either a string or array of strings
+   */
+  private extractImagesFromSelector(dom: JSDOM, selector: string | string[]): string[] {
+    if (Array.isArray(selector)) {
+      // Try each selector until one works
+      for (const sel of selector) {
+        const images = this.extractImages(dom, sel);
+        if (images && images.length > 0) {
+          return images;
+        }
+      }
+      return [];
+    }
+    return this.extractImages(dom, selector);
+  }
+
+  /**
+   * Extract attributes from a selector that can be either a string or array of strings
+   */
+  private extractAttributesFromSelector(dom: JSDOM, selector: string | string[]): Record<string, string[]> {
+    if (Array.isArray(selector)) {
+      // Try each selector until one works
+      for (const sel of selector) {
+        const attrs = this.extractAttributes(dom, sel);
+        if (attrs && Object.keys(attrs).length > 0) {
+          return attrs;
+        }
+      }
+      return {};
+    }
+    return this.extractAttributes(dom, selector);
+  }
+
+  /**
+   * Extract variations from a selector that can be either a string or array of strings
+   */
+  private extractVariationsFromSelector(dom: JSDOM, selector: string | string[]): RawProduct['variations'] {
+    if (Array.isArray(selector)) {
+      // Try each selector until one works
+      for (const sel of selector) {
+        const variations = this.extractVariations(dom, sel);
+        if (variations && variations.length > 0) {
+          return variations;
+        }
+      }
+      return [];
+    }
+    return this.extractVariations(dom, selector);
+  }
+
+  /**
+   * Extract price from a selector that can be either a string or array of strings
+   */
+  private extractPriceFromSelector(dom: JSDOM, selector: string | string[]): string {
+    if (Array.isArray(selector)) {
+      // Try each selector until one works
+      for (const sel of selector) {
+        const price = this.extractPrice(dom, sel);
+        if (price && price.trim()) {
+          return price;
+        }
+      }
+      return '';
+    }
+    return this.extractPrice(dom, selector);
   }
 
   /**
@@ -681,9 +761,9 @@ export class GenericAdapter extends BaseAdapter {
       const scriptCandidates = [
         // Add the meta script pattern that contains variant data FIRST (most comprehensive)
         ...Array.from(dom.window.document.querySelectorAll('script:not([id]):not([type])')),
-        ...Array.from(dom.window.document.querySelectorAll("script[id^='ProductJson']")),
-        ...Array.from(dom.window.document.querySelectorAll("script[type='application/ld+json']")),
-        ...Array.from(dom.window.document.querySelectorAll("script[type='application/json']")),
+        ...Array.from(dom.window.document.querySelectorAll('script[id^=\'ProductJson\']')),
+        ...Array.from(dom.window.document.querySelectorAll('script[type=\'application/ld+json\']')),
+        ...Array.from(dom.window.document.querySelectorAll('script[type=\'application/json\']')),
       ] as HTMLScriptElement[];
 
       for (const script of scriptCandidates) {
@@ -747,7 +827,7 @@ export class GenericAdapter extends BaseAdapter {
           }
         }
 
-        let json: any;
+        let json: Record<string, unknown>;
         try {
           json = JSON.parse(raw);
         } catch {
@@ -759,14 +839,14 @@ export class GenericAdapter extends BaseAdapter {
         if (json && Array.isArray(json.variants)) {
           const optionNames: string[] = Array.isArray(json.options)
             ? json.options
-                .map((o: any) => (typeof o === 'string' ? o : o?.name))
-                .filter((n: any) => !!n)
+              .map((o: Record<string, unknown>) => (typeof o === 'string' ? o : o?.name as string))
+              .filter((n: string) => !!n)
             : [];
 
           for (const v of json.variants) {
             const attributeAssignments: Record<string, string> = {};
             const opts = [v.option1, v.option2, v.option3].filter(
-              (x: any) => typeof x === 'string',
+              (x: unknown) => typeof x === 'string',
             );
             for (let i = 0; i < opts.length; i++) {
               const key = optionNames[i] || `option${i + 1}`;
@@ -809,10 +889,10 @@ export class GenericAdapter extends BaseAdapter {
           json &&
           (json['@type'] === 'Product' ||
             (Array.isArray(json['@graph']) &&
-              json['@graph'].some((g: any) => g['@type'] === 'Product')))
+              json['@graph'].some((g: Record<string, unknown>) => g['@type'] === 'Product')))
         ) {
           const productObj = Array.isArray(json['@graph'])
-            ? json['@graph'].find((g: any) => g['@type'] === 'Product')
+            ? json['@graph'].find((g: Record<string, unknown>) => g['@type'] === 'Product')
             : json;
           const offers = productObj?.offers;
           const offersArray = Array.isArray(offers) ? offers : offers ? [offers] : [];
@@ -1011,6 +1091,8 @@ export class GenericAdapter extends BaseAdapter {
       console.log(`Extracted ${variations.length} variations total`);
     return variations;
   }
+
+
 
   /**
    * Extract variant SKU from ?variant= links on the page
@@ -1242,16 +1324,16 @@ export class GenericAdapter extends BaseAdapter {
   /**
    * Merge embedded JSON data with extracted data
    */
-  protected mergeEmbeddedData(product: RawProduct, embeddedData: any[]): void {
+  protected mergeEmbeddedData(product: RawProduct, embeddedData: Record<string, unknown>[]): void {
     // This is a basic implementation - you might want to make this more sophisticated
     for (const data of embeddedData) {
-      if (data.name && !product.title) {
+      if (data.name && !product.title && typeof data.name === 'string') {
         product.title = data.name;
       }
-      if (data.description && !product.description) {
+      if (data.description && !product.description && typeof data.description === 'string') {
         product.description = data.description;
       }
-      if (data.sku && !product.sku) {
+      if (data.sku && !product.sku && typeof data.sku === 'string') {
         product.sku = data.sku;
       }
       if (data.price && product.variations && product.variations.length > 0) {

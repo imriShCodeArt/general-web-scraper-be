@@ -1,10 +1,12 @@
 import {
   SiteAdapter,
-  RawProduct,
   RecipeConfig,
   ValidationError,
   Result,
   ScrapingError,
+  RawProductData,
+  NormalizableProductData,
+  JsonData,
 } from '../types';
 import { HttpClient } from './http-client';
 import { PuppeteerHttpClient } from './puppeteer-http-client';
@@ -14,8 +16,8 @@ import { ErrorFactory, ErrorCodes, retryManager } from './error-handler';
 /**
  * Enhanced Base Adapter with better generics, error handling, and validation
  */
-export abstract class EnhancedBaseAdapter<T extends RawProduct = RawProduct>
-  implements SiteAdapter<T>
+export abstract class EnhancedBaseAdapter<T extends RawProductData = RawProductData>
+implements SiteAdapter<T>
 {
   protected httpClient: HttpClient;
   protected puppeteerClient: PuppeteerHttpClient | null = null;
@@ -53,7 +55,7 @@ export abstract class EnhancedBaseAdapter<T extends RawProduct = RawProduct>
   }
 
   /**
-   * Validate a product using recipe validation rules
+   * Validate a product using recipe validation rules with proper generic constraints
    */
   validateProduct(product: T): ValidationError[] {
     const errors: ValidationError[] = [];
@@ -66,7 +68,7 @@ export abstract class EnhancedBaseAdapter<T extends RawProduct = RawProduct>
     // Required fields validation
     if (validation.requiredFields) {
       for (const field of validation.requiredFields) {
-        const value = (product as any)[field];
+        const value = (product as JsonData<unknown>)[field];
         if (!value || (typeof value === 'string' && value.trim() === '')) {
           errors.push({
             field,
@@ -79,51 +81,51 @@ export abstract class EnhancedBaseAdapter<T extends RawProduct = RawProduct>
     }
 
     // Price format validation
-    if (validation.priceFormat && product.regularPrice) {
+    if (validation.priceFormat && (product as NormalizableProductData).price) {
       const priceRegex = new RegExp(validation.priceFormat);
-      if (!priceRegex.test(product.regularPrice)) {
+      if (!priceRegex.test((product as NormalizableProductData).price!)) {
         errors.push({
-          field: 'regularPrice',
-          value: product.regularPrice,
+          field: 'price',
+          value: (product as NormalizableProductData).price,
           expected: `format matching ${validation.priceFormat}`,
-          message: `Price format validation failed for '${product.regularPrice}'`,
+          message: `Price format validation failed for '${(product as NormalizableProductData).price}'`,
         } as ValidationError);
       }
     }
 
     // SKU format validation
-    if (validation.skuFormat && product.sku) {
+    if (validation.skuFormat && (product as NormalizableProductData).sku) {
       const skuRegex = new RegExp(validation.skuFormat);
-      if (!skuRegex.test(product.sku)) {
+      if (!skuRegex.test((product as NormalizableProductData).sku!)) {
         errors.push({
           field: 'sku',
-          value: product.sku,
+          value: (product as NormalizableProductData).sku,
           expected: `format matching ${validation.skuFormat}`,
-          message: `SKU format validation failed for '${product.sku}'`,
+          message: `SKU format validation failed for '${(product as NormalizableProductData).sku}'`,
         } as ValidationError);
       }
     }
 
     // Description length validation
-    if (validation.minDescriptionLength && product.description) {
-      if (product.description.length < validation.minDescriptionLength) {
+    if (validation.minDescriptionLength && (product as NormalizableProductData).description) {
+      if ((product as NormalizableProductData).description!.length < validation.minDescriptionLength) {
         errors.push({
           field: 'description',
-          value: product.description.length,
+          value: (product as NormalizableProductData).description!.length,
           expected: `at least ${validation.minDescriptionLength} characters`,
-          message: `Description is too short: ${product.description.length} characters`,
+          message: `Description is too short: ${(product as NormalizableProductData).description!.length} characters`,
         } as ValidationError);
       }
     }
 
     // Title length validation
-    if (validation.maxTitleLength && product.title) {
-      if (product.title.length > validation.maxTitleLength) {
+    if (validation.maxTitleLength && (product as NormalizableProductData).title) {
+      if ((product as NormalizableProductData).title!.length > validation.maxTitleLength) {
         errors.push({
           field: 'title',
-          value: product.title.length,
+          value: (product as NormalizableProductData).title!.length,
           expected: `at most ${validation.maxTitleLength} characters`,
-          message: `Title is too long: ${product.title.length} characters`,
+          message: `Title is too long: ${(product as NormalizableProductData).title!.length} characters`,
         } as ValidationError);
       }
     }
@@ -155,14 +157,14 @@ export abstract class EnhancedBaseAdapter<T extends RawProduct = RawProduct>
       const scrapingError =
         error instanceof Error
           ? ErrorFactory.createScrapingError(error.message, ErrorCodes.UNKNOWN_ERROR, false, {
-              url,
-            })
+            url,
+          })
           : ErrorFactory.createScrapingError(
-              'Unknown error during product extraction',
-              ErrorCodes.UNKNOWN_ERROR,
-              false,
-              { url },
-            );
+            'Unknown error during product extraction',
+            ErrorCodes.UNKNOWN_ERROR,
+            false,
+            { url },
+          );
 
       return { success: false, error: scrapingError };
     }
@@ -345,11 +347,11 @@ export abstract class EnhancedBaseAdapter<T extends RawProduct = RawProduct>
   }
 
   /**
-   * Common method to extract variations with error handling
+   * Common method to extract variations with error handling and proper typing
    */
-  protected extractVariations(dom: JSDOM, selector: string): any[] {
+  protected extractVariations(dom: JSDOM, selector: string): RawProductData['variations'] {
     try {
-      const variations: any[] = [];
+      const variations: RawProductData['variations'] = [];
       const variationElements = this.extractElements(dom, selector);
 
       for (const element of variationElements) {
@@ -440,9 +442,9 @@ export abstract class EnhancedBaseAdapter<T extends RawProduct = RawProduct>
   }
 
   /**
-   * Extract embedded JSON data with error handling
+   * Extract embedded JSON data with error handling and proper typing
    */
-  protected async extractEmbeddedJson(url: string, selectors: string[]): Promise<any[]> {
+  protected async extractEmbeddedJson(url: string, selectors: string[]): Promise<JsonData<unknown>[]> {
     try {
       return await this.httpClient.extractEmbeddedJson(url, selectors);
     } catch (error) {

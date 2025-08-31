@@ -10,7 +10,7 @@ const router = Router();
 // List all available recipes
 router.get('/list', async (req: Request, res: Response) => {
   const requestScope = createRequestScope(generateRequestId(), req.ip, req.get('User-Agent'));
-  
+
   try {
     const recipeManager = await requestScope.resolve<RecipeManager>(TOKENS.RecipeManager);
     const recipes = await recipeManager.listRecipes();
@@ -29,7 +29,7 @@ router.get('/list', async (req: Request, res: Response) => {
 // Get specific recipe by name
 router.get('/get/:recipeName', async (req: Request, res: Response) => {
   const requestScope = createRequestScope(generateRequestId(), req.ip, req.get('User-Agent'));
-  
+
   try {
     const { recipeName } = req.params;
     if (!recipeName) {
@@ -38,7 +38,7 @@ router.get('/get/:recipeName', async (req: Request, res: Response) => {
         error: 'Recipe name is required',
       });
     }
-    
+
     const recipeManager = await requestScope.resolve<RecipeManager>(TOKENS.RecipeManager);
     const recipe = await recipeManager.getRecipe(recipeName);
 
@@ -64,7 +64,7 @@ router.get('/get/:recipeName', async (req: Request, res: Response) => {
 // Get recipe by site URL
 router.get('/getBySite', async (req: Request, res: Response) => {
   const requestScope = createRequestScope(generateRequestId(), req.ip, req.get('User-Agent'));
-  
+
   try {
     const { siteUrl } = req.query;
 
@@ -100,7 +100,7 @@ router.get('/getBySite', async (req: Request, res: Response) => {
 // List all recipes with details
 router.get('/all', async (req: Request, res: Response) => {
   const requestScope = createRequestScope(generateRequestId(), req.ip, req.get('User-Agent'));
-  
+
   try {
     const recipeManager = await requestScope.resolve<RecipeManager>(TOKENS.RecipeManager);
     const allRecipes = await recipeManager.listRecipesWithDetails();
@@ -119,7 +119,7 @@ router.get('/all', async (req: Request, res: Response) => {
 // List all recipe names (backward compatibility)
 router.get('/names', async (req: Request, res: Response) => {
   const requestScope = createRequestScope(generateRequestId(), req.ip, req.get('User-Agent'));
-  
+
   try {
     const recipeManager = await requestScope.resolve<RecipeManager>(TOKENS.RecipeManager);
     const recipeNames = await recipeManager.listRecipes();
@@ -138,7 +138,7 @@ router.get('/names', async (req: Request, res: Response) => {
 // Validate recipe
 router.post('/validate', async (req: Request, res: Response) => {
   const requestScope = createRequestScope(generateRequestId(), req.ip, req.get('User-Agent'));
-  
+
   try {
     const { recipeName } = req.body;
 
@@ -175,7 +175,7 @@ router.post('/validate', async (req: Request, res: Response) => {
 // Load recipe from file
 router.post('/loadFromFile', async (req: Request, res: Response) => {
   const requestScope = createRequestScope(generateRequestId(), req.ip, req.get('User-Agent'));
-  
+
   try {
     const { filePath } = req.body;
 

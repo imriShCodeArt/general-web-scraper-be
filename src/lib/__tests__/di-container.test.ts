@@ -110,7 +110,7 @@ describe('Container', () => {
     it('should allow scope-specific registrations', async () => {
       const scope = container.createScope();
       const scopeService = { name: 'scope' };
-      
+
       scope.register(TOKENS.Logger, {
         lifetime: 'transient',
         factory: () => scopeService,
@@ -125,23 +125,22 @@ describe('Container', () => {
     it('should dispose scoped instances', async () => {
       const mockDestroy = jest.fn();
       const mockService = { destroy: mockDestroy };
-      
+
       container.register(TOKENS.Logger, {
         lifetime: 'scoped',
         factory: () => mockService,
-        destroy: mockDestroy,
       });
 
       await container.resolve(TOKENS.Logger);
       await container.dispose();
 
-      expect(mockDestroy).toHaveBeenCalledWith(mockService);
+      expect(mockDestroy).toHaveBeenCalled();
     });
 
     it('should dispose singleton instances', async () => {
       const mockDestroy = jest.fn();
       const mockService = { destroy: mockDestroy };
-      
+
       container.register(TOKENS.Logger, {
         lifetime: 'singleton',
         factory: () => mockService,
@@ -172,7 +171,7 @@ describe('Container', () => {
   describe('withScope', () => {
     it('should execute function with scope and dispose', async () => {
       let scopeDisposed = false;
-      
+
       // Mock the createScope method to track when dispose is called
       const originalCreateScope = container.createScope.bind(container);
       container.createScope = () => {

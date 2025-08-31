@@ -21,6 +21,47 @@ export type Result<T, E = ScrapingError> =
 
 export type AsyncResult<T, E = ScrapingError> = Promise<Result<T, E>>;
 
+// Generic Raw Product Data Types
+export interface BaseRawProductData {
+  id?: string;
+  title?: string;
+  slug?: string;
+  description?: string;
+  shortDescription?: string;
+  sku?: string;
+  stockStatus?: string;
+  images?: (string | undefined)[];
+  category?: string;
+  productType?: string;
+  attributes?: Record<string, (string | undefined)[]>;
+  variations?: RawVariation[];
+  price?: string;
+  salePrice?: string;
+  metadata?: Record<string, unknown>;
+}
+
+// Specific raw product types for different data sources
+export interface JsonLdProductData extends BaseRawProductData {
+  '@type': 'Product';
+  '@context'?: string;
+  '@graph'?: JsonLdProductData[];
+  image?: string | string[] | { src?: string; url?: string }[];
+  media?: { src?: string; preview_image?: { src?: string }; image?: string; url?: string }[];
+}
+
+export interface ShopifyProductData extends BaseRawProductData {
+  images?: string[];
+  media?: { src?: string; preview_image?: { src?: string }; image?: string; url?: string }[];
+}
+
+export interface GenericProductData extends BaseRawProductData {
+  // Additional generic fields
+  [key: string]: unknown;
+}
+
+// Union type for all possible raw product data sources
+export type RawProductData = JsonLdProductData | ShopifyProductData | GenericProductData | BaseRawProductData;
+
 // Enhanced Product Types with Generics
 export interface BaseProduct<T = string> {
   id: T;
@@ -75,12 +116,20 @@ export interface RawVariation {
 }
 
 // Enhanced Adapter Interface with Generics
-export interface SiteAdapter<T = RawProduct> {
+export interface SiteAdapter<T extends RawProductData = RawProductData> {
   discoverProducts(): AsyncIterable<string>;
   extractProduct(url: string): Promise<T>;
   getConfig(): RecipeConfig;
   cleanup?(): Promise<void>;
   validateProduct(product: T): ValidationError[];
+}
+
+// Generic constraint for product data that can be normalized
+export interface NormalizableProductData extends BaseRawProductData {
+  // Must have at least some basic product information
+  title?: string;
+  description?: string;
+  sku?: string;
 }
 
 // Enhanced Recipe Configuration with Validation
@@ -339,4 +388,34 @@ export interface PerformanceMetrics<T = unknown> {
   totalProcessingTime: number;
   customMetrics?: T;
   lastUpdated: Date;
+}
+
+// Generic HTTP Response Types
+export interface GenericHttpResponse<T = unknown> {
+  data: T;
+  status: number;
+  statusText: string;
+  headers: Record<string, string>;
+}
+
+// Generic JSON Data Types
+export interface JsonData<T = unknown> {
+  [key: string]: T;
+}
+
+export interface JsonArray<T = unknown> extends Array<T> {}
+
+// Generic Product Options
+export interface ProductOptions {
+  maxProducts?: number;
+  categories?: string[];
+  enableEnrichment?: boolean;
+  retryOnFailure?: boolean;
+  maxRetries?: number;
+  [key: string]: unknown;
+}
+
+// Generic Metadata Types
+export interface GenericMetadata<T = unknown> {
+  [key: string]: T;
 }

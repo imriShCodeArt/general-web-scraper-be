@@ -2,14 +2,16 @@ import { ScrapingService } from '../../lib/scraping-service';
 import { CsvGenerator } from '../../lib/csv-generator';
 import { rootContainer, TOKENS } from '../../lib/composition-root';
 import type { Container } from '../../lib/di/container';
+import { RecipeManager } from '../../lib/recipe-manager';
+import { StorageService } from '../../lib/storage';
 import { testUtils } from '../setup';
 
 describe('Scraping Workflow Integration Tests', () => {
   let scrapingService: ScrapingService;
   let scope: Container;
-  let mockRecipeManager: any;
-  let mockStorageService: any;
-  let mockCsvGenerator: any;
+  let mockRecipeManager: jest.Mocked<RecipeManager>;
+  let mockStorageService: jest.Mocked<StorageService>;
+  let mockCsvGenerator: jest.Mocked<CsvGenerator>;
 
   beforeEach(async () => {
     // Clear all mocks
@@ -219,7 +221,7 @@ describe('Scraping Workflow Integration Tests', () => {
       jest.spyOn(CsvGenerator, 'generateBothCsvs').mockResolvedValue({
         ...mockCsvResult,
         productCount: 2,
-      } as any);
+      });
 
       // Mock storage
       mockStorageService.storeJobResult.mockResolvedValue(undefined);

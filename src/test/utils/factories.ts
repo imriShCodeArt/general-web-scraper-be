@@ -6,10 +6,10 @@ type DeepPartial<T> = {
 
 function merge<T>(base: T, overrides?: DeepPartial<T>): T {
   if (!overrides) return base;
-  const output: any = Array.isArray(base) ? [...(base as any)] : { ...(base as any) };
+  const output: unknown = Array.isArray(base) ? [...base] : { ...base };
   for (const key of Object.keys(overrides) as Array<keyof T>) {
-    const baseVal: any = (base as any)[key];
-    const overrideVal: any = (overrides as any)[key];
+    const baseVal: unknown = (base as any)[key];
+    const overrideVal: unknown = (overrides as any)[key];
     if (
       baseVal &&
       overrideVal &&
@@ -18,9 +18,9 @@ function merge<T>(base: T, overrides?: DeepPartial<T>): T {
       typeof overrideVal === 'object' &&
       !Array.isArray(overrideVal)
     ) {
-      output[key] = merge(baseVal, overrideVal);
+      (output as any)[key] = merge(baseVal, overrideVal);
     } else if (overrideVal !== undefined) {
-      output[key] = overrideVal;
+      (output as any)[key] = overrideVal;
     }
   }
   return output as T;

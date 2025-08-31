@@ -2,6 +2,8 @@ import { ScrapingService } from '../../lib/scraping-service';
 import { CsvGenerator } from '../../lib/csv-generator';
 import { rootContainer, TOKENS } from '../../lib/composition-root';
 import type { Container } from '../../lib/di/container';
+import { RecipeManager } from '../../lib/recipe-manager';
+import { StorageService } from '../../lib/storage';
 import { testUtils } from '../setup';
 import { createServer, Server } from 'http';
 import { AddressInfo } from 'net';
@@ -11,9 +13,9 @@ import { AddressInfo } from 'net';
 describe('E2E Mock Website Scraping Tests', () => {
   let scrapingService: ScrapingService;
   let scope: Container;
-  let mockRecipeManager: any;
-  let mockStorageService: any;
-  let mockCsvGenerator: any;
+  let mockRecipeManager: jest.Mocked<RecipeManager>;
+  let mockStorageService: jest.Mocked<StorageService>;
+  let mockCsvGenerator: jest.Mocked<CsvGenerator>;
   let mockServer: Server;
   let mockServerUrl: string;
 
@@ -259,7 +261,7 @@ describe('E2E Mock Website Scraping Tests', () => {
       jest.spyOn(CsvGenerator, 'generateBothCsvs').mockResolvedValue({
         ...mockCsvResult,
         productCount: 3,
-      } as any);
+      });
 
       // Mock storage
       mockStorageService.storeJobResult.mockResolvedValue(undefined);
@@ -447,7 +449,7 @@ describe('E2E Mock Website Scraping Tests', () => {
       jest.spyOn(CsvGenerator, 'generateBothCsvs').mockResolvedValue({
         ...mockCsvResult,
         productCount: 1,
-      } as any);
+      });
 
       // Mock storage
       mockStorageService.storeJobResult.mockResolvedValue(undefined);
@@ -517,7 +519,7 @@ describe('E2E Mock Website Scraping Tests', () => {
       jest.spyOn(CsvGenerator, 'generateBothCsvs').mockResolvedValue({
         ...mockCsvResult,
         productCount: 1,
-      } as any);
+      });
       mockStorageService.storeJobResult.mockResolvedValue(undefined);
 
       // Start multiple jobs simultaneously

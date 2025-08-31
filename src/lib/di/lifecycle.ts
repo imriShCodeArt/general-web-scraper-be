@@ -7,11 +7,11 @@ export interface Destroyable {
 }
 
 export function isInitializable(value: unknown): value is Initializable {
-  return !!value && typeof (value as any).initialize === 'function';
+  return !!value && typeof (value as unknown as { initialize?: () => Promise<void> | void }).initialize === 'function';
 }
 
 export function isDestroyable(value: unknown): value is Destroyable {
-  return !!value && typeof (value as any).destroy === 'function';
+  return !!value && typeof (value as unknown as { destroy?: () => Promise<void> | void }).destroy === 'function';
 }
 
 

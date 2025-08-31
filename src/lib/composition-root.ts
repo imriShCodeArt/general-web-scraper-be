@@ -2,7 +2,7 @@ import { Container } from './di/container';
 import { TOKENS } from './di/tokens';
 import { StorageService } from './storage';
 import { RecipeManager } from './recipe-manager';
-import { RecipeLoaderService } from './recipe-loader';
+import { RecipeLoader } from './recipe-loader';
 import { CsvGenerator } from './csv-generator';
 import { ScrapingService } from './scraping-service';
 import { HttpClient } from './http-client';
@@ -48,7 +48,7 @@ rootContainer.register(TOKENS.Logger, {
   factory: async (c) => {
     const cfg = await c.resolve<AppConfig>(TOKENS.Config);
     const logger = pino({ level: cfg.logLevel });
-    return logger as any;
+    return logger;
   },
 });
 
@@ -57,8 +57,8 @@ rootContainer.register(TOKENS.StorageService, {
   lifetime: 'singleton',
   factory: () => new StorageService(),
   destroy: async (s) => {
-    if (typeof (s as any).destroy === 'function') {
-      await (s as any).destroy();
+    if (typeof (s as unknown as { destroy?: () => Promise<void> }).destroy === 'function') {
+      await (s as unknown as { destroy: () => Promise<void> }).destroy();
     }
   },
 });
@@ -68,7 +68,7 @@ rootContainer.register(TOKENS.RecipeLoaderService, {
   lifetime: 'singleton',
   factory: async (c) => {
     const cfg = await c.resolve<AppConfig>(TOKENS.Config);
-    return new RecipeLoaderService(cfg.recipesDir);
+    return new RecipeLoader(cfg.recipesDir);
   },
 });
 
@@ -77,7 +77,7 @@ rootContainer.register(TOKENS.RecipeManager, {
   lifetime: 'singleton',
   factory: async (c) => {
     const cfg = await c.resolve<AppConfig>(TOKENS.Config);
-    const recipeLoader = await c.resolve<RecipeLoaderService>(TOKENS.RecipeLoaderService);
+    const recipeLoader = await c.resolve<RecipeLoader>(TOKENS.RecipeLoaderService);
     return new RecipeManager(cfg.recipesDir, recipeLoader);
   },
 });
@@ -101,7 +101,7 @@ rootContainer.register(TOKENS.ScrapingService, {
     await c.resolve(TOKENS.StorageService),
     await c.resolve(TOKENS.RecipeManager),
     await c.resolve(TOKENS.CsvGenerator),
-    await c.resolve(TOKENS.Logger)
+    await c.resolve(TOKENS.Logger),
   ),
 });
 
@@ -110,7 +110,7 @@ rootContainer.register(TOKENS.ScrapingService, {
  */
 export function createRequestScope(requestId: string, ip?: string, userAgent?: string): Container {
   const requestScope = rootContainer.createScope();
-  
+
   // Register request-scoped context
   requestScope.register(TOKENS.RequestContext, {
     lifetime: 'scoped',
@@ -121,7 +121,7 @@ export function createRequestScope(requestId: string, ip?: string, userAgent?: s
       timestamp: new Date(),
     }),
   });
-  
+
   return requestScope;
 }
 

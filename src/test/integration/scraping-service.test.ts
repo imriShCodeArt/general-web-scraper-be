@@ -67,13 +67,13 @@ describe('ScrapingService integration', () => {
       },
       behavior: { useHeadlessBrowser: false, rateLimit: 50, maxConcurrent: 2, retryAttempts: 0, retryDelay: 0 },
       validation: { requiredFields: ['title', 'sku'], minDescriptionLength: 5, maxTitleLength: 120 },
-    } as any);
+    });
 
     jest.spyOn(CsvGenerator, 'generateBothCsvs').mockResolvedValue({
       parentCsv: 'id,title\n1,Alpha',
       variationCsv: 'id,parent_id,title\n2,1,Alpha Var',
       variationCount: 1,
-    } as any);
+    });
 
     const start = await service.startScraping({
       siteUrl: 'https://example.com',
@@ -82,7 +82,7 @@ describe('ScrapingService integration', () => {
     });
 
     expect(start.success).toBe(true);
-    const jobId = (start.data as any).jobId as string;
+    const jobId = (start.data as { jobId: string }).jobId;
     expect(jobId).toBeTruthy();
 
     // Poll for completion

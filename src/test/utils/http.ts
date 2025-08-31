@@ -10,7 +10,7 @@ export const http = {
     return res;
   },
   async postJson(path: string, body: Record<string, unknown> | string | undefined) {
-    const res = await request(app).post(path).send(body as any);
+    const res = await request(app).post(path).send(body);
     return res;
   },
   async delete(path: string) {

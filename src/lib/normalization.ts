@@ -1,11 +1,19 @@
-import { RawProduct, NormalizedProduct, RawVariation, ProductVariation } from '../types';
+import {
+  NormalizedProduct,
+  RawVariation,
+  ProductVariation,
+  NormalizableProductData,
+} from '../types';
 import { debug } from './logger';
 
 export class NormalizationToolkit {
   /**
-   * Normalize raw product data into standardized format
+   * Normalize raw product data into standardized format with proper generic constraints
    */
-  static normalizeProduct(raw: RawProduct, url: string): NormalizedProduct {
+  static normalizeProduct<T extends NormalizableProductData>(
+    raw: T,
+    url: string,
+  ): NormalizedProduct {
     debug('🔍 DEBUG: normalizeProduct called with:', {
       url,
       rawTitle: raw.title,
@@ -80,7 +88,7 @@ export class NormalizationToolkit {
         .replace(/&lt;/g, '<')
         .replace(/&gt;/g, '>')
         .replace(/&quot;/g, '"')
-        .replace(/&#39;/g, "'")
+        .replace(/&#39;/g, '\'')
         .replace(/&nbsp;/g, ' ')
         // Remove extra whitespace
         .replace(/\s+/g, ' ')
@@ -165,9 +173,9 @@ export class NormalizationToolkit {
   }
 
   /**
-   * Detect product type (simple vs variable)
+   * Detect product type (simple vs variable) with proper generic constraints
    */
-  static detectProductType(raw: RawProduct): 'simple' | 'variable' {
+  static detectProductType<T extends NormalizableProductData>(raw: T): 'simple' | 'variable' {
     debug('🔍 DEBUG: detectProductType called with raw product:', {
       hasVariations: !!raw.variations,
       variationsLength: raw.variations?.length || 0,
@@ -307,7 +315,23 @@ export class NormalizationToolkit {
       'בחירת אפשרותד - ריינבוקורן דמויות כחול', // Specific from modanbags.co.il
       'בחירת אפשרותה - ריינבוקורן דמויות כחול', // Specific from modanbags.co.il
       'בחירת אפשרותו - ריינבוקורן דמויות כחול', // Specific from modanbags.co.il
-      'בחירת אפשרותA', // Hebrew with option prefix
+      'בחירת אפשרותז - ריינבוקורן דמויות כחול', // Specific from modanbags.co.il
+      'בחירת אפשרותח - ריינבוקורן דמויות כחול', // Specific from modanbags.co.il
+      'בחירת אפשרותט - ריינבוקורן דמויות כחול', // Specific from modanbags.co.il
+      'בחירת אפשרותי - ריינבוקורן דמויות כחול', // Specific from modanbags.co.il
+      'בחירת אפשרותכ - ריינבוקורן דמויות כחול', // Specific from modanbags.co.il
+      'בחירת אפשרותל - ריינבוקורן דמויות כחול', // Specific from modanbags.co.il
+      'בחירת אפשרותמ - ריינבוקורן דמויות כחול', // Specific from modanbags.co.il
+      'בחירת אפשרותנ - ריינבוקורן דמויות כחול', // Specific from modanbags.co.il
+      'בחירת אפשרותס - ריינבוקורן דמויות כחול', // Specific from modanbags.co.il
+      'בחירת אפשרותע - ריינבוקורן דמויות כחול', // Specific from modanbags.co.il
+      'בחירת אפשרותפ - ריינבוקורן דמויות כחול', // Specific from modanbags.co.il
+      'בחירת אפשרותצ - ריינבוקורן דמויות כחול', // Specific from modanbags.co.il
+      'בחירת אפשרותק - ריינבוקורן דמויות כחול', // Specific from modanbags.co.il
+      'בחירת אפשרותר - ריינבוקורן דמויות כחול', // Specific from modanbags.co.il
+      'בחירת אפשרותש - ריינבוקורן דמויות כחול', // Specific from modanbags.co.il
+      'בחירת אפשרותת - ריינבוקורן דמויות כחול', // Specific from modanbags.co.il
+      'בחירת אפשרותא', // Hebrew with option prefix
       'בחירת אפשרותB', // Hebrew with option prefix
       'בחירת אפשרותC', // Hebrew with option prefix
       'בחירת אפשרותD', // Hebrew with option prefix

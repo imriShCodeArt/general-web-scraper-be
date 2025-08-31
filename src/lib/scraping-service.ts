@@ -1,5 +1,16 @@
 import { randomUUID } from 'crypto';
-import { ScrapingJob, ScrapingRequest, NormalizedProduct, JobResult, ApiResponse } from '../types';
+import {
+  ScrapingJob,
+  ScrapingRequest,
+  NormalizedProduct,
+  JobResult,
+  ApiResponse,
+  RawProductData,
+  NormalizableProductData,
+  ProductOptions,
+  GenericMetadata,
+  RecipeConfig,
+} from '../types';
 import { SiteAdapter } from '../types';
 import { NormalizationToolkit } from './normalization';
 import { CsvGenerator } from './csv-generator';
@@ -13,8 +24,8 @@ export class ScrapingService {
   private storage: StorageService;
   private recipeManager: RecipeManager;
   private csvGenerator: CsvGenerator;
-  private activeJobs = new Map<string, ScrapingJob>();
-  private jobQueue: ScrapingJob[] = [];
+  private activeJobs = new Map<string, ScrapingJob<ProductOptions>>();
+  private jobQueue: ScrapingJob<ProductOptions>[] = [];
   private isProcessing = false;
   private performanceMetrics = {
     totalJobs: 0,
@@ -52,15 +63,15 @@ export class ScrapingService {
   /**
    * Helper method to create error ApiResponse objects
    */
-  private createErrorResponse<E>(error: E, message?: string): ApiResponse<any, E> {
-    return this.createApiResponse(false, undefined, error, message);
+  private createErrorResponse<T, E>(error: E, message?: string): ApiResponse<T, E> {
+    return this.createApiResponse(false, undefined as T, error, message);
   }
 
   constructor(
     storage?: StorageService,
     recipeManager?: RecipeManager,
     csvGenerator?: CsvGenerator,
-    logger?: pino.Logger
+    logger?: pino.Logger,
   ) {
     this.logger = logger || pino({
       level: process.env.LOG_LEVEL || 'warn',
@@ -79,12 +90,15 @@ export class ScrapingService {
   }
 
   /**
-   * Normalize a raw product
+   * Normalize a raw product with proper generic constraints
    *
-   * @param rawProduct - Raw product object from adapter
+   * @param rawProduct - Raw product object from adapter with generic constraints
    * @param url - Optional product URL for context
    */
-  private async normalizeProduct(rawProduct: any, url?: string): Promise<NormalizedProduct> {
+  private async normalizeProduct<T extends NormalizableProductData>(
+    rawProduct: T,
+    url?: string,
+  ): Promise<NormalizedProduct> {
     return NormalizationToolkit.normalizeProduct(rawProduct, url || '');
   }
 
@@ -105,16 +119,16 @@ export class ScrapingService {
    * @param request - Includes `siteUrl`, `recipe`, and optional `options`.
    * @returns ApiResponse containing the created `jobId`.
    */
-  async startScraping(request: ScrapingRequest): Promise<ApiResponse<{ jobId: string }>> {
+  async startScraping(request: ScrapingRequest<ProductOptions>): Promise<ApiResponse<{ jobId: string }>> {
     try {
       // Validate request
       if (!request.siteUrl || !request.recipe) {
-        return this.createErrorResponse('Missing required fields: siteUrl and recipe');
+        return this.createErrorResponse<{ jobId: string }, string>('Missing required fields: siteUrl and recipe');
       }
 
       // Create job
       const jobId = randomUUID();
-      const job: ScrapingJob = {
+      const job: ScrapingJob<ProductOptions> = {
         id: jobId,
         status: 'pending',
         createdAt: new Date(),
@@ -143,7 +157,7 @@ export class ScrapingService {
       return this.createSuccessResponse({ jobId }, 'Scraping job created successfully');
     } catch (error) {
       this.logger.error('Failed to start scraping job:', error);
-      return this.createErrorResponse(`Failed to start scraping job: ${error}`);
+      return this.createErrorResponse<{ jobId: string }, string>(`Failed to start scraping job: ${error}`);
     }
   }
 
@@ -170,7 +184,7 @@ export class ScrapingService {
   /**
    * Process a single job
    */
-  private async processJob(job: ScrapingJob): Promise<void> {
+  private async processJob(job: ScrapingJob<ProductOptions>): Promise<void> {
     try {
       this.logger.info(`Starting job ${job.id} for ${job.metadata.siteUrl}`);
 
@@ -189,7 +203,7 @@ export class ScrapingService {
       try {
         // Discover products with optional limit
         const productUrls: string[] = [];
-        const options = (job.metadata as any).options || {};
+        const options = job.metadata.options || {};
         const maxProducts: number | undefined =
           typeof options.maxProducts === 'number' ? options.maxProducts : undefined;
 
@@ -385,7 +399,7 @@ export class ScrapingService {
    * @param recipe - Recipe name to prefer
    * @param siteUrl - Target website URL
    */
-  private async createAdapter(recipe: string, siteUrl: string): Promise<SiteAdapter> {
+  private async createAdapter(recipe: string, siteUrl: string): Promise<SiteAdapter<RawProductData>> {
     try {
       // Try to create adapter using the recipe manager
       const adapter = await this.recipeManager.createAdapter(siteUrl, recipe);
@@ -414,28 +428,28 @@ export class ScrapingService {
    * Get job status
    * @param jobId - The job identifier
    */
-  async getJobStatus(jobId: string): Promise<ApiResponse<ScrapingJob>> {
+  async getJobStatus(jobId: string): Promise<ApiResponse<ScrapingJob<ProductOptions>>> {
     try {
       const job = this.activeJobs.get(jobId);
       if (!job) {
-        return this.createErrorResponse('Job not found');
+        return this.createErrorResponse<ScrapingJob<ProductOptions>, string>('Job not found');
       }
 
       return this.createSuccessResponse(job);
     } catch (error) {
-      return this.createErrorResponse(`Failed to get job status: ${error}`);
+      return this.createErrorResponse<ScrapingJob<ProductOptions>, string>(`Failed to get job status: ${error}`);
     }
   }
 
   /**
    * Get all jobs
    */
-  async getAllJobs(): Promise<ApiResponse<ScrapingJob[]>> {
+  async getAllJobs(): Promise<ApiResponse<ScrapingJob<ProductOptions>[]>> {
     try {
       const jobs = Array.from(this.activeJobs.values());
       return this.createSuccessResponse(jobs);
     } catch (error) {
-      return this.createErrorResponse(`Failed to get jobs: ${error}`);
+      return this.createErrorResponse<ScrapingJob<ProductOptions>[], string>(`Failed to get jobs: ${error}`);
     }
   }
 
@@ -447,7 +461,7 @@ export class ScrapingService {
       const recipes = await this.recipeManager.listRecipes();
       return this.createSuccessResponse(recipes);
     } catch (error) {
-      return this.createErrorResponse(`Failed to list recipes: ${error}`);
+      return this.createErrorResponse<string[], string>(`Failed to list recipes: ${error}`);
     }
   }
 
@@ -455,7 +469,7 @@ export class ScrapingService {
    * Get recipe configuration by name
    * @param recipeName - Name of the recipe
    */
-  async getRecipe(recipeName: string): Promise<ApiResponse<any>> {
+  async getRecipe(recipeName: string): Promise<ApiResponse<RecipeConfig>> {
     try {
       const recipe = await this.recipeManager.getRecipe(recipeName);
       return this.createSuccessResponse(recipe);
@@ -468,7 +482,7 @@ export class ScrapingService {
    * Get recipe configuration by site URL
    * @param siteUrl - Site URL
    */
-  async getRecipeBySiteUrl(siteUrl: string): Promise<ApiResponse<any>> {
+  async getRecipeBySiteUrl(siteUrl: string): Promise<ApiResponse<RecipeConfig>> {
     try {
       const recipe = await this.recipeManager.getRecipeBySiteUrl(siteUrl);
       if (recipe) {
@@ -489,11 +503,11 @@ export class ScrapingService {
     try {
       const job = this.activeJobs.get(jobId);
       if (!job) {
-        return this.createErrorResponse('Job not found');
+        return this.createErrorResponse<{ cancelled: boolean }, string>('Job not found');
       }
 
       if (job.status === 'completed' || job.status === 'failed') {
-        return this.createErrorResponse('Cannot cancel completed or failed job');
+        return this.createErrorResponse<{ cancelled: boolean }, string>('Cannot cancel completed or failed job');
       }
 
       // Remove from queue if pending
@@ -514,14 +528,14 @@ export class ScrapingService {
 
       return this.createSuccessResponse({ cancelled: true }, 'Job cancelled successfully');
     } catch (error) {
-      return this.createErrorResponse(`Failed to cancel job: ${error}`);
+      return this.createErrorResponse<{ cancelled: boolean }, string>(`Failed to cancel job: ${error}`);
     }
   }
 
   /**
    * Get storage statistics
    */
-  async getStorageStats(): Promise<ApiResponse<any>> {
+  async getStorageStats(): Promise<ApiResponse<GenericMetadata<unknown>>> {
     try {
       const stats = await this.storage.getStorageStats();
       return this.createSuccessResponse(stats);
@@ -533,7 +547,7 @@ export class ScrapingService {
   /**
    * Get performance metrics
    */
-  async getPerformanceMetrics(): Promise<ApiResponse<any>> {
+  async getPerformanceMetrics(): Promise<ApiResponse<GenericMetadata<unknown>>> {
     try {
       return this.createSuccessResponse({
         ...this.performanceMetrics,
@@ -552,7 +566,7 @@ export class ScrapingService {
   /**
    * Get live performance metrics with real-time data
    */
-  async getLivePerformanceMetrics(): Promise<ApiResponse<any>> {
+  async getLivePerformanceMetrics(): Promise<ApiResponse<GenericMetadata<unknown>>> {
     try {
       const now = Date.now();
       const activeJobStats = Array.from(this.activeJobs.values()).map((job) => ({
@@ -585,7 +599,7 @@ export class ScrapingService {
   /**
   * Get performance recommendations based on current metrics
   */
-  async getPerformanceRecommendations(): Promise<ApiResponse<any>> {
+  async getPerformanceRecommendations(): Promise<ApiResponse<GenericMetadata<unknown>>> {
     try {
       const recommendations = [];
 

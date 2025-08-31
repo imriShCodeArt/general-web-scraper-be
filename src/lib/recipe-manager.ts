@@ -1,13 +1,15 @@
-import { RecipeLoaderService } from './recipe-loader';
+import { RecipeLoader } from './recipe-loader';
 import { GenericAdapter } from './generic-adapter';
-import { RecipeConfig, SiteAdapter } from '../types';
+import { RecipeConfig, SiteAdapter, RawProductData } from '../types';
 
 export class RecipeManager {
-  private recipeLoader: RecipeLoaderService;
-  private adapterCache: Map<string, SiteAdapter> = new Map();
+  private recipesDir: string;
+  private recipeLoader: RecipeLoader;
+  private adapterCache = new Map<string, SiteAdapter<RawProductData>>();
 
-  constructor(recipesDir: string = './recipes', recipeLoader?: RecipeLoaderService) {
-    this.recipeLoader = recipeLoader || new RecipeLoaderService(recipesDir);
+  constructor(recipesDir: string = './recipes', recipeLoader?: RecipeLoader) {
+    this.recipesDir = recipesDir;
+    this.recipeLoader = recipeLoader || new RecipeLoader(recipesDir);
   }
 
   /**
@@ -111,6 +113,18 @@ export class RecipeManager {
   }
 
   /**
+   * Get recipe details by name
+   */
+  async getRecipeDetails(recipeName: string): Promise<RecipeConfig | null> {
+    try {
+      return await this.recipeLoader.loadRecipe(recipeName);
+    } catch (error) {
+      console.warn(`Failed to get recipe details for '${recipeName}':`, error);
+      return null;
+    }
+  }
+
+  /**
    * Load recipe from file path
    */
   async loadRecipeFromFile(filePath: string): Promise<RecipeConfig> {
@@ -177,7 +191,7 @@ export class RecipeManager {
   /**
    * Get recipe loader instance
    */
-  getRecipeLoader(): RecipeLoaderService {
+  getRecipeLoader(): RecipeLoader {
     return this.recipeLoader;
   }
 }
