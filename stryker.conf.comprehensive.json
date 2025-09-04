@@ -6,7 +6,10 @@
   "coverageAnalysis": "perTest",
   "mutate": [
     "src/lib/csv-generator.ts",
-    "src/lib/normalization.ts"
+    "src/lib/normalization.ts",
+    "src/lib/scraping-service.ts",
+    "src/lib/generic-adapter.ts",
+    "src/lib/recipe-manager.ts"
   ],
   "jest": {
     "config": {
@@ -41,11 +44,11 @@
     }
   },
   "thresholds": {
-    "high": 70,
-    "break": 50
+    "high": 80,
+    "break": 60
   },
-  "timeoutMS": 120000,
-  "concurrency": 6,
+  "timeoutMS": 180000,
+  "concurrency": 8,
   "logLevel": "info",
   "fileLogLevel": "warn",
   "ignoreStatic": true,

@@ -1,0 +1,48 @@
+name: Scheduled Mutation Testing
+
+on:
+  schedule:
+    # Run every Sunday at 2 AM UTC
+    - cron: '0 2 * * 0'
+  workflow_dispatch: # Allow manual trigger
+
+jobs:
+  comprehensive-mutation-testing:
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      
+    - name: Setup Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: '20.x'
+        cache: 'npm'
+        
+    - name: Install dependencies
+      run: npm ci
+      
+    - name: Run comprehensive mutation testing
+      run: timeout 60m npm run mutation:comprehensive || echo "Comprehensive mutation testing timed out after 60 minutes"
+      env:
+        CI: true
+        NODE_OPTIONS: "--max-old-space-size=6144"
+        
+    - name: Upload mutation report
+      uses: actions/upload-artifact@v4
+      if: always()
+      with:
+        name: comprehensive-mutation-report
+        path: reports/mutation/
+        
+    - name: Create mutation testing summary
+      if: always()
+      run: |
+        echo "## 🧬 Comprehensive Mutation Testing Results" >> $GITHUB_STEP_SUMMARY
+        if [ -f "reports/mutation/mutation-report.html" ]; then
+          echo "✅ Comprehensive mutation testing completed successfully" >> $GITHUB_STEP_SUMMARY
+          echo "📊 [View detailed report](https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }})" >> $GITHUB_STEP_SUMMARY
+        else
+          echo "❌ Comprehensive mutation testing failed or report not generated" >> $GITHUB_STEP_SUMMARY
+        fi

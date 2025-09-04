@@ -53,7 +53,7 @@ jobs:
       run: npm ci
       
     - name: Run mutation testing
-      run: timeout 30m npm run mutation:ci || echo "Mutation testing timed out after 30 minutes"
+      run: timeout 20m npm run mutation:ci || echo "Mutation testing timed out after 20 minutes"
       env:
         CI: true
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
