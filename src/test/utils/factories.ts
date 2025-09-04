@@ -8,8 +8,8 @@ function merge<T>(base: T, overrides?: DeepPartial<T>): T {
   if (!overrides) return base;
   const output: unknown = Array.isArray(base) ? [...base] : { ...base };
   for (const key of Object.keys(overrides) as Array<keyof T>) {
-    const baseVal: unknown = (base as any)[key];
-    const overrideVal: unknown = (overrides as any)[key];
+    const baseVal: unknown = (base as unknown as Record<string, unknown>)[key as string];
+    const overrideVal: unknown = (overrides as unknown as Record<string, unknown>)[key as string];
     if (
       baseVal &&
       overrideVal &&
@@ -18,9 +18,9 @@ function merge<T>(base: T, overrides?: DeepPartial<T>): T {
       typeof overrideVal === 'object' &&
       !Array.isArray(overrideVal)
     ) {
-      (output as any)[key] = merge(baseVal, overrideVal);
+      (output as Record<string, unknown>)[key as string] = merge(baseVal, overrideVal);
     } else if (overrideVal !== undefined) {
-      (output as any)[key] = overrideVal;
+      (output as Record<string, unknown>)[key as string] = overrideVal;
     }
   }
   return output as T;
@@ -82,22 +82,108 @@ export const factories = {
   normalizedProduct(overrides?: DeepPartial<NormalizedProduct>): NormalizedProduct {
     const base: NormalizedProduct = {
       id: 'p-001',
-      title: 'Test Product',
-      slug: 'test-product',
-      description: 'A test product description',
-      shortDescription: 'Short desc',
+      title: 'Premium Test Product',
+      slug: 'premium-test-product',
+      description:
+        'A comprehensive test product description with detailed information about features, benefits, and specifications. This product is designed for testing purposes and includes realistic content for validation.',
+      shortDescription: 'High-quality test product with advanced features',
       sku: 'TP-001',
       stockStatus: 'instock',
-      images: ['https://example.com/image.jpg'],
+      images: ['https://example.com/image1.jpg', 'https://example.com/image2.jpg'],
       category: 'Test Category',
       productType: 'simple',
-      attributes: { color: ['Red', 'Blue'] },
+      attributes: {
+        color: ['Red', 'Blue', 'Green'],
+        size: ['Small', 'Medium', 'Large'],
+        material: ['Cotton', 'Polyester'],
+      },
       variations: [],
-      regularPrice: '19.99',
-      salePrice: undefined,
+      regularPrice: '29.99',
+      salePrice: '24.99',
       normalizedAt: new Date(),
       sourceUrl: 'https://example.com/p/test',
       confidence: 0.95,
+    };
+    return merge(base, overrides);
+  },
+
+  variableProduct(overrides?: DeepPartial<NormalizedProduct>): NormalizedProduct {
+    const base: NormalizedProduct = {
+      id: 'p-002',
+      title: 'Variable Test Product Collection',
+      slug: 'variable-test-product-collection',
+      description:
+        'A comprehensive variable product with multiple variations. Each variation offers different combinations of attributes while maintaining consistent quality and design. Perfect for testing complex product structures.',
+      shortDescription: 'Multi-variation test product with extensive options',
+      sku: 'VTP-001',
+      stockStatus: 'instock',
+      images: ['https://example.com/variable1.jpg', 'https://example.com/variable2.jpg'],
+      category: 'Test Category',
+      productType: 'variable',
+      attributes: {
+        color: ['Red', 'Blue', 'Green', 'Black', 'White'],
+        size: ['XS', 'S', 'M', 'L', 'XL', 'XXL'],
+        material: ['Cotton', 'Polyester', 'Wool'],
+      },
+      variations: [
+        {
+          sku: 'VTP-001-RED-S',
+          regularPrice: '34.99',
+          salePrice: '29.99',
+          taxClass: 'standard',
+          stockStatus: 'instock',
+          images: ['https://example.com/red-s.jpg'],
+          attributeAssignments: {
+            color: 'Red',
+            size: 'S',
+            material: 'Cotton',
+          },
+        },
+        {
+          sku: 'VTP-001-BLUE-M',
+          regularPrice: '34.99',
+          salePrice: '29.99',
+          taxClass: 'standard',
+          stockStatus: 'instock',
+          images: ['https://example.com/blue-m.jpg'],
+          attributeAssignments: {
+            color: 'Blue',
+            size: 'M',
+            material: 'Polyester',
+          },
+        },
+        {
+          sku: 'VTP-001-GREEN-L',
+          regularPrice: '34.99',
+          salePrice: '29.99',
+          taxClass: 'standard',
+          stockStatus: 'outofstock',
+          images: ['https://example.com/green-l.jpg'],
+          attributeAssignments: {
+            color: 'Green',
+            size: 'L',
+            material: 'Wool',
+          },
+        },
+        {
+          sku: 'VTP-001-BLACK-XL',
+          regularPrice: '34.99',
+          salePrice: '29.99',
+          taxClass: 'standard',
+          stockStatus: 'instock',
+          images: ['https://example.com/black-xl.jpg'],
+          attributeAssignments: {
+            color: 'Black',
+            size: 'XL',
+            material: 'Cotton',
+          },
+        },
+      ],
+      regularPrice: '34.99',
+      salePrice: '29.99',
+      normalizedAt: new Date(),
+      sourceUrl: 'https://example.com/p/variable-test',
+      confidence: 0.92,
     };
     return merge(base, overrides);
   },
@@ -146,5 +232,3 @@ export type FactoryOverrides = {
   scrapingJob?: DeepPartial<ScrapingJob>;
   jobResult?: DeepPartial<JobResult>;
 };
-
-

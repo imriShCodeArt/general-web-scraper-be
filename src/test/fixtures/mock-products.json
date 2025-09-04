@@ -4,16 +4,93 @@
       "id": "p-001",
       "title": "Alpha Backpack",
       "slug": "alpha-backpack",
-      "description": "Durable backpack with laptop sleeve",
-      "shortDescription": "Everyday pack",
+      "description": "Durable backpack with laptop sleeve and multiple compartments for organization. Perfect for daily commutes and travel. Features water-resistant material and ergonomic design.",
+      "shortDescription": "Everyday pack with laptop sleeve",
       "sku": "ALPHA-001",
       "stockStatus": "instock",
-      "images": ["https://example.com/img/alpha.jpg"],
-      "category": "Bags",
+      "images": ["https://example.com/img/alpha.jpg", "https://example.com/img/alpha-back.jpg"],
+      "category": "Bags & Accessories",
       "productType": "simple",
-      "attributes": {"color": ["Black"], "size": ["One"]},
+      "attributes": { "color": ["Black"], "size": ["One Size"] },
       "variations": [],
-      "price": "79.90"
+      "price": "79.90",
+      "salePrice": "69.90"
+    },
+    {
+      "id": "p-002",
+      "title": "Premium T-Shirt Collection",
+      "slug": "premium-t-shirt-collection",
+      "description": "High-quality cotton t-shirts available in multiple colors and sizes. Made from 100% organic cotton with pre-shrunk fabric for lasting comfort and fit.",
+      "shortDescription": "Organic cotton t-shirts",
+      "sku": "TEE-001",
+      "stockStatus": "instock",
+      "images": ["https://example.com/img/tee-front.jpg", "https://example.com/img/tee-back.jpg"],
+      "category": "Clothing",
+      "productType": "variable",
+      "attributes": {
+        "color": ["Red", "Blue", "Green", "Black", "White"],
+        "size": ["XS", "S", "M", "L", "XL", "XXL"]
+      },
+      "variations": [
+        {
+          "sku": "TEE-001-RED-S",
+          "regularPrice": "24.99",
+          "salePrice": "19.99",
+          "taxClass": "standard",
+          "stockStatus": "instock",
+          "images": ["https://example.com/img/tee-red-s.jpg"],
+          "attributeAssignments": {
+            "color": "Red",
+            "size": "S"
+          }
+        },
+        {
+          "sku": "TEE-001-BLUE-M",
+          "regularPrice": "24.99",
+          "salePrice": "19.99",
+          "taxClass": "standard",
+          "stockStatus": "instock",
+          "images": ["https://example.com/img/tee-blue-m.jpg"],
+          "attributeAssignments": {
+            "color": "Blue",
+            "size": "M"
+          }
+        },
+        {
+          "sku": "TEE-001-GREEN-L",
+          "regularPrice": "24.99",
+          "salePrice": "19.99",
+          "taxClass": "standard",
+          "stockStatus": "outofstock",
+          "images": ["https://example.com/img/tee-green-l.jpg"],
+          "attributeAssignments": {
+            "color": "Green",
+            "size": "L"
+          }
+        }
+      ],
+      "price": "24.99",
+      "salePrice": "19.99"
+    },
+    {
+      "id": "p-003",
+      "title": "Wireless Bluetooth Headphones",
+      "slug": "wireless-bluetooth-headphones",
+      "description": "Premium wireless headphones with active noise cancellation, 30-hour battery life, and superior sound quality. Perfect for music lovers and professionals.",
+      "shortDescription": "Noise-cancelling wireless headphones",
+      "sku": "HEADPHONES-001",
+      "stockStatus": "instock",
+      "images": [
+        "https://example.com/img/headphones-1.jpg",
+        "https://example.com/img/headphones-2.jpg",
+        "https://example.com/img/headphones-3.jpg"
+      ],
+      "category": "Electronics",
+      "productType": "simple",
+      "attributes": { "color": ["Black", "White"], "connectivity": ["Bluetooth 5.0"] },
+      "variations": [],
+      "price": "199.99",
+      "salePrice": "149.99"
     }
   ],
   "normalizedProducts": [
@@ -21,21 +98,102 @@
       "id": "p-001",
       "title": "Alpha Backpack",
       "slug": "alpha-backpack",
-      "description": "Durable backpack with laptop sleeve",
-      "shortDescription": "Everyday pack",
+      "description": "Durable backpack with laptop sleeve and multiple compartments for organization. Perfect for daily commutes and travel. Features water-resistant material and ergonomic design.",
+      "shortDescription": "Everyday pack with laptop sleeve",
       "sku": "ALPHA-001",
       "stockStatus": "instock",
-      "images": ["https://example.com/img/alpha.jpg"],
-      "category": "Bags",
+      "images": ["https://example.com/img/alpha.jpg", "https://example.com/img/alpha-back.jpg"],
+      "category": "Bags & Accessories",
       "productType": "simple",
-      "attributes": {"color": ["Black"], "size": ["One"]},
+      "attributes": { "color": ["Black"], "size": ["One Size"] },
       "variations": [],
       "regularPrice": "79.90",
+      "salePrice": "69.90",
       "normalizedAt": "2024-01-01T00:00:00.000Z",
       "sourceUrl": "https://example.com/p/alpha",
       "confidence": 0.99
+    },
+    {
+      "id": "p-002",
+      "title": "Premium T-Shirt Collection",
+      "slug": "premium-t-shirt-collection",
+      "description": "High-quality cotton t-shirts available in multiple colors and sizes. Made from 100% organic cotton with pre-shrunk fabric for lasting comfort and fit.",
+      "shortDescription": "Organic cotton t-shirts",
+      "sku": "TEE-001",
+      "stockStatus": "instock",
+      "images": ["https://example.com/img/tee-front.jpg", "https://example.com/img/tee-back.jpg"],
+      "category": "Clothing",
+      "productType": "variable",
+      "attributes": {
+        "color": ["Red", "Blue", "Green", "Black", "White"],
+        "size": ["XS", "S", "M", "L", "XL", "XXL"]
+      },
+      "variations": [
+        {
+          "sku": "TEE-001-RED-S",
+          "regularPrice": "24.99",
+          "salePrice": "19.99",
+          "taxClass": "standard",
+          "stockStatus": "instock",
+          "images": ["https://example.com/img/tee-red-s.jpg"],
+          "attributeAssignments": {
+            "color": "Red",
+            "size": "S"
+          }
+        },
+        {
+          "sku": "TEE-001-BLUE-M",
+          "regularPrice": "24.99",
+          "salePrice": "19.99",
+          "taxClass": "standard",
+          "stockStatus": "instock",
+          "images": ["https://example.com/img/tee-blue-m.jpg"],
+          "attributeAssignments": {
+            "color": "Blue",
+            "size": "M"
+          }
+        },
+        {
+          "sku": "TEE-001-GREEN-L",
+          "regularPrice": "24.99",
+          "salePrice": "19.99",
+          "taxClass": "standard",
+          "stockStatus": "outofstock",
+          "images": ["https://example.com/img/tee-green-l.jpg"],
+          "attributeAssignments": {
+            "color": "Green",
+            "size": "L"
+          }
+        }
+      ],
+      "regularPrice": "24.99",
+      "salePrice": "19.99",
+      "normalizedAt": "2024-01-01T00:00:00.000Z",
+      "sourceUrl": "https://example.com/p/tee-collection",
+      "confidence": 0.98
+    },
+    {
+      "id": "p-003",
+      "title": "Wireless Bluetooth Headphones",
+      "slug": "wireless-bluetooth-headphones",
+      "description": "Premium wireless headphones with active noise cancellation, 30-hour battery life, and superior sound quality. Perfect for music lovers and professionals.",
+      "shortDescription": "Noise-cancelling wireless headphones",
+      "sku": "HEADPHONES-001",
+      "stockStatus": "instock",
+      "images": [
+        "https://example.com/img/headphones-1.jpg",
+        "https://example.com/img/headphones-2.jpg",
+        "https://example.com/img/headphones-3.jpg"
+      ],
+      "category": "Electronics",
+      "productType": "simple",
+      "attributes": { "color": ["Black", "White"], "connectivity": ["Bluetooth 5.0"] },
+      "variations": [],
+      "regularPrice": "199.99",
+      "salePrice": "149.99",
+      "normalizedAt": "2024-01-01T00:00:00.000Z",
+      "sourceUrl": "https://example.com/p/headphones",
+      "confidence": 0.97
     }
   ]
 }
-
-
