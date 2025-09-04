@@ -1,0 +1,77 @@
+name: Main Branch Quality Gate
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+    types: [ opened, synchronize, reopened ]
+
+jobs:
+  # Fast quality checks for all PRs
+  quick-checks:
+    runs-on: ubuntu-latest
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      
+    - name: Setup Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: '20.x'
+        cache: 'npm'
+        
+    - name: Install dependencies
+      run: npm ci
+      
+    - name: Type check
+      run: npm run type-check
+      
+    - name: Lint check
+      run: npm run lint
+      
+    - name: Run unit tests
+      run: npm run test:ci
+      
+  # Comprehensive mutation testing only for main branch pushes
+  mutation-testing:
+    runs-on: ubuntu-latest
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    needs: quick-checks
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      
+    - name: Setup Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: '20.x'
+        cache: 'npm'
+        
+    - name: Install dependencies
+      run: npm ci
+      
+    - name: Run mutation testing
+      run: npm run mutation:ci
+      env:
+        CI: true
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        
+    - name: Upload mutation report
+      uses: actions/upload-artifact@v4
+      if: always()
+      with:
+        name: mutation-report
+        path: reports/mutation/
+        
+    - name: Create mutation testing summary
+      if: always()
+      run: |
+        echo "## 🧬 Mutation Testing Results" >> $GITHUB_STEP_SUMMARY
+        if [ -f "reports/mutation/mutation-report.html" ]; then
+          echo "✅ Mutation testing completed successfully" >> $GITHUB_STEP_SUMMARY
+          echo "📊 [View detailed report](https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }})" >> $GITHUB_STEP_SUMMARY
+        else
+          echo "❌ Mutation testing failed or report not generated" >> $GITHUB_STEP_SUMMARY
+        fi

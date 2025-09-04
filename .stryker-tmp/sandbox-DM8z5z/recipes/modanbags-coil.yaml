@@ -1,0 +1,171 @@
+name: 'Modan Bags Co.il'
+description: 'Recipe for modanbags.co.il Hebrew e-commerce site selling school supplies and bags'
+version: '2.0.0'
+siteUrl: 'https://modanbags.co.il'
+
+selectors:
+  # Core product fields
+  title:
+    - 'h1'
+    - '.product_title'
+    - '.product-name'
+    - '.title'
+
+  price:
+    - '.price'
+    - '.amount'
+    - '.woocommerce-Price-amount'
+    - '[data-price]'
+
+  sku:
+    - '.sku'
+    - '.product-sku'
+    - '[data-sku]'
+
+  description:
+    - '.woocommerce-product-details__short-description'
+    - '.product-description'
+    - '.description'
+    - '.product-details'
+    - '.excerpt'
+
+  shortDescription:
+    - '.product-summary'
+    - '.short-description'
+    - '.excerpt'
+
+  images:
+    - '.product-gallery img'
+    - '.woocommerce-product-gallery__image img'
+    - "img[src*='product']"
+    - 'img'
+
+  stock:
+    - '.stock'
+    - '.availability'
+    - '.in-stock'
+    - '.out-of-stock'
+
+  category:
+    - '.woocommerce-breadcrumb'
+    - '.breadcrumb'
+    - '.category'
+    - '.product-category'
+
+  # Product discovery
+  productLinks:
+    - '.woocommerce ul.products li.product a'
+    - '.woocommerce-loop-product__title'
+    - '.product a'
+    - "a[href*='/product/']"
+    - "a[href*='/מוצר/']"
+
+  # Pagination
+  pagination:
+    nextPage: '.next.page-numbers'
+    maxPages: 20 # Limited for performance
+
+  # Attributes and variations
+  attributes:
+    - '.variations'
+    - '.product-options'
+    - '.woocommerce-variations'
+
+  variations:
+    - '.variations_form'
+    - '.woocommerce-variations'
+    - "select[name*='attribute']"
+
+  variationForm:
+    - 'form.variations_form'
+    - '.variations_form'
+    - '.woocommerce-variations'
+
+  variationSelects:
+    - "select[name*='attribute_pa_']"
+    - "select[name*='attribute_']"
+    - "select[name*='pa_']"
+
+  # Embedded data sources
+  embeddedJson:
+    - "script[type='application/ld+json']"
+    - 'script[data-json]'
+    - '#__NEXT_DATA__'
+
+transforms:
+  title:
+    - 'trim: '
+    - "replace:^\\s+|\\s+$"
+
+  price:
+    - "replace:[^\\d.,]"
+    - 'replace:,|.'
+    - 'replace:₪|$|€|£'
+
+  description:
+    - "trim: \n\t"
+    - "replace:\\s+ | "
+    - 'limit:500' # Limit for performance
+
+  attributes:
+    צבע:
+      - "replace:^\\s+|\\s+$"
+      - 'replace:בחר צבע|בחרי צבע'
+    גודל:
+      - "replace:^\\s+|\\s+$"
+      - 'replace:בחר גודל|בחרי גודל'
+    Color:
+      - "replace:^\\s+|\\s+$"
+    Size:
+      - "replace:^\\s+|\\s+$"
+    General:
+      - "replace:^\\s+|\\s+$"
+      - 'replace:בחירת אפשרות|בחר אפשרות'
+    Material:
+      - "replace:^\\s+|\\s+$"
+      - 'replace:בחר חומר|בחרי חומר'
+
+  variations:
+    - "replace:^\\s+|\\s+$"
+    - 'replace:בחירת אפשרות|בחר אפשרות'
+    - 'replace:בחירת צבע|בחר צבע'
+    - 'replace:בחירת גודל|בחר גודל'
+    - 'replace:בחירת חומר|בחר חומר'
+
+behavior:
+  waitForSelectors:
+    - 'h1'
+    - '.price'
+    - '.variations_form'
+    - '.woocommerce-variations'
+  scrollToLoad: false
+  useHeadlessBrowser: true
+  rateLimit: 200
+  maxConcurrent: 5
+  waitForVariations: true
+  waitForDynamicContent: true
+  waitForJavaScript: true
+
+fallbacks:
+  title:
+    - 'h1'
+    - '.title'
+  price:
+    - '.price'
+    - '.amount'
+  images:
+    - "img[src*='product']"
+    - 'img'
+
+validation:
+  requiredFields:
+    - 'title'
+    - 'price'
+    - 'images'
+  priceFormat: "\\d+(\\.\\d{2})?"
+  skuFormat: '[A-Za-z0-9-_א-ת]+'
+  variationDetection:
+    - 'variationForm'
+    - 'variationSelects'
+  maxDescriptionLength: 500
+  maxImageCount: 10

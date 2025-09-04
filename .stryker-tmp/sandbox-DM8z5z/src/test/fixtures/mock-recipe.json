@@ -1,0 +1,30 @@
+{
+  "name": "mock-recipe",
+  "description": "Mock recipe for tests",
+  "version": "1.0.0",
+  "siteUrl": "https://example.com",
+  "selectors": {
+    "title": ".title",
+    "price": ".price",
+    "images": ".images img",
+    "stock": ".stock",
+    "sku": ".sku",
+    "description": ".description",
+    "productLinks": ".product-link",
+    "attributes": ".attributes"
+  },
+  "behavior": {
+    "useHeadlessBrowser": false,
+    "rateLimit": 10,
+    "maxConcurrent": 2,
+    "retryAttempts": 0,
+    "retryDelay": 0
+  },
+  "validation": {
+    "requiredFields": ["title", "sku"],
+    "minDescriptionLength": 5,
+    "maxTitleLength": 120
+  }
+}
+
+

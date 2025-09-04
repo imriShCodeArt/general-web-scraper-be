@@ -1,0 +1,27 @@
+# Exclude development files
+*.md
+.git/
+.gitignore
+
+# Exclude test files
+**/*.test.ts
+**/*.spec.ts
+
+# Exclude source maps in production
+**/*.map
+
+# Exclude node_modules (will be installed by Vercel)
+node_modules/
+
+# Exclude storage and recipes (runtime data)
+storage/
+recipes/
+
+# Exclude build artifacts (keep dist for deployment)
+build/
+
+# Keep only backend essentials and new Vercel deployment
+!src/
+!package.json
+!tsconfig.json
+!vercel-build.js

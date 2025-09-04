@@ -1,0 +1,83 @@
+name: Main Branch Quality Gate
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+    types: [ opened, synchronize, reopened ]
+
+jobs:
+  quality-gate:
+    runs-on: ubuntu-latest
+    
+    strategy:
+      matrix:
+        node-version: [18.x, 20.x]
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      
+    - name: Setup Node.js ${{ matrix.node-version }}
+      uses: actions/setup-node@v4
+      with:
+        node-version: ${{ matrix.node-version }}
+        cache: 'npm'
+        
+    - name: Install dependencies
+      run: npm ci
+      
+    - name: Type check
+      run: npm run type-check
+      
+    - name: Lint check
+      run: npm run lint
+      
+    - name: Run unit tests
+      run: npm run test:ci
+      
+    - name: Run mutation testing
+      run: npm run mutation:ci
+      env:
+        CI: true
+        
+    - name: Upload mutation report
+      uses: actions/upload-artifact@v4
+      if: always()
+      with:
+        name: mutation-report-${{ matrix.node-version }}
+        path: reports/mutation/
+        
+    - name: Comment PR with mutation results
+      if: github.event_name == 'pull_request'
+      uses: actions/github-script@v7
+      with:
+        script: |
+          const fs = require('fs');
+          const path = require('path');
+          
+          try {
+            const reportPath = 'reports/mutation/mutation-report.html';
+            if (fs.existsSync(reportPath)) {
+              const report = fs.readFileSync(reportPath, 'utf8');
+              const summary = report.match(/<h2>Mutation score: (.*?)<\/h2>/);
+              
+              if (summary) {
+                github.rest.issues.createComment({
+                  issue_number: context.issue.number,
+                  owner: context.repo.owner,
+                  repo: context.repo.repo,
+                  body: `## 🧬 Mutation Testing Results
+                  
+                  **Mutation Score:** ${summary[1]}
+                  
+                  📊 [View detailed report](https://github.com/${context.repo.owner}/${context.repo.repo}/actions/runs/${context.runId})
+                  
+                  ${summary[1].includes('80%') || summary[1].includes('90%') ? '✅' : '⚠️'} Quality gate ${summary[1].includes('80%') || summary[1].includes('90%') ? 'passed' : 'needs attention'}`
+                });
+              }
+            }
+          } catch (error) {
+            console.log('Could not generate mutation report comment:', error.message);
+          }

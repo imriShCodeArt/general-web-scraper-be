@@ -28,9 +28,9 @@
     "precommit": "npm run lint && npm run type-check && npm run test:unit",
     "prepare": "husky",
     "docs": "npx --yes @mermaid-js/mermaid-cli@11.9.0 -i docs/architecture.mmd -o docs/architecture.svg || echo skipping",
+    "mutation": "stryker run",
     "mutation:ci": "stryker run --ci",
-    "quality-gate": "npm run test:ci && npm run lint && npm run type-check",
-    "quality-gate:full": "npm run test:ci && npm run mutation:ci && npm run lint && npm run type-check"
+    "quality-gate": "npm run test:ci && npm run mutation:ci && npm run lint && npm run type-check"
   },
   "keywords": [
     "web-scraper",

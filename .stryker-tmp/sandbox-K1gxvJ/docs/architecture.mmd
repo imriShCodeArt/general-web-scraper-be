@@ -1,0 +1,12 @@
+flowchart TD
+  A[Client] -->|HTTP| B[Express API]
+  B --> C[ScrapingService]
+  C --> D[HTTP Client / Puppeteer]
+  C --> E[Normalization]
+  C --> F[CSV Generator]
+  F --> G[(Storage)]
+  E --> F
+  B --> H[Recipe Routes]
+  H --> I[Recipe Manager]
+  I --> J[Recipe Files YAML]
+

@@ -1,0 +1,157 @@
+name: 'Wash and Dry (Shopify)'
+description: 'Recipe for wash-and-dry.eu collection and product pages (Shopify)'
+version: '1.0.0'
+siteUrl: 'https://wash-and-dry.eu'
+
+selectors:
+  # Core product fields (product page)
+  title:
+    - 'h1.product__title'
+    - 'h1.product-title'
+    - "meta[property='og:title']"
+
+  price:
+    - '.price__current .price-item'
+    - '.price__regular .price-item--regular'
+    - '.price .price-item'
+    - "[itemprop='price']"
+    - '.price__container [data-product-price]'
+    - '.price-item--sale'
+    - '.price-item--regular'
+
+  sku:
+    - '[data-product-sku]'
+    - '.product__sku'
+    - '.sku'
+
+  description:
+    - '#description'
+    - '.product__description'
+    - '[data-product-description]'
+
+  shortDescription:
+    - '.product__subtitle'
+    - '.product-meta__subtitle'
+
+  images:
+    - '.product-gallery--loaded-image'
+    - '.product-gallery--media-thumbnail-img'
+    - '.product-gallery img'
+    - ".product-gallery [style*='background-image']"
+    - '.product__media-list img'
+    - '.product__media-item img'
+    - 'picture source'
+    - '.product__media img'
+    - '.product-media img'
+    - "img[srcset*='products']"
+    - "img[src*='cdn.shopify.com']"
+    - "img[src*='wash-and-dry.eu']"
+
+  stock:
+    - '.product__inventory'
+    - '.product__availability'
+    - '.in-stock'
+    - '.out-of-stock'
+    - '[data-product-status]'
+    - '.product-form__inventory'
+    - '.product__inventory [data-availability]'
+
+  category:
+    - '.breadcrumbs'
+    - '.breadcrumb'
+    - "nav[aria-label='breadcrumb']"
+    - "a[href*='/collections/']:not([href*='/products/'])"
+
+  # Product discovery (collection/archive pages)
+  productLinks:
+    - '.card-wrapper a.full-unstyled-link'
+    - '.product-grid a.full-unstyled-link'
+    - "a[href*='/products/']:not([href*='#'])"
+    - ".product-grid a[href*='/products/']"
+    - ".collection__products a[href*='/products/']"
+    - "a[href*='/collections/'][href*='/products/']"
+
+  # Pagination on collection pages
+  pagination:
+    nextPage: "a[rel='next'], .pagination .next, a.pagination__next, link[rel='next']"
+    maxPages: 50
+
+  # Attributes and variations (Shopify options)
+  attributes:
+    - '.product-form__input'
+    - '.product__options'
+
+  variations:
+    - "form[action*='cart'] select"
+    - '.product-form__input select'
+    - "form[action*='/cart/add'] select[name^='options[']"
+    - "select[name='options[Size]']"
+    - "select[name^='options[']"
+
+  # Embedded data sources (Shopify/LD+JSON)
+  embeddedJson:
+    - "script[type='application/ld+json']"
+    - "script[id^='ProductJson-']"
+    - "script[id*='ProductJson']"
+    - "script[type='application/json'][data-product]"
+
+transforms:
+  title:
+    - 'trim: '
+
+  # Note: the transform engine supports replace:SEARCH|REPLACE.
+  # We'll align with your intent, but engine cannot replace with empty string reliably.
+  # We still improve normalization by converting commas to dots first.
+  price:
+    - "replace:[^\\d.,]"
+    - 'replace:,|.'
+    - "replace:(\\d+)\\.(?=\\d{3}(\\D|$))|\\.(?=\\d{3}(\\D|$))|(?<=\\d),(?=\\d{3}(\\D|$))|\\s|"
+
+  description:
+    - "trim: \n\t"
+    - "replace:\\s+ | "
+
+  attributes:
+    Color:
+      - "replace:^\\s+|\\s+$"
+      - "replace:^\\s*-\\s*"
+    Size:
+      - "replace:^\\s+|\\s+$"
+      - "replace:^\\s*-\\s*"
+
+behavior:
+  # Wait for either collection grid or product title to be present
+  waitForSelectors:
+    - '.product-grid'
+    - '.collection__products'
+    - 'h1.product__title'
+    - '.product-gallery'
+    - '.product-gallery--viewer'
+    - '.product-gallery--loaded-image'
+    - '.product-gallery--media-thumbnail-img'
+    - '.product__media-list'
+    - '.product__media-item img'
+    - 'picture source'
+    - "form[action*='/cart/add']"
+    - "script[type='application/ld+json']"
+  scrollToLoad: true
+  useHeadlessBrowser: false
+  rateLimit: 150
+  maxConcurrent: 6
+
+fallbacks:
+  title:
+    - 'h1'
+    - '.title'
+  price:
+    - '.price-item'
+    - '[data-price]'
+  images:
+    - "img[src*='product']"
+    - 'img'
+
+validation:
+  requiredFields:
+    - 'title'
+    - 'images'
+  priceFormat: "^\\d+(?:\\.\\d+)?$"
