@@ -132,21 +132,21 @@ describe('WooCommerce CSV Testing Examples', () => {
     it('should validate parent CSV has required WooCommerce columns', async () => {
       const parentCsv = await csvGenerator.generateParentCsv(mockProducts);
 
-      expect('').toHaveWooCommerceParentColumns(parentCsv);
+      expect(parentCsv).toHaveWooCommerceParentColumns();
     });
 
     it('should validate variation CSV has required WooCommerce columns', async () => {
       const variableProducts = mockProducts.filter((p) => p.productType === 'variable');
       const variationCsv = await csvGenerator.generateVariationCsv(variableProducts);
 
-      expect('').toHaveWooCommerceVariationColumns(variationCsv);
+      expect(variationCsv).toHaveWooCommerceVariationColumns();
     });
 
     it('should validate attribute column pairs in parent CSV', async () => {
       const parentCsv = await csvGenerator.generateParentCsv(mockProducts);
       const expectedAttributes = ['Color', 'Size'];
 
-      expect('').toHaveAttributeColumnPairs(parentCsv, expectedAttributes);
+      expect(parentCsv).toHaveAttributeColumnPairs(expectedAttributes);
     });
 
     it('should validate meta attribute columns in variation CSV', async () => {
@@ -154,14 +154,14 @@ describe('WooCommerce CSV Testing Examples', () => {
       const variationCsv = await csvGenerator.generateVariationCsv(variableProducts);
       const expectedAttributes = ['Color', 'Size'];
 
-      expect('').toHaveMetaAttributeColumns(variationCsv, expectedAttributes);
+      expect(variationCsv).toHaveMetaAttributeColumns(expectedAttributes);
     });
 
     it('should validate attribute data flags format', async () => {
       const parentCsv = await csvGenerator.generateParentCsv(mockProducts);
 
-      expect('').toHaveValidAttributeDataFlags(parentCsv, 'Color');
-      expect('').toHaveValidAttributeDataFlags(parentCsv, 'Size');
+      expect(parentCsv).toHaveValidAttributeDataFlags('Color');
+      expect(parentCsv).toHaveValidAttributeDataFlags('Size');
     });
 
     it('should validate variation attributes match parent options', async () => {
@@ -169,7 +169,7 @@ describe('WooCommerce CSV Testing Examples', () => {
       const variableProducts = mockProducts.filter((p) => p.productType === 'variable');
       const variationCsv = await csvGenerator.generateVariationCsv(variableProducts);
 
-      expect('').toHaveMatchingVariationAttributes(parentCsv, variationCsv);
+      expect(parentCsv).toHaveMatchingVariationAttributes(variationCsv);
     });
 
     it('should validate product types', async () => {
@@ -177,8 +177,8 @@ describe('WooCommerce CSV Testing Examples', () => {
       const variableProducts = mockProducts.filter((p) => p.productType === 'variable');
       const variationCsv = await csvGenerator.generateVariationCsv(variableProducts);
 
-      expect('').toHaveWooCommerceProductType(parentCsv, 'variable');
-      expect('').toHaveWooCommerceProductType(variationCsv, 'product_variation');
+      expect(parentCsv).toHaveWooCommerceProductType('variable');
+      expect(variationCsv).toHaveWooCommerceProductType('product_variation');
     });
 
     it('should validate stock status values', async () => {
@@ -186,8 +186,8 @@ describe('WooCommerce CSV Testing Examples', () => {
       const variableProducts = mockProducts.filter((p) => p.productType === 'variable');
       const variationCsv = await csvGenerator.generateVariationCsv(variableProducts);
 
-      expect('').toHaveValidStockStatus(parentCsv);
-      expect('').toHaveValidStockStatus(variationCsv);
+      expect(parentCsv).toHaveValidStockStatus();
+      expect(variationCsv).toHaveValidStockStatus();
     });
 
     it('should validate price format', async () => {
@@ -195,8 +195,8 @@ describe('WooCommerce CSV Testing Examples', () => {
       const variableProducts = mockProducts.filter((p) => p.productType === 'variable');
       const variationCsv = await csvGenerator.generateVariationCsv(variableProducts);
 
-      expect('').toHaveValidPriceFormat(parentCsv);
-      expect('').toHaveValidPriceFormat(variationCsv);
+      expect(parentCsv).toHaveValidPriceFormat();
+      expect(variationCsv).toHaveValidPriceFormat();
     });
 
     it('should validate parent SKU references in variations', async () => {
@@ -204,7 +204,7 @@ describe('WooCommerce CSV Testing Examples', () => {
       const variableProducts = mockProducts.filter((p) => p.productType === 'variable');
       const variationCsv = await csvGenerator.generateVariationCsv(variableProducts);
 
-      expect('').toHaveValidParentSkuReferences(parentCsv, variationCsv);
+      expect(parentCsv).toHaveValidParentSkuReferences(variationCsv);
     });
   });
 

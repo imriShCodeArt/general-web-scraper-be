@@ -58,7 +58,11 @@ describe('Scraping Workflow Integration Tests', () => {
     } as any;
 
     mockCsvGenerator = {
+      generateParentCsv: jest.fn(),
+      generateVariationCsv: jest.fn(),
       generateBothCsvs: jest.fn(),
+      generateFilename: jest.fn(),
+      validateProducts: jest.fn(),
     };
 
     scope.register(TOKENS.RecipeManager, {

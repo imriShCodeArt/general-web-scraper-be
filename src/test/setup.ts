@@ -1,5 +1,6 @@
 import { initializeServices, cleanupServices } from '../lib/composition-root';
 import { RecipeConfig, RawProduct, NormalizedProduct, ScrapingJob } from '../types';
+import './setup-woocommerce-matchers';
 
 // Define the test utilities interface
 interface TestUtils {

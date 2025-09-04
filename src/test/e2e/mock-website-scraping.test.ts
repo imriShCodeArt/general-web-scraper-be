@@ -149,7 +149,11 @@ describe('E2E Mock Website Scraping Tests', () => {
     } as any;
 
     mockCsvGenerator = {
+      generateParentCsv: jest.fn(),
+      generateVariationCsv: jest.fn(),
       generateBothCsvs: jest.fn(),
+      generateFilename: jest.fn(),
+      validateProducts: jest.fn(),
     };
 
     // Create request scope and register overrides
