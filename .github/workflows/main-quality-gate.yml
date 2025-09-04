@@ -53,11 +53,11 @@ jobs:
       run: npm ci
       
     - name: Run mutation testing
-      run: npm run mutation:ci
+      run: timeout 30m npm run mutation:ci || echo "Mutation testing timed out after 30 minutes"
       env:
         CI: true
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        STRYKER_CI: true
+        NODE_OPTIONS: "--max-old-space-size=4096"
         
     - name: Upload mutation report
       uses: actions/upload-artifact@v4

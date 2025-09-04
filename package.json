@@ -28,7 +28,7 @@
     "precommit": "npm run lint && npm run type-check && npm run test:unit",
     "prepare": "husky",
     "docs": "npx --yes @mermaid-js/mermaid-cli@11.9.0 -i docs/architecture.mmd -o docs/architecture.svg || echo skipping",
-    "mutation:ci": "stryker run --configFile stryker.conf.ci.json",
+    "mutation:ci": "stryker run",
     "quality-gate": "npm run test:ci && npm run lint && npm run type-check",
     "quality-gate:full": "npm run test:ci && npm run mutation:ci && npm run lint && npm run type-check"
   },
