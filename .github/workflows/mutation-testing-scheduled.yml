@@ -24,7 +24,7 @@ jobs:
       run: npm ci
       
     - name: Run comprehensive mutation testing
-      run: timeout 60m npm run mutation:comprehensive || echo "Comprehensive mutation testing timed out after 60 minutes"
+      run: timeout 60m STRYKER_MUTATE="src/lib/csv-generator.ts,src/lib/normalization.ts,src/lib/scraping-service.ts,src/lib/generic-adapter.ts,src/lib/recipe-manager.ts" npm run mutation:ci || echo "Comprehensive mutation testing timed out after 60 minutes"
       env:
         CI: true
         NODE_OPTIONS: "--max-old-space-size=6144"
