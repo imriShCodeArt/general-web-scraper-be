@@ -1,30 +1,27 @@
 /**
  * Phase 4 Demonstration Test
- * 
+ *
  * This test demonstrates all Phase 4 functionality:
  * - Task 4.1: WooCommerce validation schemas
  * - Task 4.2: Template-based testing
  * - Task 4.3: End-to-end validation
- * 
+ *
  * This serves as a comprehensive demonstration of the complete Phase 4 implementation.
  */
 
 import { CsvGenerator } from '../../lib/csv-generator';
 import { factories } from '../utils/factories';
-import { 
-  generateCsvTemplate, 
-  generateMinimalCsvTemplate, 
+import {
+  generateCsvTemplate,
+  generateMinimalCsvTemplate,
   generateComprehensiveCsvTemplate,
   generateEdgeCaseTemplate,
   validateCsvTemplate,
   getRequiredParentColumns,
   getRequiredVariationColumns,
 } from '../utils/csv-template-generator';
-import { 
+import {
   validateWooCommerceCsvs,
-  WOOCOMMERCE_PARENT_SCHEMA,
-  WOOCOMMERCE_VARIATION_SCHEMA,
-  WOOCOMMERCE_CROSS_VALIDATION_SCHEMA,
 } from '../utils/woocommerce-validation-schemas';
 import { parseCsvRows } from '../utils/csv-parsing';
 

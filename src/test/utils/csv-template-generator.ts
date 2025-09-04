@@ -1,8 +1,8 @@
 /**
  * CSV Template Generator Utility
- * 
+ *
  * Task 4.2: Add template-based testing using generateCsvTemplate utility
- * 
+ *
  * This utility provides functions to generate CSV templates for testing purposes,
  * ensuring that all required WooCommerce columns are present even with minimal data.
  */
@@ -60,7 +60,7 @@ export async function generateCsvTemplate(options: CsvTemplateOptions = {}): Pro
       includeAttributes,
       includeVariations,
       attributeNames,
-      variationCount
+      variationCount,
     );
     templateProducts.push(variableProduct);
   }
@@ -68,7 +68,7 @@ export async function generateCsvTemplate(options: CsvTemplateOptions = {}): Pro
   // Generate CSVs
   const parentCsv = await csvGenerator.generateParentCsv(templateProducts);
   const variableProducts = templateProducts.filter(p => p.productType === 'variable');
-  const variationCsv = variableProducts.length > 0 
+  const variationCsv = variableProducts.length > 0
     ? await csvGenerator.generateVariationCsv(variableProducts)
     : undefined;
 
@@ -125,7 +125,7 @@ export async function generateComprehensiveCsvTemplate(): Promise<CsvTemplateRes
  */
 export async function generateProductTypeTemplate(
   productType: 'simple' | 'variable',
-  options: Omit<CsvTemplateOptions, 'productType'> = {}
+  options: Omit<CsvTemplateOptions, 'productType'> = {},
 ): Promise<CsvTemplateResult> {
   return generateCsvTemplate({
     ...options,
@@ -138,7 +138,7 @@ export async function generateProductTypeTemplate(
  */
 export async function generateAttributeTemplate(
   attributeNames: string[],
-  options: Omit<CsvTemplateOptions, 'attributeNames'> = {}
+  options: Omit<CsvTemplateOptions, 'attributeNames'> = {},
 ): Promise<CsvTemplateResult> {
   return generateCsvTemplate({
     ...options,
@@ -151,10 +151,10 @@ export async function generateAttributeTemplate(
  */
 function createTemplateSimpleProduct(
   includeAttributes: boolean,
-  attributeNames: string[]
+  attributeNames: string[],
 ): NormalizedProduct {
   const attributes: Record<string, string[]> = {};
-  
+
   if (includeAttributes) {
     attributeNames.forEach(attr => {
       attributes[attr.toLowerCase()] = [`${attr} Option 1`, `${attr} Option 2`];
@@ -183,10 +183,10 @@ function createTemplateVariableProduct(
   includeAttributes: boolean,
   includeVariations: boolean,
   attributeNames: string[],
-  variationCount: number
+  variationCount: number,
 ): NormalizedProduct {
   const attributes: Record<string, string[]> = {};
-  
+
   if (includeAttributes) {
     attributeNames.forEach(attr => {
       attributes[attr.toLowerCase()] = [`${attr} Option 1`, `${attr} Option 2`, `${attr} Option 3`];
@@ -195,7 +195,7 @@ function createTemplateVariableProduct(
 
   const variations = includeVariations ? generateTemplateVariations(
     attributeNames,
-    variationCount
+    variationCount,
   ) : [];
 
   return factories.variableProduct({
@@ -219,15 +219,15 @@ function createTemplateVariableProduct(
  */
 function generateTemplateVariations(
   attributeNames: string[],
-  count: number
+  count: number,
 ): NormalizedProduct['variations'] {
   const variations: NormalizedProduct['variations'] = [];
-  
+
   for (let i = 0; i < count; i++) {
     const attributeAssignments: Record<string, string> = {};
-    
+
     // Assign values to attributes
-    attributeNames.forEach((attr, index) => {
+    attributeNames.forEach((attr) => {
       const options = [`${attr} Option 1`, `${attr} Option 2`, `${attr} Option 3`];
       attributeAssignments[attr.toLowerCase()] = options[i % options.length];
     });
@@ -251,7 +251,7 @@ function generateTemplateVariations(
  */
 export function validateCsvTemplate(
   csvContent: string,
-  expectedColumns: string[]
+  expectedColumns: string[],
 ): { isValid: boolean; missingColumns: string[]; extraColumns: string[] } {
   const lines = csvContent.split('\n');
   if (lines.length === 0) {

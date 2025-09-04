@@ -146,10 +146,10 @@ export class CsvGenerator {
     debug('generateParentCsv completed', { rows: csvData.length });
 
     try {
-      const buffer = await this.csvWriter.writeToBuffer(csvData, { 
+      const buffer = await this.csvWriter.writeToBuffer(csvData, {
         headers: true,
         quote: true,
-        escape: '"'
+        escape: '"',
       });
       return buffer.toString();
     } catch (error) {
@@ -265,10 +265,10 @@ export class CsvGenerator {
     debug('generateVariationCsv completed', { rows: variationRows.length, headers });
 
     try {
-      const buffer = await this.csvWriter.writeToBuffer(variationRows, { 
+      const buffer = await this.csvWriter.writeToBuffer(variationRows, {
         headers,
         quote: true,
-        escape: '"'
+        escape: '"',
       });
       return buffer.toString();
     } catch (error) {

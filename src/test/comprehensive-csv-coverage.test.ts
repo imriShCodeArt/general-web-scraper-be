@@ -8,11 +8,9 @@ import {
   parseCsvRows,
   parseCsvRow,
   findCsvRowByValue,
-  createCsvValidator,
   extractAttributeColumns,
   extractMetaAttributeColumns,
   parseAttributeDataFlags,
-  parseAttributeOptions,
 } from './utils/csv-parsing';
 import { validateWooCommerceCsvStructure } from './utils/woocommerce-matchers';
 import { factories } from './utils/factories';
@@ -314,7 +312,7 @@ describe('Phase 3: Comprehensive CSV Test Coverage', () => {
       // Check if Pattern attribute exists in headers
       const hasPatternAttribute = headers.includes('attribute:Pattern');
       const hasPatternDataAttribute = headers.includes('attribute_data:Pattern');
-      
+
       if (hasPatternAttribute && hasPatternDataAttribute) {
         // If Pattern attributes exist, check that the variable product row has these columns
         const variableProductRow = findCsvRowByValue(parentCsv, 'sku', 'VAR-001');
@@ -382,11 +380,11 @@ describe('Phase 3: Comprehensive CSV Test Coverage', () => {
       // Check that the special character attributes exist in the headers
       const parsed = parseCsvRows(parentCsv);
       const headers = parsed.headers;
-      
+
       // Check if special character attributes exist
       const hasSpecialAttribute = headers.includes('attribute:Special Attribute');
       const hasUnicodeAttribute = headers.includes('attribute:Unicode Attribute');
-      
+
       if (hasSpecialAttribute && hasUnicodeAttribute) {
         expect(headers).toContain('attribute:Special Attribute');
         expect(headers).toContain('attribute_data:Special Attribute');
@@ -408,7 +406,7 @@ describe('Phase 3: Comprehensive CSV Test Coverage', () => {
         expect(specialProductRow?.['attribute:Special Attribute']).toContain('Value with, commas');
         expect(specialProductRow?.['attribute:Special Attribute']).toContain('Value with|pipes');
       }
-      
+
       if (specialProductRow?.['attribute:Unicode Attribute']) {
         expect(specialProductRow?.['attribute:Unicode Attribute']).toContain('Café');
         expect(specialProductRow?.['attribute:Unicode Attribute']).toContain('Niño');
@@ -802,7 +800,7 @@ describe('Phase 3: Comprehensive CSV Test Coverage', () => {
       expect(parentCsv).toHaveWooCommerceParentColumns();
       expect(parentCsv).toHaveValidStockStatus();
       expect(parentCsv).toHaveValidPriceFormat();
-      
+
       if (variationCsv) {
         expect(variationCsv).toHaveWooCommerceVariationColumns();
         expect(variationCsv).toHaveWooCommerceProductType('product_variation');
@@ -815,7 +813,7 @@ describe('Phase 3: Comprehensive CSV Test Coverage', () => {
       // Test template-based validation
       const expectedAttributes = ['Color', 'Size', 'Material', 'Pattern', 'Warranty'];
       expect(parentCsv).toHaveAttributeColumnPairs(expectedAttributes);
-      
+
       if (variationCsv) {
         expect(variationCsv).toHaveMetaAttributeColumns(['Color', 'Size', 'Material', 'Pattern']);
       }
@@ -852,24 +850,24 @@ describe('Phase 3: Comprehensive CSV Test Coverage', () => {
       // Only check matching variation attributes for attributes that exist in both CSVs
       const parentParsed = parseCsvRows(parentCsv);
       const variationParsed = parseCsvRows(variationCsv);
-      
+
       // Get attributes that exist in both parent and variation CSVs
       const parentAttributes = parentParsed.headers
         .filter(h => h.startsWith('attribute:') && !h.includes('_data:'))
         .map(h => h.replace('attribute:', ''));
-      
+
       const variationAttributes = variationParsed.headers
         .filter(h => h.startsWith('meta:attribute_'))
         .map(h => h.replace('meta:attribute_', ''));
-      
+
       const commonAttributes = parentAttributes.filter(attr => variationAttributes.includes(attr));
-      
+
       // Only check matching attributes for common attributes (exclude Pattern if it doesn't exist in parent)
       if (commonAttributes.length > 0) {
         // Create a custom validation that only checks common attributes
         const parentData = parseCsvRows(parentCsv);
         const variationData = parseCsvRows(variationCsv);
-        
+
         // Check that variation attribute values match parent options for common attributes only
         for (const variation of variationData.rows) {
           for (const [key, value] of Object.entries(variation)) {
@@ -886,7 +884,7 @@ describe('Phase 3: Comprehensive CSV Test Coverage', () => {
           }
         }
       }
-      
+
       expect(parentCsv).toHaveValidParentSkuReferences(variationCsv);
     });
 

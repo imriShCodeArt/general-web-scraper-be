@@ -39,7 +39,7 @@ function splitCsvLine(line: string): string[] {
     }
   }
   fields.push(current);
-  
+
   // Remove surrounding quotes from fields
   return fields.map(field => {
     if (field.startsWith('"') && field.endsWith('"')) {
