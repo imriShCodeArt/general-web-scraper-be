@@ -13,19 +13,18 @@ expect.extend(woocommerceMatchers);
 declare global {
   namespace jest {
     interface Matchers<R> {
-      toHaveWooCommerceParentColumns(csvContent: string): R;
-      toHaveWooCommerceVariationColumns(csvContent: string): R;
-      toHaveAttributeColumnPairs(csvContent: string, expectedAttributes: string[]): R;
-      toHaveMetaAttributeColumns(csvContent: string, expectedAttributes: string[]): R;
-      toHaveValidAttributeDataFlags(csvContent: string, attributeName: string): R;
-      toHaveMatchingVariationAttributes(parentCsv: string, variationCsv: string): R;
+      toHaveWooCommerceParentColumns(): R;
+      toHaveWooCommerceVariationColumns(): R;
+      toHaveAttributeColumnPairs(expectedAttributes: string[]): R;
+      toHaveMetaAttributeColumns(expectedAttributes: string[]): R;
+      toHaveValidAttributeDataFlags(attributeName: string): R;
+      toHaveMatchingVariationAttributes(variationCsv: string): R;
       toHaveWooCommerceProductType(
-        csvContent: string,
         expectedType: 'simple' | 'variable' | 'product_variation',
       ): R;
-      toHaveValidStockStatus(csvContent: string): R;
-      toHaveValidPriceFormat(csvContent: string): R;
-      toHaveValidParentSkuReferences(parentCsv: string, variationCsv: string): R;
+      toHaveValidStockStatus(): R;
+      toHaveValidPriceFormat(): R;
+      toHaveValidParentSkuReferences(variationCsv: string): R;
     }
   }
 }

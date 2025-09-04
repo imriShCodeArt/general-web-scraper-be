@@ -154,7 +154,11 @@ describe('E2E Mock Website Scraping Tests', () => {
       generateBothCsvs: jest.fn(),
       generateFilename: jest.fn(),
       validateProducts: jest.fn(),
-    };
+      csvWriter: {} as any,
+      cleanAttributeName: jest.fn(),
+      attributeDisplayName: jest.fn(),
+      deduplicateProducts: jest.fn(),
+    } as any;
 
     // Create request scope and register overrides
     scope = rootContainer.createScope();

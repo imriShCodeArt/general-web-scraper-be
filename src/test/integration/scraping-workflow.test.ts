@@ -63,7 +63,11 @@ describe('Scraping Workflow Integration Tests', () => {
       generateBothCsvs: jest.fn(),
       generateFilename: jest.fn(),
       validateProducts: jest.fn(),
-    };
+      csvWriter: {} as any,
+      cleanAttributeName: jest.fn(),
+      attributeDisplayName: jest.fn(),
+      deduplicateProducts: jest.fn(),
+    } as any;
 
     scope.register(TOKENS.RecipeManager, {
       lifetime: 'scoped',
