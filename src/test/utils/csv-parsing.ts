@@ -39,7 +39,14 @@ function splitCsvLine(line: string): string[] {
     }
   }
   fields.push(current);
-  return fields;
+  
+  // Remove surrounding quotes from fields
+  return fields.map(field => {
+    if (field.startsWith('"') && field.endsWith('"')) {
+      return field.slice(1, -1).replace(/""/g, '"');
+    }
+    return field;
+  });
 }
 
 function parseCsvText(csvContent: string): { headers: string[]; rows: string[][] } {

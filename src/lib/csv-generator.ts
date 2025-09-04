@@ -1,25 +1,54 @@
 import { NormalizedProduct } from '../types';
 import { debug } from './logger';
 import { writeToBuffer } from 'fast-csv';
+import { Transform } from 'stream';
 
 /**
  * Interface for CSV writing operations
  */
 export interface CsvWriter {
   writeToBuffer(data: any[], options?: any): Promise<Buffer>;
+  cleanup?(): void;
 }
 
 /**
- * Default implementation using fast-csv
+ * Default implementation using fast-csv with proper cleanup
  */
 export class FastCsvWriter implements CsvWriter {
+  private activeStreams: Transform[] = [];
+
   async writeToBuffer(data: any[], options?: any): Promise<Buffer> {
-    return writeToBuffer(data, options);
+    try {
+      const buffer = await writeToBuffer(data, options);
+      return buffer;
+    } catch (error) {
+      debug('Error in writeToBuffer', { error });
+      throw error;
+    }
+  }
+
+  cleanup(): void {
+    // Clean up any active streams
+    this.activeStreams.forEach(stream => {
+      if (!stream.destroyed) {
+        stream.destroy();
+      }
+    });
+    this.activeStreams = [];
   }
 }
 
 export class CsvGenerator {
   constructor(private csvWriter: CsvWriter = new FastCsvWriter()) {}
+
+  /**
+   * Clean up any resources used by the CSV generator
+   */
+  cleanup(): void {
+    if (this.csvWriter.cleanup) {
+      this.csvWriter.cleanup();
+    }
+  }
 
   /**
    * Generate Parent CSV for WooCommerce import
@@ -117,7 +146,11 @@ export class CsvGenerator {
     debug('generateParentCsv completed', { rows: csvData.length });
 
     try {
-      const buffer = await this.csvWriter.writeToBuffer(csvData, { headers: true });
+      const buffer = await this.csvWriter.writeToBuffer(csvData, { 
+        headers: true,
+        quote: true,
+        escape: '"'
+      });
       return buffer.toString();
     } catch (error) {
       debug('Error in generateParentCsv', { error });
@@ -232,7 +265,11 @@ export class CsvGenerator {
     debug('generateVariationCsv completed', { rows: variationRows.length, headers });
 
     try {
-      const buffer = await this.csvWriter.writeToBuffer(variationRows, { headers });
+      const buffer = await this.csvWriter.writeToBuffer(variationRows, { 
+        headers,
+        quote: true,
+        escape: '"'
+      });
       return buffer.toString();
     } catch (error) {
       debug('Error in generateVariationCsv', { error });

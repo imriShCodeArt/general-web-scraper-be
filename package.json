@@ -136,6 +136,7 @@
     "setupFilesAfterEnv": [
       "<rootDir>/src/test/setup.ts"
     ],
+    "globalTeardown": "<rootDir>/src/test/global-teardown.ts",
     "testTimeout": 30000,
     "verbose": true,
     "clearMocks": true,
