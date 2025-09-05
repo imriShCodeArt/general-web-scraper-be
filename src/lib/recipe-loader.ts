@@ -1,16 +1,21 @@
 import { readFileSync, existsSync, readdirSync } from 'fs';
 import { join, extname } from 'path';
 import { parse } from 'yaml';
-import { RecipeConfig } from '../types';
+import { RecipeConfig, WooCommerceValidationResult, WooCommerceValidationConfig } from '../types';
+import { WooCommerceRecipeValidator } from './woocommerce-recipe-validator';
 
 
 
 export class RecipeLoader implements RecipeLoader {
   private recipesDir: string;
   private recipesCache: Map<string, RecipeConfig> = new Map();
+  private wooCommerceValidator: WooCommerceRecipeValidator;
+  private enableWooCommerceValidation: boolean;
 
-  constructor(recipesDir: string = './recipes') {
+  constructor(recipesDir: string = './recipes', enableWooCommerceValidation: boolean = true) {
     this.recipesDir = recipesDir;
+    this.enableWooCommerceValidation = enableWooCommerceValidation;
+    this.wooCommerceValidator = new WooCommerceRecipeValidator();
   }
 
   /**
@@ -83,6 +88,36 @@ export class RecipeLoader implements RecipeLoader {
     // Validate the recipe
     if (!this.validateRecipe(recipe)) {
       throw new Error(`Invalid recipe configuration in ${filePath}`);
+    }
+
+    // Perform WooCommerce validation if enabled
+    if (this.enableWooCommerceValidation) {
+      const wooCommerceResult = this.wooCommerceValidator.validateRecipe(recipe);
+
+      // Log warnings but don't fail the load
+      if (wooCommerceResult.warnings.length > 0) {
+        console.warn(`WooCommerce validation warnings for recipe '${recipe.name}':`);
+        wooCommerceResult.warnings.forEach(warning => {
+          console.warn(`  - [${warning.category}] ${warning.message}`);
+          if (warning.suggestion) {
+            console.warn(`    Suggestion: ${warning.suggestion}`);
+          }
+        });
+      }
+
+      // Log errors but don't fail the load (for now)
+      if (wooCommerceResult.errors.length > 0) {
+        console.error(`WooCommerce validation errors for recipe '${recipe.name}':`);
+        wooCommerceResult.errors.forEach(error => {
+          console.error(`  - [${error.category}] ${error.message}`);
+          if (error.suggestion) {
+            console.error(`    Suggestion: ${error.suggestion}`);
+          }
+        });
+      }
+
+      // Store validation result in recipe metadata
+      (recipe as any).woocommerceValidation = wooCommerceResult;
     }
 
     return recipe;
@@ -182,6 +217,89 @@ export class RecipeLoader implements RecipeLoader {
     }
 
     return files;
+  }
+
+  /**
+   * Validate recipe with WooCommerce compliance
+   */
+  async validateRecipeWooCommerce(recipeName: string): Promise<WooCommerceValidationResult> {
+    const recipe = await this.loadRecipe(recipeName);
+    return this.wooCommerceValidator.validateRecipe(recipe);
+  }
+
+  /**
+   * Validate all recipes for WooCommerce compliance
+   */
+  async validateAllRecipesWooCommerce(): Promise<{
+    results: Array<{ recipeName: string; result: WooCommerceValidationResult }>;
+    summary: {
+      totalRecipes: number;
+      validRecipes: number;
+      invalidRecipes: number;
+      averageScore: number;
+      totalErrors: number;
+      totalWarnings: number;
+    };
+  }> {
+    const recipeNames = await this.listAvailableRecipes();
+    const results: Array<{ recipeName: string; result: WooCommerceValidationResult }> = [];
+
+    for (const recipeName of recipeNames) {
+      try {
+        const recipe = await this.loadRecipe(recipeName);
+        const result = this.wooCommerceValidator.validateRecipe(recipe);
+        results.push({ recipeName, result });
+      } catch (error) {
+        console.warn(`Failed to validate recipe '${recipeName}':`, error);
+      }
+    }
+
+    const validRecipes = results.filter(r => r.result.isValid).length;
+    const invalidRecipes = results.length - validRecipes;
+    const totalErrors = results.reduce((sum, r) => sum + r.result.errors.length, 0);
+    const totalWarnings = results.reduce((sum, r) => sum + r.result.warnings.length, 0);
+    const averageScore = results.reduce((sum, r) => sum + r.result.score, 0) / results.length;
+
+    return {
+      results,
+      summary: {
+        totalRecipes: results.length,
+        validRecipes,
+        invalidRecipes,
+        averageScore: Math.round(averageScore),
+        totalErrors,
+        totalWarnings,
+      },
+    };
+  }
+
+  /**
+   * Get WooCommerce validation configuration
+   */
+  getWooCommerceValidationConfig(): WooCommerceValidationConfig {
+    return this.wooCommerceValidator.getValidationConfig();
+  }
+
+  /**
+   * Set WooCommerce validation configuration
+   */
+  setWooCommerceValidationConfig(config: WooCommerceValidationConfig): void {
+    this.wooCommerceValidator.setValidationConfig(config);
+  }
+
+  /**
+   * Enable or disable WooCommerce validation
+   */
+  setWooCommerceValidationEnabled(enabled: boolean): void {
+    this.enableWooCommerceValidation = enabled;
+  }
+
+  /**
+   * Get validation report for a recipe
+   */
+  async getValidationReport(recipeName: string): Promise<string> {
+    const result = await this.validateRecipeWooCommerce(recipeName);
+    return this.wooCommerceValidator.generateReport(result);
   }
 
   /**

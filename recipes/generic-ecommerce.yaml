@@ -68,12 +68,23 @@ selectors:
 
   # Attributes and variations
   attributes:
+    - 'select[name*="attribute"]'
+    - 'input[name*="attribute"]'
+    - '.variation-select'
+    - '.attribute-select'
+    - '.product-attribute-select'
     - '.product-options'
     - '.product-attributes'
     - '.variations'
     - '.options'
 
   variations:
+    - '.variations'
+    - '.product-variations'
+    - '.woocommerce-variations'
+    - '.variation-selector'
+    - '.product-options'
+    - '.variation-options'
     - '.product-variants'
     - '.variants'
     - '.product-options select'
@@ -109,6 +120,11 @@ behavior:
   waitForSelectors:
     - '.product-title'
     - '.product-price'
+    - '.variations_form'
+    - '.woocommerce-variations-form'
+    - '.variation-form'
+    - '.product-variation-form'
+    - 'form.variations'
   scrollToLoad: false
   useHeadlessBrowser: false
   rateLimit: 25 # Further reduced from 100ms to 25ms for maximum speed
@@ -138,3 +154,46 @@ validation:
     - 'images'
   priceFormat: "\\d+(\\.\\d{2})?"
   skuFormat: '[A-Za-z0-9-_]+'
+
+# WooCommerce-specific validation configuration
+woocommerceValidation:
+  # Required selectors for WooCommerce compatibility
+  requiredSelectors:
+    title: true
+    price: true
+    images: true
+    sku: true
+    description: true
+    stock: false
+    attributes: false
+    variations: false
+
+  # Attribute naming conventions
+  attributeNaming:
+    enforcePascalCase: true
+    allowSpecialCharacters: false
+    maxLength: 50
+    reservedNames: ['id', 'name', 'type', 'class']
+
+  # Variation detection requirements
+  variationDetection:
+    requireAttributeSelectors: true
+    requireVariationFormSelectors: true
+    validateVariationAttributeMapping: true
+
+  # Price format validation
+  priceFormat:
+    pattern: '^\\d+(\\.\\d{2})?$'
+    allowCurrencySymbols: false
+    requireDecimalPlaces: true
+
+  # SKU format validation
+  skuFormat:
+    pattern: '^[A-Z0-9-_]+$'
+    minLength: 3
+    maxLength: 50
+
+  # Cross-field validation
+  crossFieldValidation:
+    validateVariationAttributeMapping: true
+    requireConsistentNaming: true

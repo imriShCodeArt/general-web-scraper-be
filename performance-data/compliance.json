@@ -1,0 +1,868 @@
+{
+  "summary": {
+    "totalRecipes": 6,
+    "compliantRecipes": 6,
+    "nonCompliantRecipes": 0,
+    "averageScore": 88,
+    "criticalIssues": 0,
+    "totalWarnings": 37,
+    "totalSuggestions": 44
+  },
+  "recipes": [
+    {
+      "recipeName": "recipes\\generic-ecommerce",
+      "filePath": "recipes\\generic-ecommerce.yaml",
+      "validationResult": {
+        "isValid": true,
+        "errors": [],
+        "warnings": [
+          {
+            "code": "COMMON_TYPO",
+            "message": "Consider using 'Color' instead of 'Color'",
+            "field": "attributeNames[0]",
+            "suggestion": "Use 'Color' for better consistency",
+            "category": "best-practice"
+          },
+          {
+            "code": "COMMON_TYPO",
+            "message": "Consider using 'Size' instead of 'Size'",
+            "field": "attributeNames[1]",
+            "suggestion": "Use 'Size' for better consistency",
+            "category": "best-practice"
+          },
+          {
+            "code": "COMPLEX_SELECTORS",
+            "message": "Found 11 complex selectors that may impact performance",
+            "field": "selectors",
+            "suggestion": "Consider using simpler selectors for better performance",
+            "category": "performance"
+          },
+          {
+            "code": "INEFFICIENT_SELECTORS",
+            "message": "Found 4 potentially inefficient selectors",
+            "field": "selectors",
+            "suggestion": "Avoid wildcard selectors and complex pseudo-selectors for better performance",
+            "category": "performance"
+          },
+          {
+            "code": "REDUNDANT_SELECTORS",
+            "message": "Selector \".product-options\" is used in multiple fields: attributes, variations",
+            "field": "selectors",
+            "category": "best-practice",
+            "suggestion": "Consider using more specific selectors for each field"
+          },
+          {
+            "code": "REDUNDANT_SELECTORS",
+            "message": "Selector \".variations\" is used in multiple fields: attributes, variations",
+            "field": "selectors",
+            "category": "best-practice",
+            "suggestion": "Consider using more specific selectors for each field"
+          },
+          {
+            "code": "SLOW_SELECTORS",
+            "message": "Found 4 slow selectors that may impact performance",
+            "field": "selectors",
+            "category": "performance",
+            "suggestion": "Consider using more efficient selectors for better performance"
+          },
+          {
+            "code": "INEFFICIENT_SELECTORS",
+            "message": "Found 10 potentially inefficient selectors",
+            "field": "selectors",
+            "category": "performance",
+            "suggestion": "Avoid wildcard selectors and complex pseudo-selectors for better performance"
+          },
+          {
+            "code": "REDUNDANT_SELECTORS",
+            "message": "Found 4 redundant selectors",
+            "field": "selectors",
+            "category": "performance",
+            "suggestion": "Remove duplicate selectors to improve performance"
+          },
+          {
+            "code": "CONFLICTING_SELECTORS",
+            "message": "Found 341 conflicting selector pairs",
+            "field": "selectors",
+            "category": "performance",
+            "suggestion": "Review selectors to resolve conflicts and improve performance"
+          },
+          {
+            "code": "MISSING_IMAGE_OPTIMIZATION",
+            "message": "Image selectors present but no optimization strategy",
+            "field": "selectors.images",
+            "category": "performance",
+            "suggestion": "Consider adding image loading optimization or lazy loading selectors"
+          }
+        ],
+        "score": 92,
+        "timestamp": "2025-09-05T10:34:57.100Z"
+      },
+      "complianceIssues": {
+        "critical": [],
+        "warnings": [
+          "Consider using 'Color' instead of 'Color' (attributeNames[0])",
+          "Consider using 'Size' instead of 'Size' (attributeNames[1])",
+          "Selector \".product-options\" is used in multiple fields: attributes, variations (selectors)",
+          "Selector \".variations\" is used in multiple fields: attributes, variations (selectors)"
+        ],
+        "suggestions": [
+          "Found 11 complex selectors that may impact performance (selectors)",
+          "Found 4 potentially inefficient selectors (selectors)",
+          "Found 4 slow selectors that may impact performance (selectors)",
+          "Found 10 potentially inefficient selectors (selectors)",
+          "Found 4 redundant selectors (selectors)",
+          "Found 341 conflicting selector pairs (selectors)",
+          "Image selectors present but no optimization strategy (selectors.images)"
+        ]
+      },
+      "recommendedFixes": {
+        "attributeNaming": [],
+        "selectorImprovements": [],
+        "variationDetection": [],
+        "performanceOptimizations": [
+          "Simplify 11 complex selectors"
+        ]
+      },
+      "complianceScore": 92,
+      "priority": "medium"
+    },
+    {
+      "recipeName": "recipes\\hebrew-ecommerce",
+      "filePath": "recipes\\hebrew-ecommerce.yaml",
+      "validationResult": {
+        "isValid": true,
+        "errors": [],
+        "warnings": [
+          {
+            "code": "COMMON_TYPO",
+            "message": "Consider using 'Color' instead of 'Color'",
+            "field": "attributeNames[0]",
+            "suggestion": "Use 'Color' for better consistency",
+            "category": "best-practice"
+          },
+          {
+            "code": "COMMON_TYPO",
+            "message": "Consider using 'Size' instead of 'Size'",
+            "field": "attributeNames[1]",
+            "suggestion": "Use 'Size' for better consistency",
+            "category": "best-practice"
+          },
+          {
+            "code": "NON_STANDARD_VARIATION_SELECTORS",
+            "message": "Variation selectors do not match WooCommerce patterns",
+            "field": "selectors.variations",
+            "suggestion": "Consider using: .variations, .product-variations, .woocommerce-variations, .variation-selector, .product-options, .variation-options",
+            "category": "best-practice"
+          },
+          {
+            "code": "NON_STANDARD_ATTRIBUTE_SELECTORS",
+            "message": "Attribute selectors do not match WooCommerce patterns",
+            "field": "selectors.attributes",
+            "suggestion": "Consider using: select[name*=\"attribute\"], input[name*=\"attribute\"], .variation-select, .attribute-select, .product-attribute-select",
+            "category": "best-practice"
+          },
+          {
+            "code": "MISSING_VARIATION_FORM_SELECTORS",
+            "message": "Variation form selectors are recommended for better variation detection",
+            "field": "selectors",
+            "suggestion": "Add form selectors like: .variations_form, .woocommerce-variations-form, .variation-form, .product-variation-form, form.variations",
+            "category": "best-practice"
+          },
+          {
+            "code": "COMPLEX_SELECTORS",
+            "message": "Found 14 complex selectors that may impact performance",
+            "field": "selectors",
+            "suggestion": "Consider using simpler selectors for better performance",
+            "category": "performance"
+          },
+          {
+            "code": "INEFFICIENT_SELECTORS",
+            "message": "Found 2 potentially inefficient selectors",
+            "field": "selectors",
+            "suggestion": "Avoid wildcard selectors and complex pseudo-selectors for better performance",
+            "category": "performance"
+          },
+          {
+            "code": "MISSING_VARIATION_FORM_SELECTORS",
+            "message": "Variation selectors present but no variation form selectors",
+            "field": "behavior.waitForSelectors",
+            "category": "best-practice",
+            "suggestion": "Add variation form selectors for better variation detection"
+          },
+          {
+            "code": "SLOW_SELECTORS",
+            "message": "Found 2 slow selectors that may impact performance",
+            "field": "selectors",
+            "category": "performance",
+            "suggestion": "Consider using more efficient selectors for better performance"
+          },
+          {
+            "code": "INEFFICIENT_SELECTORS",
+            "message": "Found 13 potentially inefficient selectors",
+            "field": "selectors",
+            "category": "performance",
+            "suggestion": "Avoid wildcard selectors and complex pseudo-selectors for better performance"
+          },
+          {
+            "code": "REDUNDANT_SELECTORS",
+            "message": "Found 2 redundant selectors",
+            "field": "selectors",
+            "category": "performance",
+            "suggestion": "Remove duplicate selectors to improve performance"
+          },
+          {
+            "code": "CONFLICTING_SELECTORS",
+            "message": "Found 98 conflicting selector pairs",
+            "field": "selectors",
+            "category": "performance",
+            "suggestion": "Review selectors to resolve conflicts and improve performance"
+          },
+          {
+            "code": "MISSING_IMAGE_OPTIMIZATION",
+            "message": "Image selectors present but no optimization strategy",
+            "field": "selectors.images",
+            "category": "performance",
+            "suggestion": "Consider adding image loading optimization or lazy loading selectors"
+          }
+        ],
+        "score": 88,
+        "timestamp": "2025-09-05T10:34:57.147Z"
+      },
+      "complianceIssues": {
+        "critical": [],
+        "warnings": [
+          "Consider using 'Color' instead of 'Color' (attributeNames[0])",
+          "Consider using 'Size' instead of 'Size' (attributeNames[1])",
+          "Variation selectors do not match WooCommerce patterns (selectors.variations)",
+          "Attribute selectors do not match WooCommerce patterns (selectors.attributes)",
+          "Variation form selectors are recommended for better variation detection (selectors)",
+          "Variation selectors present but no variation form selectors (behavior.waitForSelectors)"
+        ],
+        "suggestions": [
+          "Found 14 complex selectors that may impact performance (selectors)",
+          "Found 2 potentially inefficient selectors (selectors)",
+          "Found 2 slow selectors that may impact performance (selectors)",
+          "Found 13 potentially inefficient selectors (selectors)",
+          "Found 2 redundant selectors (selectors)",
+          "Found 98 conflicting selector pairs (selectors)",
+          "Image selectors present but no optimization strategy (selectors.images)"
+        ]
+      },
+      "recommendedFixes": {
+        "attributeNaming": [],
+        "selectorImprovements": [
+          "Update attribute selectors to use WooCommerce patterns",
+          "Update variation selectors to use WooCommerce patterns"
+        ],
+        "variationDetection": [
+          "Add variation form selectors for better detection"
+        ],
+        "performanceOptimizations": [
+          "Simplify 14 complex selectors"
+        ]
+      },
+      "complianceScore": 88,
+      "priority": "medium"
+    },
+    {
+      "recipeName": "recipes\\modanbags-coil",
+      "filePath": "recipes\\modanbags-coil.yaml",
+      "validationResult": {
+        "isValid": true,
+        "errors": [],
+        "warnings": [
+          {
+            "code": "COMMON_TYPO",
+            "message": "Consider using 'Color' instead of 'Color'",
+            "field": "attributeNames[0]",
+            "suggestion": "Use 'Color' for better consistency",
+            "category": "best-practice"
+          },
+          {
+            "code": "COMMON_TYPO",
+            "message": "Consider using 'Size' instead of 'Size'",
+            "field": "attributeNames[1]",
+            "suggestion": "Use 'Size' for better consistency",
+            "category": "best-practice"
+          },
+          {
+            "code": "COMMON_TYPO",
+            "message": "Consider using 'Material' instead of 'Material'",
+            "field": "attributeNames[3]",
+            "suggestion": "Use 'Material' for better consistency",
+            "category": "best-practice"
+          },
+          {
+            "code": "NON_STANDARD_ATTRIBUTE_SELECTORS",
+            "message": "Attribute selectors do not match WooCommerce patterns",
+            "field": "selectors.attributes",
+            "suggestion": "Consider using: select[name*=\"attribute\"], input[name*=\"attribute\"], .variation-select, .attribute-select, .product-attribute-select",
+            "category": "best-practice"
+          },
+          {
+            "code": "COMPLEX_SELECTORS",
+            "message": "Found 5 complex selectors that may impact performance",
+            "field": "selectors",
+            "suggestion": "Consider using simpler selectors for better performance",
+            "category": "performance"
+          },
+          {
+            "code": "INEFFICIENT_SELECTORS",
+            "message": "Found 7 potentially inefficient selectors",
+            "field": "selectors",
+            "suggestion": "Avoid wildcard selectors and complex pseudo-selectors for better performance",
+            "category": "performance"
+          },
+          {
+            "code": "OVERLAPPING_SELECTORS",
+            "message": "Selectors may overlap: \".variations\" and \".variations_form\"",
+            "field": "selectors",
+            "category": "best-practice",
+            "suggestion": "Review selectors to ensure they target distinct elements"
+          },
+          {
+            "code": "OVERLAPPING_SELECTORS",
+            "message": "Selectors may overlap: \".variations\" and \"form.variations_form\"",
+            "field": "selectors",
+            "category": "best-practice",
+            "suggestion": "Review selectors to ensure they target distinct elements"
+          },
+          {
+            "code": "OVERLAPPING_SELECTORS",
+            "message": "Selectors may overlap: \".variations_form\" and \"form.variations_form\"",
+            "field": "selectors",
+            "category": "best-practice",
+            "suggestion": "Review selectors to ensure they target distinct elements"
+          },
+          {
+            "code": "REDUNDANT_SELECTORS",
+            "message": "Selector \".excerpt\" is used in multiple fields: description, shortDescription",
+            "field": "selectors",
+            "category": "best-practice",
+            "suggestion": "Consider using more specific selectors for each field"
+          },
+          {
+            "code": "REDUNDANT_SELECTORS",
+            "message": "Selector \".woocommerce-variations\" is used in multiple fields: attributes, variations, variationForm",
+            "field": "selectors",
+            "category": "best-practice",
+            "suggestion": "Consider using more specific selectors for each field"
+          },
+          {
+            "code": "REDUNDANT_SELECTORS",
+            "message": "Selector \".variations_form\" is used in multiple fields: variations, variationForm",
+            "field": "selectors",
+            "category": "best-practice",
+            "suggestion": "Consider using more specific selectors for each field"
+          },
+          {
+            "code": "SLOW_SELECTORS",
+            "message": "Found 7 slow selectors that may impact performance",
+            "field": "selectors",
+            "category": "performance",
+            "suggestion": "Consider using more efficient selectors for better performance"
+          },
+          {
+            "code": "INEFFICIENT_SELECTORS",
+            "message": "Found 4 potentially inefficient selectors",
+            "field": "selectors",
+            "category": "performance",
+            "suggestion": "Avoid wildcard selectors and complex pseudo-selectors for better performance"
+          },
+          {
+            "code": "COMPLEX_SELECTORS",
+            "message": "Found 1 complex selectors that may impact performance",
+            "field": "selectors",
+            "category": "performance",
+            "suggestion": "Consider using simpler selectors for better performance"
+          },
+          {
+            "code": "REDUNDANT_SELECTORS",
+            "message": "Found 5 redundant selectors",
+            "field": "selectors",
+            "category": "performance",
+            "suggestion": "Remove duplicate selectors to improve performance"
+          },
+          {
+            "code": "CONFLICTING_SELECTORS",
+            "message": "Found 108 conflicting selector pairs",
+            "field": "selectors",
+            "category": "performance",
+            "suggestion": "Review selectors to resolve conflicts and improve performance"
+          },
+          {
+            "code": "MISSING_IMAGE_OPTIMIZATION",
+            "message": "Image selectors present but no optimization strategy",
+            "field": "selectors.images",
+            "category": "performance",
+            "suggestion": "Consider adding image loading optimization or lazy loading selectors"
+          }
+        ],
+        "score": 80,
+        "timestamp": "2025-09-05T10:34:57.183Z"
+      },
+      "complianceIssues": {
+        "critical": [],
+        "warnings": [
+          "Consider using 'Color' instead of 'Color' (attributeNames[0])",
+          "Consider using 'Size' instead of 'Size' (attributeNames[1])",
+          "Consider using 'Material' instead of 'Material' (attributeNames[3])",
+          "Attribute selectors do not match WooCommerce patterns (selectors.attributes)",
+          "Selectors may overlap: \".variations\" and \".variations_form\" (selectors)",
+          "Selectors may overlap: \".variations\" and \"form.variations_form\" (selectors)",
+          "Selectors may overlap: \".variations_form\" and \"form.variations_form\" (selectors)",
+          "Selector \".excerpt\" is used in multiple fields: description, shortDescription (selectors)",
+          "Selector \".woocommerce-variations\" is used in multiple fields: attributes, variations, variationForm (selectors)",
+          "Selector \".variations_form\" is used in multiple fields: variations, variationForm (selectors)"
+        ],
+        "suggestions": [
+          "Found 5 complex selectors that may impact performance (selectors)",
+          "Found 7 potentially inefficient selectors (selectors)",
+          "Found 7 slow selectors that may impact performance (selectors)",
+          "Found 4 potentially inefficient selectors (selectors)",
+          "Found 1 complex selectors that may impact performance (selectors)",
+          "Found 5 redundant selectors (selectors)",
+          "Found 108 conflicting selector pairs (selectors)",
+          "Image selectors present but no optimization strategy (selectors.images)"
+        ]
+      },
+      "recommendedFixes": {
+        "attributeNaming": [],
+        "selectorImprovements": [
+          "Update attribute selectors to use WooCommerce patterns",
+          "Update variation selectors to use WooCommerce patterns"
+        ],
+        "variationDetection": [],
+        "performanceOptimizations": [
+          "Simplify 5 complex selectors"
+        ]
+      },
+      "complianceScore": 80,
+      "priority": "medium"
+    },
+    {
+      "recipeName": "recipes\\performance-optimized",
+      "filePath": "recipes\\performance-optimized.yaml",
+      "validationResult": {
+        "isValid": true,
+        "errors": [],
+        "warnings": [
+          {
+            "code": "COMMON_TYPO",
+            "message": "Consider using 'Color' instead of 'Color'",
+            "field": "attributeNames[0]",
+            "suggestion": "Use 'Color' for better consistency",
+            "category": "best-practice"
+          },
+          {
+            "code": "COMMON_TYPO",
+            "message": "Consider using 'Size' instead of 'Size'",
+            "field": "attributeNames[1]",
+            "suggestion": "Use 'Size' for better consistency",
+            "category": "best-practice"
+          },
+          {
+            "code": "NON_STANDARD_ATTRIBUTE_SELECTORS",
+            "message": "Attribute selectors do not match WooCommerce patterns",
+            "field": "selectors.attributes",
+            "suggestion": "Consider using: select[name*=\"attribute\"], input[name*=\"attribute\"], .variation-select, .attribute-select, .product-attribute-select",
+            "category": "best-practice"
+          },
+          {
+            "code": "MISSING_VARIATION_FORM_SELECTORS",
+            "message": "Variation form selectors are recommended for better variation detection",
+            "field": "selectors",
+            "suggestion": "Add form selectors like: .variations_form, .woocommerce-variations-form, .variation-form, .product-variation-form, form.variations",
+            "category": "best-practice"
+          },
+          {
+            "code": "COMPLEX_SELECTORS",
+            "message": "Found 11 complex selectors that may impact performance",
+            "field": "selectors",
+            "suggestion": "Consider using simpler selectors for better performance",
+            "category": "performance"
+          },
+          {
+            "code": "INEFFICIENT_SELECTORS",
+            "message": "Found 2 potentially inefficient selectors",
+            "field": "selectors",
+            "suggestion": "Avoid wildcard selectors and complex pseudo-selectors for better performance",
+            "category": "performance"
+          },
+          {
+            "code": "MISSING_VARIATION_FORM_SELECTORS",
+            "message": "Variation selectors present but no variation form selectors",
+            "field": "behavior.waitForSelectors",
+            "category": "best-practice",
+            "suggestion": "Add variation form selectors for better variation detection"
+          },
+          {
+            "code": "SLOW_SELECTORS",
+            "message": "Found 2 slow selectors that may impact performance",
+            "field": "selectors",
+            "category": "performance",
+            "suggestion": "Consider using more efficient selectors for better performance"
+          },
+          {
+            "code": "INEFFICIENT_SELECTORS",
+            "message": "Found 10 potentially inefficient selectors",
+            "field": "selectors",
+            "category": "performance",
+            "suggestion": "Avoid wildcard selectors and complex pseudo-selectors for better performance"
+          },
+          {
+            "code": "REDUNDANT_SELECTORS",
+            "message": "Found 2 redundant selectors",
+            "field": "selectors",
+            "category": "performance",
+            "suggestion": "Remove duplicate selectors to improve performance"
+          },
+          {
+            "code": "CONFLICTING_SELECTORS",
+            "message": "Found 237 conflicting selector pairs",
+            "field": "selectors",
+            "category": "performance",
+            "suggestion": "Review selectors to resolve conflicts and improve performance"
+          },
+          {
+            "code": "MISSING_IMAGE_OPTIMIZATION",
+            "message": "Image selectors present but no optimization strategy",
+            "field": "selectors.images",
+            "category": "performance",
+            "suggestion": "Consider adding image loading optimization or lazy loading selectors"
+          },
+          {
+            "code": "VARIABLE_PRODUCT_MISSING_FORM_SELECTORS",
+            "message": "Variable product should have variation form selectors",
+            "field": "behavior.waitForSelectors",
+            "category": "best-practice",
+            "suggestion": "Add variation form selectors for better variation detection"
+          }
+        ],
+        "score": 88,
+        "timestamp": "2025-09-05T10:34:57.208Z"
+      },
+      "complianceIssues": {
+        "critical": [],
+        "warnings": [
+          "Consider using 'Color' instead of 'Color' (attributeNames[0])",
+          "Consider using 'Size' instead of 'Size' (attributeNames[1])",
+          "Attribute selectors do not match WooCommerce patterns (selectors.attributes)",
+          "Variation form selectors are recommended for better variation detection (selectors)",
+          "Variation selectors present but no variation form selectors (behavior.waitForSelectors)",
+          "Variable product should have variation form selectors (behavior.waitForSelectors)"
+        ],
+        "suggestions": [
+          "Found 11 complex selectors that may impact performance (selectors)",
+          "Found 2 potentially inefficient selectors (selectors)",
+          "Found 2 slow selectors that may impact performance (selectors)",
+          "Found 10 potentially inefficient selectors (selectors)",
+          "Found 2 redundant selectors (selectors)",
+          "Found 237 conflicting selector pairs (selectors)",
+          "Image selectors present but no optimization strategy (selectors.images)"
+        ]
+      },
+      "recommendedFixes": {
+        "attributeNaming": [],
+        "selectorImprovements": [
+          "Update attribute selectors to use WooCommerce patterns",
+          "Update variation selectors to use WooCommerce patterns"
+        ],
+        "variationDetection": [
+          "Add variation form selectors for better detection"
+        ],
+        "performanceOptimizations": [
+          "Simplify 11 complex selectors"
+        ]
+      },
+      "complianceScore": 88,
+      "priority": "medium"
+    },
+    {
+      "recipeName": "recipes\\recipe-collection",
+      "filePath": "recipes\\recipe-collection.yaml",
+      "validationResult": {
+        "isValid": true,
+        "errors": [],
+        "warnings": [
+          {
+            "code": "NON_STANDARD_ATTRIBUTE_SELECTORS",
+            "message": "Attribute selectors do not match WooCommerce patterns",
+            "field": "selectors.attributes",
+            "suggestion": "Consider using: select[name*=\"attribute\"], input[name*=\"attribute\"], .variation-select, .attribute-select, .product-attribute-select",
+            "category": "best-practice"
+          },
+          {
+            "code": "COMPLEX_SELECTORS",
+            "message": "Found 5 complex selectors that may impact performance",
+            "field": "selectors",
+            "suggestion": "Consider using simpler selectors for better performance",
+            "category": "performance"
+          },
+          {
+            "code": "INEFFICIENT_SELECTORS",
+            "message": "Found 1 potentially inefficient selectors",
+            "field": "selectors",
+            "suggestion": "Avoid wildcard selectors and complex pseudo-selectors for better performance",
+            "category": "performance"
+          },
+          {
+            "code": "MISSING_ATTRIBUTE_TRANSFORMS_FOR_VARIATIONS",
+            "message": "Recipe has variations but no attribute transforms defined",
+            "field": "transforms.attributes",
+            "category": "best-practice",
+            "suggestion": "Define attribute transforms to properly map variation data"
+          },
+          {
+            "code": "OVERLAPPING_SELECTORS",
+            "message": "Selectors may overlap: \".variations\" and \".variations_form\"",
+            "field": "selectors",
+            "category": "best-practice",
+            "suggestion": "Review selectors to ensure they target distinct elements"
+          },
+          {
+            "code": "SLOW_SELECTORS",
+            "message": "Found 1 slow selectors that may impact performance",
+            "field": "selectors",
+            "category": "performance",
+            "suggestion": "Consider using more efficient selectors for better performance"
+          },
+          {
+            "code": "INEFFICIENT_SELECTORS",
+            "message": "Found 5 potentially inefficient selectors",
+            "field": "selectors",
+            "category": "performance",
+            "suggestion": "Avoid wildcard selectors and complex pseudo-selectors for better performance"
+          },
+          {
+            "code": "REDUNDANT_SELECTORS",
+            "message": "Found 2 redundant selectors",
+            "field": "selectors",
+            "category": "performance",
+            "suggestion": "Remove duplicate selectors to improve performance"
+          },
+          {
+            "code": "CONFLICTING_SELECTORS",
+            "message": "Found 43 conflicting selector pairs",
+            "field": "selectors",
+            "category": "performance",
+            "suggestion": "Review selectors to resolve conflicts and improve performance"
+          },
+          {
+            "code": "MISSING_IMAGE_OPTIMIZATION",
+            "message": "Image selectors present but no optimization strategy",
+            "field": "selectors.images",
+            "category": "performance",
+            "suggestion": "Consider adding image loading optimization or lazy loading selectors"
+          },
+          {
+            "code": "MISSING_WOOCOMMERCE_DATA_ATTRIBUTES",
+            "message": "Consider using WooCommerce data attributes for better compatibility",
+            "field": "selectors",
+            "category": "best-practice",
+            "suggestion": "Use data attributes like [data-product-id], [data-price], etc."
+          }
+        ],
+        "score": 92,
+        "timestamp": "2025-09-05T10:34:57.238Z"
+      },
+      "complianceIssues": {
+        "critical": [],
+        "warnings": [
+          "Attribute selectors do not match WooCommerce patterns (selectors.attributes)",
+          "Recipe has variations but no attribute transforms defined (transforms.attributes)",
+          "Selectors may overlap: \".variations\" and \".variations_form\" (selectors)",
+          "Consider using WooCommerce data attributes for better compatibility (selectors)"
+        ],
+        "suggestions": [
+          "Found 5 complex selectors that may impact performance (selectors)",
+          "Found 1 potentially inefficient selectors (selectors)",
+          "Found 1 slow selectors that may impact performance (selectors)",
+          "Found 5 potentially inefficient selectors (selectors)",
+          "Found 2 redundant selectors (selectors)",
+          "Found 43 conflicting selector pairs (selectors)",
+          "Image selectors present but no optimization strategy (selectors.images)"
+        ]
+      },
+      "recommendedFixes": {
+        "attributeNaming": [],
+        "selectorImprovements": [
+          "Update attribute selectors to use WooCommerce patterns",
+          "Update variation selectors to use WooCommerce patterns"
+        ],
+        "variationDetection": [],
+        "performanceOptimizations": [
+          "Simplify 5 complex selectors"
+        ]
+      },
+      "complianceScore": 92,
+      "priority": "medium"
+    },
+    {
+      "recipeName": "recipes\\wash-and-dry",
+      "filePath": "recipes\\wash-and-dry.yaml",
+      "validationResult": {
+        "isValid": true,
+        "errors": [],
+        "warnings": [
+          {
+            "code": "COMMON_TYPO",
+            "message": "Consider using 'Color' instead of 'Color'",
+            "field": "attributeNames[0]",
+            "suggestion": "Use 'Color' for better consistency",
+            "category": "best-practice"
+          },
+          {
+            "code": "COMMON_TYPO",
+            "message": "Consider using 'Size' instead of 'Size'",
+            "field": "attributeNames[1]",
+            "suggestion": "Use 'Size' for better consistency",
+            "category": "best-practice"
+          },
+          {
+            "code": "NON_STANDARD_VARIATION_SELECTORS",
+            "message": "Variation selectors do not match WooCommerce patterns",
+            "field": "selectors.variations",
+            "suggestion": "Consider using: .variations, .product-variations, .woocommerce-variations, .variation-selector, .product-options, .variation-options",
+            "category": "best-practice"
+          },
+          {
+            "code": "NON_STANDARD_ATTRIBUTE_SELECTORS",
+            "message": "Attribute selectors do not match WooCommerce patterns",
+            "field": "selectors.attributes",
+            "suggestion": "Consider using: select[name*=\"attribute\"], input[name*=\"attribute\"], .variation-select, .attribute-select, .product-attribute-select",
+            "category": "best-practice"
+          },
+          {
+            "code": "MISSING_VARIATION_FORM_SELECTORS",
+            "message": "Variation form selectors are recommended for better variation detection",
+            "field": "selectors",
+            "suggestion": "Add form selectors like: .variations_form, .woocommerce-variations-form, .variation-form, .product-variation-form, form.variations",
+            "category": "best-practice"
+          },
+          {
+            "code": "COMPLEX_SELECTORS",
+            "message": "Found 23 complex selectors that may impact performance",
+            "field": "selectors",
+            "suggestion": "Consider using simpler selectors for better performance",
+            "category": "performance"
+          },
+          {
+            "code": "INEFFICIENT_SELECTORS",
+            "message": "Found 13 potentially inefficient selectors",
+            "field": "selectors",
+            "suggestion": "Avoid wildcard selectors and complex pseudo-selectors for better performance",
+            "category": "performance"
+          },
+          {
+            "code": "GENERIC_PRICE_SELECTORS",
+            "message": "Price selectors may be too generic",
+            "field": "selectors.price",
+            "suggestion": "Use more specific selectors like .price .amount or [data-price]",
+            "category": "best-practice"
+          },
+          {
+            "code": "MISSING_VARIATION_FORM_SELECTORS",
+            "message": "Variation selectors present but no variation form selectors",
+            "field": "behavior.waitForSelectors",
+            "category": "best-practice",
+            "suggestion": "Add variation form selectors for better variation detection"
+          },
+          {
+            "code": "SLOW_SELECTORS",
+            "message": "Found 15 slow selectors that may impact performance",
+            "field": "selectors",
+            "category": "performance",
+            "suggestion": "Consider using more efficient selectors for better performance"
+          },
+          {
+            "code": "INEFFICIENT_SELECTORS",
+            "message": "Found 23 potentially inefficient selectors",
+            "field": "selectors",
+            "category": "performance",
+            "suggestion": "Avoid wildcard selectors and complex pseudo-selectors for better performance"
+          },
+          {
+            "code": "COMPLEX_SELECTORS",
+            "message": "Found 8 complex selectors that may impact performance",
+            "field": "selectors",
+            "category": "performance",
+            "suggestion": "Consider using simpler selectors for better performance"
+          },
+          {
+            "code": "REDUNDANT_SELECTORS",
+            "message": "Found 6 redundant selectors",
+            "field": "selectors",
+            "category": "performance",
+            "suggestion": "Remove duplicate selectors to improve performance"
+          },
+          {
+            "code": "CONFLICTING_SELECTORS",
+            "message": "Found 418 conflicting selector pairs",
+            "field": "selectors",
+            "category": "performance",
+            "suggestion": "Review selectors to resolve conflicts and improve performance"
+          },
+          {
+            "code": "MISSING_IMAGE_OPTIMIZATION",
+            "message": "Image selectors present but no optimization strategy",
+            "field": "selectors.images",
+            "category": "performance",
+            "suggestion": "Consider adding image loading optimization or lazy loading selectors"
+          }
+        ],
+        "score": 85,
+        "timestamp": "2025-09-05T10:34:57.271Z"
+      },
+      "complianceIssues": {
+        "critical": [],
+        "warnings": [
+          "Consider using 'Color' instead of 'Color' (attributeNames[0])",
+          "Consider using 'Size' instead of 'Size' (attributeNames[1])",
+          "Variation selectors do not match WooCommerce patterns (selectors.variations)",
+          "Attribute selectors do not match WooCommerce patterns (selectors.attributes)",
+          "Variation form selectors are recommended for better variation detection (selectors)",
+          "Price selectors may be too generic (selectors.price)",
+          "Variation selectors present but no variation form selectors (behavior.waitForSelectors)"
+        ],
+        "suggestions": [
+          "Found 23 complex selectors that may impact performance (selectors)",
+          "Found 13 potentially inefficient selectors (selectors)",
+          "Found 15 slow selectors that may impact performance (selectors)",
+          "Found 23 potentially inefficient selectors (selectors)",
+          "Found 8 complex selectors that may impact performance (selectors)",
+          "Found 6 redundant selectors (selectors)",
+          "Found 418 conflicting selector pairs (selectors)",
+          "Image selectors present but no optimization strategy (selectors.images)"
+        ]
+      },
+      "recommendedFixes": {
+        "attributeNaming": [],
+        "selectorImprovements": [
+          "Update attribute selectors to use WooCommerce patterns",
+          "Update variation selectors to use WooCommerce patterns"
+        ],
+        "variationDetection": [
+          "Add variation form selectors for better detection"
+        ],
+        "performanceOptimizations": [
+          "Simplify 23 complex selectors"
+        ]
+      },
+      "complianceScore": 85,
+      "priority": "medium"
+    }
+  ],
+  "recommendations": {
+    "immediateActions": [
+      "Update selectors in 5 recipes to use WooCommerce patterns"
+    ],
+    "shortTermImprovements": [
+      "Improve variation detection in 3 recipes"
+    ],
+    "longTermOptimizations": [
+      "Optimize performance in 6 recipes"
+    ]
+  },
+  "generatedAt": "2025-09-05T10:34:57.272Z"
+}

@@ -215,6 +215,9 @@ export interface RecipeConfig {
     minDescriptionLength?: number;
     maxTitleLength?: number;
   };
+
+  // WooCommerce-specific validation
+  woocommerceValidation?: WooCommerceValidationConfig;
 }
 
 // Recipe file structure
@@ -418,4 +421,126 @@ export interface ProductOptions {
 // Generic Metadata Types
 export interface GenericMetadata<T = unknown> {
   [key: string]: T;
+}
+
+// WooCommerce Recipe Validation Types
+export interface WooCommerceValidationConfig {
+  // Required selectors validation
+  requiredSelectors?: {
+    title?: boolean;
+    price?: boolean;
+    images?: boolean;
+    sku?: boolean;
+    description?: boolean;
+  };
+
+  // Attribute naming validation
+  attributeNaming?: {
+    enforceCapitalization?: boolean;
+    allowSpecialCharacters?: boolean;
+    reservedNames?: string[];
+    customPattern?: string; // regex pattern
+  };
+
+  // Variation detection validation
+  variationDetection?: {
+    requireVariationSelectors?: boolean;
+    requireAttributeSelectors?: boolean;
+    requireVariationFormSelectors?: boolean;
+    validateAttributeMapping?: boolean;
+  };
+
+  // Price format validation
+  priceFormat?: {
+    pattern?: string; // regex pattern
+    allowCurrencySymbols?: boolean;
+    requireDecimalPlaces?: boolean;
+  };
+
+  // SKU format validation
+  skuFormat?: {
+    pattern?: string; // regex pattern
+    requireUniqueness?: boolean;
+    minLength?: number;
+    maxLength?: number;
+  };
+
+  // Cross-field validation
+  crossFieldValidation?: {
+    validateVariationAttributeMapping?: boolean;
+    validatePriceConsistency?: boolean;
+    validateImageConsistency?: boolean;
+  };
+}
+
+// WooCommerce Validation Result Types
+export interface WooCommerceValidationResult {
+  isValid: boolean;
+  errors: WooCommerceValidationError[];
+  warnings: WooCommerceValidationWarning[];
+  score: number; // 0-100 compliance score
+  timestamp: Date;
+}
+
+export interface WooCommerceValidationError {
+  code: string;
+  message: string;
+  field?: string;
+  suggestion?: string;
+  severity: 'error' | 'warning' | 'info';
+  category: 'required' | 'naming' | 'variation' | 'format' | 'consistency';
+}
+
+export interface WooCommerceValidationWarning {
+  code: string;
+  message: string;
+  field?: string;
+  suggestion?: string;
+  category: 'performance' | 'best-practice' | 'deprecation';
+}
+
+// WooCommerce Attribute Naming Rules
+export interface WooCommerceAttributeNamingRules {
+  // Reserved WooCommerce attribute names that should not be used
+  reservedNames: string[];
+
+  // Pattern for valid attribute names
+  validPattern: RegExp;
+
+  // Required capitalization rules
+  capitalizationRules: {
+    enforceCapitalization: boolean;
+    allowedFormats: ('PascalCase' | 'camelCase' | 'snake_case')[];
+  };
+
+  // Special character rules
+  specialCharacterRules: {
+    allowedCharacters: string[];
+    forbiddenCharacters: string[];
+    allowSpaces: boolean;
+  };
+}
+
+// WooCommerce Variation Detection Rules
+export interface WooCommerceVariationDetectionRules {
+  // Required selectors for variation detection
+  requiredSelectors: {
+    variationContainer: string[];
+    variationForm: string[];
+    attributeSelectors: string[];
+  };
+
+  // Validation rules for variation-to-attribute mapping
+  attributeMappingRules: {
+    requireAllVariationsHaveAttributes: boolean;
+    requireAllAttributesHaveVariations: boolean;
+    validateAttributeValueConsistency: boolean;
+  };
+
+  // Performance rules for variation detection
+  performanceRules: {
+    maxVariationSelectors: number;
+    maxAttributeSelectors: number;
+    requireEfficientSelectors: boolean;
+  };
 }
