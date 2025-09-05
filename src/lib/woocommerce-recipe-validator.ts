@@ -376,14 +376,19 @@ export class WooCommerceRecipeValidator {
     const totalIssues = errors.length + warnings.length;
     if (totalIssues === 0) return 100;
 
-    // Weight errors more heavily than warnings
+    // Weight errors more heavily than warnings; be more forgiving for warnings
     const errorWeight = 3;
-    const warningWeight = 1;
+    const warningWeight = 0.5;
     const weightedIssues = (errors.length * errorWeight) + (warnings.length * warningWeight);
 
-    // Calculate score based on weighted issues
-    const maxWeightedIssues = 20; // Assume max 20 weighted issues for 0% score
-    const score = Math.max(0, 100 - (weightedIssues / maxWeightedIssues) * 100);
+    // Calculate score based on weighted issues with a wider range before hitting 0
+    const maxWeightedIssues = 30;
+    let score = Math.max(0, 100 - (weightedIssues / maxWeightedIssues) * 100);
+
+    // Provide a small bonus for being error-free (but keep capped at 100)
+    if (errors.length === 0) {
+      score = Math.min(100, score + 10);
+    }
 
     return Math.round(score);
   }
