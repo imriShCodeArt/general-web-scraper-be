@@ -108,16 +108,12 @@ transforms:
     - 'limit:500' # Limit for performance
 
   attributes:
-    צבע:
-      - "replace:^\\s+|\\s+$"
-      - 'replace:בחר צבע|בחרי צבע'
-    גודל:
-      - "replace:^\\s+|\\s+$"
-      - 'replace:בחר גודל|בחרי גודל'
     Color:
       - "replace:^\\s+|\\s+$"
+      - 'replace:בחר צבע|בחרי צבע'
     Size:
       - "replace:^\\s+|\\s+$"
+      - 'replace:בחר גודל|בחרי גודל'
     General:
       - "replace:^\\s+|\\s+$"
       - 'replace:בחירת אפשרות|בחר אפשרות'
