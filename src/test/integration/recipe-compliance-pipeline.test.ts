@@ -24,7 +24,7 @@ describe('Recipe Compliance Pipeline Integration Tests', () => {
 
       // Should be valid
       expect(validationResult.isValid).toBe(true);
-      expect(validationResult.score).toBeGreaterThan(50);
+      expect(validationResult.score).toBeGreaterThan(70);
 
       // Should have required selectors
       expect(recipe.selectors.title).toBeDefined();
