@@ -3,15 +3,18 @@
 import { RecipeManager } from '../lib/recipe-manager';
 import { Command } from 'commander';
 import { rootContainer, TOKENS, initializeServices, cleanupServices } from '../lib/composition-root';
+import { RecipeComplianceAuditor } from '../lib/recipe-compliance-auditor';
 
 const program = new Command();
 let recipeManager: RecipeManager;
+let complianceAuditor: RecipeComplianceAuditor;
 
 // Initialize services before running CLI
 async function initializeCLI() {
   try {
     await initializeServices();
     recipeManager = await rootContainer.resolve<RecipeManager>(TOKENS.RecipeManager);
+    complianceAuditor = new RecipeComplianceAuditor();
   } catch (error) {
     console.error('Failed to initialize services:', error);
     process.exit(1);
@@ -208,6 +211,115 @@ program
       }
     } catch (error) {
       console.error('Failed to validate all recipes for WooCommerce compliance:', error);
+      process.exit(1);
+    }
+  });
+
+program
+  .command('audit-recipes')
+  .description('Audit all recipes for WooCommerce compliance')
+  .option('-f, --format <format>', 'Output format (console, json, html)', 'console')
+  .option('-o, --output <file>', 'Output file path')
+  .action(async (options: { format: string; output?: string }) => {
+    try {
+      console.log('🔍 Starting recipe compliance audit...');
+      const report = await complianceAuditor.auditAllRecipes();
+
+      let output: string;
+
+      switch (options.format.toLowerCase()) {
+      case 'json':
+        output = complianceAuditor.generateJsonReport(report);
+        break;
+      case 'html':
+        output = complianceAuditor.generateHtmlReport(report);
+        break;
+      case 'console':
+      default:
+        output = complianceAuditor.generateConsoleReport(report);
+        break;
+      }
+
+      if (options.output) {
+        const fs = await import('fs');
+        fs.writeFileSync(options.output, output);
+        console.log(`📄 Audit report saved to ${options.output}`);
+      } else {
+        console.log(output);
+      }
+
+      // Exit with error code if there are critical issues
+      if (report.summary.criticalIssues > 0) {
+        process.exit(1);
+      }
+    } catch (error) {
+      console.error('Failed to audit recipes:', error);
+      process.exit(1);
+    }
+  });
+
+program
+  .command('audit-recipe <recipeName>')
+  .description('Audit a specific recipe for WooCommerce compliance')
+  .option('-f, --format <format>', 'Output format (console, json, html)', 'console')
+  .option('-o, --output <file>', 'Output file path')
+  .action(async (recipeName: string, options: { format: string; output?: string }) => {
+    try {
+      console.log(`🔍 Auditing recipe: ${recipeName}`);
+      const auditResult = await complianceAuditor.auditRecipe(recipeName);
+
+      // Create a mock report for single recipe
+      const report = {
+        summary: {
+          totalRecipes: 1,
+          compliantRecipes: auditResult.validationResult.isValid ? 1 : 0,
+          nonCompliantRecipes: auditResult.validationResult.isValid ? 0 : 1,
+          averageScore: auditResult.complianceScore,
+          criticalIssues: auditResult.complianceIssues.critical.length,
+          totalWarnings: auditResult.complianceIssues.warnings.length,
+          totalSuggestions: auditResult.complianceIssues.suggestions.length,
+        },
+        recipes: [auditResult],
+        recommendations: {
+          immediateActions: auditResult.complianceIssues.critical.length > 0 ?
+            [`Fix critical issues in ${recipeName}`] : [],
+          shortTermImprovements: auditResult.complianceIssues.warnings.length > 0 ?
+            [`Address warnings in ${recipeName}`] : [],
+          longTermOptimizations: auditResult.complianceIssues.suggestions.length > 0 ?
+            [`Consider optimizations for ${recipeName}`] : [],
+        },
+        generatedAt: new Date(),
+      };
+
+      let output: string;
+
+      switch (options.format.toLowerCase()) {
+      case 'json':
+        output = complianceAuditor.generateJsonReport(report);
+        break;
+      case 'html':
+        output = complianceAuditor.generateHtmlReport(report);
+        break;
+      case 'console':
+      default:
+        output = complianceAuditor.generateConsoleReport(report);
+        break;
+      }
+
+      if (options.output) {
+        const fs = await import('fs');
+        fs.writeFileSync(options.output, output);
+        console.log(`📄 Audit report saved to ${options.output}`);
+      } else {
+        console.log(output);
+      }
+
+      // Exit with error code if there are critical issues
+      if (auditResult.complianceIssues.critical.length > 0) {
+        process.exit(1);
+      }
+    } catch (error) {
+      console.error(`Failed to audit recipe '${recipeName}':`, error);
       process.exit(1);
     }
   });

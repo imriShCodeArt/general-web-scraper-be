@@ -113,20 +113,14 @@ transforms:
     - "replace:^\\s*-\\s*"
 
   attributes:
-    צבע:
-      - "replace:^\\s+|\\s+$"
-      - "replace:^\\s*-\\s*"
-      - 'replace:בחר צבע|בחרי צבע'
-    גודל:
-      - "replace:^\\s+|\\s+$"
-      - "replace:^\\s*-\\s*"
-      - 'replace:בחר גודל|בחרי גודל'
     Color:
       - "replace:^\\s+|\\s+$"
       - "replace:^\\s*-\\s*"
+      - 'replace:בחר צבע|בחרי צבע'
     Size:
       - "replace:^\\s+|\\s+$"
       - "replace:^\\s*-\\s*"
+      - 'replace:בחר גודל|בחרי גודל'
 
 behavior:
   waitForSelectors:
@@ -160,3 +154,47 @@ validation:
     - 'images'
   priceFormat: "\\d+(\\.\\d{2})?"
   skuFormat: '[A-Za-z0-9-_א-ת]+'
+
+# WooCommerce-specific validation configuration
+woocommerceValidation:
+  # Required selectors for WooCommerce compatibility
+  requiredSelectors:
+    title: true
+    price: true
+    images: true
+    sku: true
+    description: true
+    stock: false
+    attributes: true
+    variations: false
+
+  # Attribute naming conventions (Hebrew recipes need special handling)
+  attributeNaming:
+    enforcePascalCase: true
+    allowSpecialCharacters: false
+    maxLength: 50
+    reservedNames: ['id', 'name', 'type', 'class']
+    allowHebrewAttributes: true
+
+  # Variation detection requirements
+  variationDetection:
+    requireAttributeSelectors: true
+    requireVariationFormSelectors: false
+    validateVariationAttributeMapping: true
+
+  # Price format validation (supports Hebrew currency)
+  priceFormat:
+    pattern: '^\\d+(\\.\\d{2})?$'
+    allowCurrencySymbols: true
+    requireDecimalPlaces: true
+
+  # SKU format validation (supports Hebrew characters)
+  skuFormat:
+    pattern: '^[A-Z0-9-_א-ת]+$'
+    minLength: 3
+    maxLength: 50
+
+  # Cross-field validation
+  crossFieldValidation:
+    validateVariationAttributeMapping: true
+    requireConsistentNaming: true
