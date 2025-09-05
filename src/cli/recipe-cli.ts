@@ -4,10 +4,14 @@ import { RecipeManager } from '../lib/recipe-manager';
 import { Command } from 'commander';
 import { rootContainer, TOKENS, initializeServices, cleanupServices } from '../lib/composition-root';
 import { RecipeComplianceAuditor } from '../lib/recipe-compliance-auditor';
+import { RecipeComplianceMonitor } from '../lib/recipe-compliance-monitor';
+import { RecipeMaintenanceTools } from '../lib/recipe-maintenance-tools';
 
 const program = new Command();
 let recipeManager: RecipeManager;
 let complianceAuditor: RecipeComplianceAuditor;
+let complianceMonitor: RecipeComplianceMonitor;
+let maintenanceTools: RecipeMaintenanceTools;
 
 // Initialize services before running CLI
 async function initializeCLI() {
@@ -15,6 +19,8 @@ async function initializeCLI() {
     await initializeServices();
     recipeManager = await rootContainer.resolve<RecipeManager>(TOKENS.RecipeManager);
     complianceAuditor = new RecipeComplianceAuditor();
+    complianceMonitor = new RecipeComplianceMonitor();
+    maintenanceTools = new RecipeMaintenanceTools();
   } catch (error) {
     console.error('Failed to initialize services:', error);
     process.exit(1);
@@ -254,6 +260,64 @@ program
       }
     } catch (error) {
       console.error('Failed to audit recipes:', error);
+      process.exit(1);
+    }
+  });
+
+program
+  .command('monitor-compliance')
+  .description('Run compliance monitoring and persist metrics/dashboard')
+  .action(async () => {
+    try {
+      const { report, metrics } = await complianceMonitor.runAndPersist();
+      console.log('✅ Compliance monitoring completed');
+      console.log(`Recipes: ${metrics.totalRecipes}, Compliant: ${metrics.compliantRecipes}, AverageScore: ${metrics.averageScore}`);
+      console.log('Artifacts: docs/compliance-dashboard.html, performance-data/compliance.json, performance-data/compliance-metrics.jsonl');
+      // Exit non-zero if any critical issues
+      if (report.summary.criticalIssues > 0) process.exit(1);
+      process.exit(0);
+    } catch (error) {
+      console.error('Failed to run compliance monitoring:', error);
+      process.exit(1);
+    }
+  });
+
+program
+  .command('recipes-backup')
+  .description('Backup all recipes into ./recipes-backup')
+  .action(async () => {
+    try {
+      const { count } = maintenanceTools.backupAll();
+      console.log(`✅ Backed up ${count} recipe files to ./recipes-backup`);
+    } catch (error) {
+      console.error('Failed to backup recipes:', error);
+      process.exit(1);
+    }
+  });
+
+program
+  .command('recipes-compare <recipeAPath> <recipeBPath>')
+  .description('Compare two recipe files and print top-level key differences')
+  .action(async (recipeAPath: string, recipeBPath: string) => {
+    try {
+      const diff = maintenanceTools.compare(recipeAPath, recipeBPath);
+      console.log('Only in A:', diff.onlyInA);
+      console.log('Only in B:', diff.onlyInB);
+    } catch (error) {
+      console.error('Failed to compare recipes:', error);
+      process.exit(1);
+    }
+  });
+
+program
+  .command('recipes-bulk-update <find> <replace>')
+  .description('Bulk update selector strings across all recipes')
+  .action(async (find: string, replace: string) => {
+    try {
+      const { updated } = maintenanceTools.bulkUpdateSelector(find, replace);
+      console.log(`✅ Updated ${updated} recipe files`);
+    } catch (error) {
+      console.error('Failed to bulk update recipes:', error);
       process.exit(1);
     }
   });
