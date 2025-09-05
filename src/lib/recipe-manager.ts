@@ -1,6 +1,6 @@
 import { RecipeLoader } from './recipe-loader';
 import { GenericAdapter } from './generic-adapter';
-import { RecipeConfig, SiteAdapter, RawProductData } from '../types';
+import { RecipeConfig, SiteAdapter, RawProductData, WooCommerceValidationResult } from '../types';
 
 export class RecipeManager {
   private recipesDir: string;
@@ -193,5 +193,36 @@ export class RecipeManager {
    */
   getRecipeLoader(): RecipeLoader {
     return this.recipeLoader;
+  }
+
+  /**
+   * Validate recipe for WooCommerce compliance
+   */
+  async validateRecipeWooCommerce(recipeName: string): Promise<WooCommerceValidationResult> {
+    return this.recipeLoader.validateRecipeWooCommerce(recipeName);
+  }
+
+  /**
+   * Validate all recipes for WooCommerce compliance
+   */
+  async validateAllRecipesWooCommerce(): Promise<{
+    results: Array<{ recipeName: string; result: WooCommerceValidationResult }>;
+    summary: {
+      totalRecipes: number;
+      validRecipes: number;
+      invalidRecipes: number;
+      averageScore: number;
+      totalErrors: number;
+      totalWarnings: number;
+    };
+  }> {
+    return this.recipeLoader.validateAllRecipesWooCommerce();
+  }
+
+  /**
+   * Get validation report for a recipe
+   */
+  async getValidationReport(recipeName: string): Promise<string> {
+    return this.recipeLoader.getValidationReport(recipeName);
   }
 }

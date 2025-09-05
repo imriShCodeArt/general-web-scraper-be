@@ -125,6 +125,94 @@ program
   });
 
 program
+  .command('validate-woocommerce <recipeName>')
+  .description('Validate recipe for WooCommerce compliance')
+  .option('-f, --format <format>', 'Output format (console, json, html)', 'console')
+  .option('-o, --output <file>', 'Output file path')
+  .action(async (recipeName: string, options: { format: string; output?: string }) => {
+    try {
+      const result = await recipeManager.validateRecipeWooCommerce(recipeName);
+
+      let output: string;
+
+      switch (options.format.toLowerCase()) {
+      case 'json':
+        output = JSON.stringify(result, null, 2);
+        break;
+      case 'html':
+        output = generateHtmlReport(recipeName, result);
+        break;
+      case 'console':
+      default:
+        output = await recipeManager.getValidationReport(recipeName);
+        break;
+      }
+
+      if (options.output) {
+        const fs = await import('fs');
+        fs.writeFileSync(options.output, output);
+        console.log(`Report saved to ${options.output}`);
+      } else {
+        console.log(output);
+      }
+
+      // Exit with appropriate code based on validation result
+      if (!result.isValid) {
+        process.exit(1);
+      } else {
+        process.exit(0);
+      }
+    } catch (error) {
+      console.error(`Failed to validate recipe '${recipeName}' for WooCommerce compliance:`, error);
+      process.exit(1);
+    }
+  });
+
+program
+  .command('validate-all-woocommerce')
+  .description('Validate all recipes for WooCommerce compliance')
+  .option('-f, --format <format>', 'Output format (console, json, html)', 'console')
+  .option('-o, --output <file>', 'Output file path')
+  .action(async (options: { format: string; output?: string }) => {
+    try {
+      const validationResults = await recipeManager.validateAllRecipesWooCommerce();
+
+      let output: string;
+
+      switch (options.format.toLowerCase()) {
+      case 'json':
+        output = JSON.stringify(validationResults, null, 2);
+        break;
+      case 'html':
+        output = generateHtmlReportAll(validationResults);
+        break;
+      case 'console':
+      default:
+        output = generateConsoleReportAll(validationResults);
+        break;
+      }
+
+      if (options.output) {
+        const fs = await import('fs');
+        fs.writeFileSync(options.output, output);
+        console.log(`Report saved to ${options.output}`);
+      } else {
+        console.log(output);
+      }
+
+      // Exit with appropriate code based on validation results
+      if (validationResults.summary.invalidRecipes > 0) {
+        process.exit(1);
+      } else {
+        process.exit(0);
+      }
+    } catch (error) {
+      console.error('Failed to validate all recipes for WooCommerce compliance:', error);
+      process.exit(1);
+    }
+  });
+
+program
   .command('find-site <siteUrl>')
   .description('Find recipe for a specific site')
   .action(async (siteUrl: string) => {
@@ -178,6 +266,183 @@ program
       console.error(`Failed to test recipe '${recipeName}':`, error);
     }
   });
+
+// Helper functions for report generation
+function generateHtmlReport(recipeName: string, result: any): string {
+  const statusIcon = result.isValid ? '✅' : '❌';
+  const statusText = result.isValid ? 'VALID' : 'INVALID';
+  const statusColor = result.isValid ? '#28a745' : '#dc3545';
+
+  return `
+<!DOCTYPE html>
+<html>
+<head>
+    <title>WooCommerce Recipe Validation Report - ${recipeName}</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 20px; }
+        .header { background: #f8f9fa; padding: 20px; border-radius: 5px; margin-bottom: 20px; }
+        .status { color: ${statusColor}; font-weight: bold; font-size: 1.2em; }
+        .section { margin: 20px 0; }
+        .error { color: #dc3545; background: #f8d7da; padding: 10px; border-radius: 3px; margin: 5px 0; }
+        .warning { color: #856404; background: #fff3cd; padding: 10px; border-radius: 3px; margin: 5px 0; }
+        .suggestion { font-style: italic; color: #6c757d; }
+        .score { font-size: 1.5em; font-weight: bold; color: #007bff; }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1>WooCommerce Recipe Validation Report</h1>
+        <h2>Recipe: ${recipeName}</h2>
+        <div class="status">${statusIcon} ${statusText}</div>
+        <div class="score">Compliance Score: ${result.score}/100</div>
+        <p>Generated: ${result.timestamp}</p>
+    </div>
+
+    ${result.errors.length > 0 ? `
+    <div class="section">
+        <h3>🚨 Errors (${result.errors.length})</h3>
+        ${result.errors.map((error: any, index: number) => `
+            <div class="error">
+                <strong>${index + 1}. [${error.category.toUpperCase()}] ${error.message}</strong>
+                ${error.field ? `<br><small>Field: ${error.field}</small>` : ''}
+                ${error.suggestion ? `<div class="suggestion">Suggestion: ${error.suggestion}</div>` : ''}
+            </div>
+        `).join('')}
+    </div>
+    ` : ''}
+
+    ${result.warnings.length > 0 ? `
+    <div class="section">
+        <h3>⚠️ Warnings (${result.warnings.length})</h3>
+        ${result.warnings.map((warning: any, index: number) => `
+            <div class="warning">
+                <strong>${index + 1}. [${warning.category.toUpperCase()}] ${warning.message}</strong>
+                ${warning.field ? `<br><small>Field: ${warning.field}</small>` : ''}
+                ${warning.suggestion ? `<div class="suggestion">Suggestion: ${warning.suggestion}</div>` : ''}
+            </div>
+        `).join('')}
+    </div>
+    ` : ''}
+
+    ${result.errors.length === 0 && result.warnings.length === 0 ? `
+    <div class="section">
+        <h3>🎉 No Issues Found!</h3>
+        <p>Recipe is fully compliant with WooCommerce standards.</p>
+    </div>
+    ` : ''}
+</body>
+</html>`;
+}
+
+function generateHtmlReportAll(validationResults: any): string {
+  const { results, summary } = validationResults;
+  const validCount = summary.validRecipes;
+  const invalidCount = summary.invalidRecipes;
+  const totalCount = summary.totalRecipes;
+
+  return `
+<!DOCTYPE html>
+<html>
+<head>
+    <title>WooCommerce Recipe Validation Report - All Recipes</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 20px; }
+        .header { background: #f8f9fa; padding: 20px; border-radius: 5px; margin-bottom: 20px; }
+        .summary { display: flex; gap: 20px; margin: 20px 0; }
+        .summary-item { background: #e9ecef; padding: 15px; border-radius: 5px; text-align: center; }
+        .summary-item.valid { background: #d4edda; color: #155724; }
+        .summary-item.invalid { background: #f8d7da; color: #721c24; }
+        .recipe { margin: 20px 0; padding: 15px; border: 1px solid #dee2e6; border-radius: 5px; }
+        .recipe.valid { border-left: 5px solid #28a745; }
+        .recipe.invalid { border-left: 5px solid #dc3545; }
+        .error { color: #dc3545; background: #f8d7da; padding: 5px; border-radius: 3px; margin: 2px 0; }
+        .warning { color: #856404; background: #fff3cd; padding: 5px; border-radius: 3px; margin: 2px 0; }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1>WooCommerce Recipe Validation Report</h1>
+        <h2>All Recipes Summary</h2>
+        <div class="summary">
+            <div class="summary-item">
+                <h3>${totalCount}</h3>
+                <p>Total Recipes</p>
+            </div>
+            <div class="summary-item valid">
+                <h3>${validCount}</h3>
+                <p>Valid Recipes</p>
+            </div>
+            <div class="summary-item invalid">
+                <h3>${invalidCount}</h3>
+                <p>Invalid Recipes</p>
+            </div>
+            <div class="summary-item">
+                <h3>${summary.averageScore}</h3>
+                <p>Average Score</p>
+            </div>
+        </div>
+    </div>
+
+    ${results.map((item: any) => `
+        <div class="recipe ${item.result.isValid ? 'valid' : 'invalid'}">
+            <h3>${item.recipeName} ${item.result.isValid ? '✅' : '❌'}</h3>
+            <p><strong>Score:</strong> ${item.result.score}/100</p>
+            <p><strong>Errors:</strong> ${item.result.errors.length} | <strong>Warnings:</strong> ${item.result.warnings.length}</p>
+            
+            ${item.result.errors.length > 0 ? `
+                <h4>Errors:</h4>
+                ${item.result.errors.map((error: any) => `
+                    <div class="error">[${error.category}] ${error.message}</div>
+                `).join('')}
+            ` : ''}
+            
+            ${item.result.warnings.length > 0 ? `
+                <h4>Warnings:</h4>
+                ${item.result.warnings.map((warning: any) => `
+                    <div class="warning">[${warning.category}] ${warning.message}</div>
+                `).join('')}
+            ` : ''}
+        </div>
+    `).join('')}
+</body>
+</html>`;
+}
+
+function generateConsoleReportAll(validationResults: any): string {
+  const { results, summary } = validationResults;
+  const lines: string[] = [];
+
+  lines.push('=== WooCommerce Recipe Validation Report - All Recipes ===');
+  lines.push(`Total Recipes: ${summary.totalRecipes}`);
+  lines.push(`Valid Recipes: ${summary.validRecipes}`);
+  lines.push(`Invalid Recipes: ${summary.invalidRecipes}`);
+  lines.push(`Average Score: ${summary.averageScore}/100`);
+  lines.push(`Total Errors: ${summary.totalErrors}`);
+  lines.push(`Total Warnings: ${summary.totalWarnings}`);
+  lines.push('');
+
+  results.forEach((item: any, index: number) => {
+    lines.push(`${index + 1}. ${item.recipeName} ${item.result.isValid ? '✅' : '❌'} (Score: ${item.result.score}/100)`);
+
+    if (item.result.errors.length > 0) {
+      lines.push(`   Errors: ${item.result.errors.length}`);
+      item.result.errors.forEach((error: any) => {
+        lines.push(`     - [${error.category}] ${error.message}`);
+      });
+    }
+
+    if (item.result.warnings.length > 0) {
+      lines.push(`   Warnings: ${item.result.warnings.length}`);
+      item.result.warnings.forEach((warning: any) => {
+        lines.push(`     - [${warning.category}] ${warning.message}`);
+      });
+    }
+
+    lines.push('');
+  });
+
+  return lines.join('\n');
+}
 
 // Initialize CLI and run
 (async () => {
