@@ -224,20 +224,20 @@ program
     try {
       console.log('🔍 Starting recipe compliance audit...');
       const report = await complianceAuditor.auditAllRecipes();
-      
+
       let output: string;
-      
+
       switch (options.format.toLowerCase()) {
-        case 'json':
-          output = complianceAuditor.generateJsonReport(report);
-          break;
-        case 'html':
-          output = complianceAuditor.generateHtmlReport(report);
-          break;
-        case 'console':
-        default:
-          output = complianceAuditor.generateConsoleReport(report);
-          break;
+      case 'json':
+        output = complianceAuditor.generateJsonReport(report);
+        break;
+      case 'html':
+        output = complianceAuditor.generateHtmlReport(report);
+        break;
+      case 'console':
+      default:
+        output = complianceAuditor.generateConsoleReport(report);
+        break;
       }
 
       if (options.output) {
@@ -267,7 +267,7 @@ program
     try {
       console.log(`🔍 Auditing recipe: ${recipeName}`);
       const auditResult = await complianceAuditor.auditRecipe(recipeName);
-      
+
       // Create a mock report for single recipe
       const report = {
         summary: {
@@ -281,29 +281,29 @@ program
         },
         recipes: [auditResult],
         recommendations: {
-          immediateActions: auditResult.complianceIssues.critical.length > 0 ? 
+          immediateActions: auditResult.complianceIssues.critical.length > 0 ?
             [`Fix critical issues in ${recipeName}`] : [],
-          shortTermImprovements: auditResult.complianceIssues.warnings.length > 0 ? 
+          shortTermImprovements: auditResult.complianceIssues.warnings.length > 0 ?
             [`Address warnings in ${recipeName}`] : [],
-          longTermOptimizations: auditResult.complianceIssues.suggestions.length > 0 ? 
+          longTermOptimizations: auditResult.complianceIssues.suggestions.length > 0 ?
             [`Consider optimizations for ${recipeName}`] : [],
         },
         generatedAt: new Date(),
       };
-      
+
       let output: string;
-      
+
       switch (options.format.toLowerCase()) {
-        case 'json':
-          output = complianceAuditor.generateJsonReport(report);
-          break;
-        case 'html':
-          output = complianceAuditor.generateHtmlReport(report);
-          break;
-        case 'console':
-        default:
-          output = complianceAuditor.generateConsoleReport(report);
-          break;
+      case 'json':
+        output = complianceAuditor.generateJsonReport(report);
+        break;
+      case 'html':
+        output = complianceAuditor.generateHtmlReport(report);
+        break;
+      case 'console':
+      default:
+        output = complianceAuditor.generateConsoleReport(report);
+        break;
       }
 
       if (options.output) {

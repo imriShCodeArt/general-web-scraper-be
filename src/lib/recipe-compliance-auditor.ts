@@ -1,7 +1,7 @@
 import { RecipeLoader } from './recipe-loader';
 import { WooCommerceRecipeValidator } from './woocommerce-recipe-validator';
 import { RecipeConfig, WooCommerceValidationResult } from '../types';
-import { readFileSync, existsSync, readdirSync } from 'fs';
+import { existsSync, readdirSync } from 'fs';
 import { join, extname } from 'path';
 
 export interface RecipeAuditResult {
@@ -66,13 +66,13 @@ export class RecipeComplianceAuditor {
       try {
         const recipeName = this.extractRecipeName(filePath);
         console.log(`  📋 Auditing: ${recipeName}`);
-        
+
         const recipe = await this.recipeLoader.loadRecipeFromFile(filePath);
         const validationResult = this.validator.validateRecipe(recipe);
-        
+
         const auditResult = this.analyzeRecipeCompliance(recipeName, filePath, recipe, validationResult);
         auditResults.push(auditResult);
-        
+
       } catch (error) {
         console.warn(`  ⚠️  Failed to audit recipe from ${filePath}:`, error);
       }
@@ -88,7 +88,7 @@ export class RecipeComplianceAuditor {
     const recipe = await this.recipeLoader.loadRecipe(recipeName);
     const validationResult = this.validator.validateRecipe(recipe);
     const filePath = this.findRecipeFilePath(recipeName);
-    
+
     return this.analyzeRecipeCompliance(recipeName, filePath, recipe, validationResult);
   }
 
@@ -99,7 +99,7 @@ export class RecipeComplianceAuditor {
     recipeName: string,
     filePath: string,
     recipe: RecipeConfig,
-    validationResult: WooCommerceValidationResult
+    validationResult: WooCommerceValidationResult,
   ): RecipeAuditResult {
     const complianceIssues = this.categorizeIssues(validationResult);
     const recommendedFixes = this.generateRecommendedFixes(recipe, validationResult);
@@ -154,7 +154,7 @@ export class RecipeComplianceAuditor {
    */
   private generateRecommendedFixes(
     recipe: RecipeConfig,
-    validationResult: WooCommerceValidationResult
+    _validationResult: WooCommerceValidationResult,
   ): {
     attributeNaming: string[];
     selectorImprovements: string[];
@@ -197,8 +197,8 @@ export class RecipeComplianceAuditor {
 
     // Analyze performance issues
     const allSelectors = this.getAllSelectors(recipe);
-    const complexSelectors = allSelectors.filter(selector => 
-      selector.includes(' ') || selector.includes('>') || selector.includes('+')
+    const complexSelectors = allSelectors.filter(selector =>
+      selector.includes(' ') || selector.includes('>') || selector.includes('+'),
     );
     if (complexSelectors.length > 0) {
       performanceOptimizations.push(`Simplify ${complexSelectors.length} complex selectors`);
@@ -233,7 +233,7 @@ export class RecipeComplianceAuditor {
     const compliantRecipes = auditResults.filter(r => r.validationResult.isValid).length;
     const nonCompliantRecipes = totalRecipes - compliantRecipes;
     const averageScore = auditResults.reduce((sum, r) => sum + r.complianceScore, 0) / totalRecipes;
-    
+
     const criticalIssues = auditResults.reduce((sum, r) => sum + r.complianceIssues.critical.length, 0);
     const totalWarnings = auditResults.reduce((sum, r) => sum + r.complianceIssues.warnings.length, 0);
     const totalSuggestions = auditResults.reduce((sum, r) => sum + r.complianceIssues.suggestions.length, 0);
@@ -345,11 +345,11 @@ export class RecipeComplianceAuditor {
 
   private isWooCommerceCompliantSelector(selector: string | string[]): boolean {
     const selectors = Array.isArray(selector) ? selector : [selector];
-    return selectors.some(s => 
+    return selectors.some(s =>
       s.includes('[name*="attribute"]') ||
       s.includes('.variation-select') ||
       s.includes('.attribute-select') ||
-      s.includes('.product-attribute-select')
+      s.includes('.product-attribute-select'),
     );
   }
 
@@ -359,18 +359,18 @@ export class RecipeComplianceAuditor {
       '.woocommerce-variations-form',
       '.variation-form',
       '.product-variation-form',
-      'form.variations'
+      'form.variations',
     ];
-    
+
     const allSelectors = this.getAllSelectors(recipe);
-    return formSelectors.some(formSelector => 
-      allSelectors.some(selector => selector.includes(formSelector))
+    return formSelectors.some(formSelector =>
+      allSelectors.some(selector => selector.includes(formSelector)),
     );
   }
 
   private getAllSelectors(recipe: RecipeConfig): string[] {
     const selectors: string[] = [];
-    
+
     Object.values(recipe.selectors).forEach(value => {
       if (typeof value === 'string') {
         selectors.push(value);
@@ -391,7 +391,7 @@ export class RecipeComplianceAuditor {
    */
   generateHtmlReport(report: ComplianceAuditReport): string {
     const { summary, recipes, recommendations } = report;
-    
+
     return `
 <!DOCTYPE html>
 <html>
