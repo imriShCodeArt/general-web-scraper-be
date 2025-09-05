@@ -8,6 +8,9 @@ import {
 import { WooCommerceValidationSchema } from './woocommerce-validation-schema';
 import { WooCommerceAttributeValidator } from './woocommerce-attribute-validator';
 import { WooCommerceVariationValidator } from './woocommerce-variation-validator';
+import { WooCommerceCrossFieldValidator } from './woocommerce-cross-field-validator';
+import { WooCommercePerformanceValidator } from './woocommerce-performance-validator';
+import { WooCommerceAdvancedFeatureValidator } from './woocommerce-advanced-feature-validator';
 
 /**
  * Main WooCommerce Recipe Validator
@@ -16,11 +19,17 @@ import { WooCommerceVariationValidator } from './woocommerce-variation-validator
 export class WooCommerceRecipeValidator {
   private attributeValidator: WooCommerceAttributeValidator;
   private variationValidator: WooCommerceVariationValidator;
+  private crossFieldValidator: WooCommerceCrossFieldValidator;
+  private performanceValidator: WooCommercePerformanceValidator;
+  private advancedFeatureValidator: WooCommerceAdvancedFeatureValidator;
   private validationConfig: WooCommerceValidationConfig;
 
   constructor(validationConfig?: WooCommerceValidationConfig) {
     this.attributeValidator = new WooCommerceAttributeValidator();
     this.variationValidator = new WooCommerceVariationValidator();
+    this.crossFieldValidator = new WooCommerceCrossFieldValidator();
+    this.performanceValidator = new WooCommercePerformanceValidator();
+    this.advancedFeatureValidator = new WooCommerceAdvancedFeatureValidator();
     this.validationConfig = validationConfig || WooCommerceValidationSchema.getStrictConfig();
   }
 
@@ -65,6 +74,11 @@ export class WooCommerceRecipeValidator {
       // 7. Validate performance aspects
       const performanceResult = this.validatePerformance(recipe);
       warnings.push(...performanceResult.warnings);
+
+      // 8. Validate advanced WooCommerce features
+      const advancedFeatureResult = this.validateAdvancedFeatures(recipe);
+      errors.push(...advancedFeatureResult.errors);
+      warnings.push(...advancedFeatureResult.warnings);
 
       // Calculate compliance score
       const score = this.calculateComplianceScore(errors, warnings);
@@ -287,48 +301,15 @@ export class WooCommerceRecipeValidator {
     errors: WooCommerceValidationError[];
     warnings: WooCommerceValidationWarning[];
   } {
-    const errors: WooCommerceValidationError[] = [];
-    const warnings: WooCommerceValidationWarning[] = [];
-
     if (!this.validationConfig.crossFieldValidation) {
-      return { errors, warnings };
+      return { errors: [], warnings: [] };
     }
 
-    const crossFieldConfig = this.validationConfig.crossFieldValidation;
-
-    // Validate variation-attribute mapping
-    if (crossFieldConfig.validateVariationAttributeMapping) {
-      const hasVariations = recipe.selectors.variations &&
-        ((Array.isArray(recipe.selectors.variations) && recipe.selectors.variations.length > 0) ||
-         (typeof recipe.selectors.variations === 'string' && recipe.selectors.variations.trim() !== ''));
-
-      const hasAttributes = recipe.selectors.attributes &&
-        ((Array.isArray(recipe.selectors.attributes) && recipe.selectors.attributes.length > 0) ||
-         (typeof recipe.selectors.attributes === 'string' && recipe.selectors.attributes.trim() !== ''));
-
-      if (hasVariations && !hasAttributes) {
-        errors.push({
-          code: 'MISSING_ATTRIBUTES_FOR_VARIATIONS',
-          message: 'Variations defined but no attributes found',
-          field: 'selectors.attributes',
-          suggestion: 'Add attribute selectors when using variations',
-          severity: 'error',
-          category: 'consistency',
-        });
-      }
-
-      if (hasAttributes && !hasVariations) {
-        warnings.push({
-          code: 'ATTRIBUTES_WITHOUT_VARIATIONS',
-          message: 'Attributes defined but no variations found',
-          field: 'selectors.variations',
-          suggestion: 'Consider adding variation selectors for variable products',
-          category: 'best-practice',
-        });
-      }
-    }
-
-    return { errors, warnings };
+    const crossFieldResult = this.crossFieldValidator.validateCrossFieldRelationships(recipe);
+    return {
+      errors: crossFieldResult.errors,
+      warnings: crossFieldResult.warnings,
+    };
   }
 
   /**
@@ -337,48 +318,24 @@ export class WooCommerceRecipeValidator {
   private validatePerformance(recipe: RecipeConfig): {
     warnings: WooCommerceValidationWarning[];
   } {
-    const warnings: WooCommerceValidationWarning[] = [];
+    const performanceResult = this.performanceValidator.validatePerformance(recipe);
+    return {
+      warnings: performanceResult.warnings,
+    };
+  }
 
-    // Check for complex selectors
-    const allSelectors = this.getAllSelectors(recipe);
-    const complexSelectors = allSelectors.filter(selector =>
-      selector.includes(' ') ||
-      selector.includes('>') ||
-      selector.includes('+') ||
-      selector.includes('~') ||
-      selector.includes(':nth-child') ||
-      selector.includes(':last-child'),
-    );
-
-    if (complexSelectors.length > 0) {
-      warnings.push({
-        code: 'COMPLEX_SELECTORS',
-        message: `Found ${complexSelectors.length} complex selectors that may impact performance`,
-        field: 'selectors',
-        suggestion: 'Consider using simpler selectors for better performance',
-        category: 'performance',
-      });
-    }
-
-    // Check for inefficient selectors
-    const inefficientSelectors = allSelectors.filter(selector =>
-      selector.includes('*') ||
-      selector.includes(':nth-child') ||
-      selector.includes(':last-child') ||
-      selector.includes(':first-child'),
-    );
-
-    if (inefficientSelectors.length > 0) {
-      warnings.push({
-        code: 'INEFFICIENT_SELECTORS',
-        message: `Found ${inefficientSelectors.length} potentially inefficient selectors`,
-        field: 'selectors',
-        suggestion: 'Avoid wildcard selectors and complex pseudo-selectors for better performance',
-        category: 'performance',
-      });
-    }
-
-    return { warnings };
+  /**
+   * Validate advanced WooCommerce features
+   */
+  private validateAdvancedFeatures(recipe: RecipeConfig): {
+    errors: WooCommerceValidationError[];
+    warnings: WooCommerceValidationWarning[];
+  } {
+    const advancedFeatureResult = this.advancedFeatureValidator.validateAdvancedFeatures(recipe);
+    return {
+      errors: advancedFeatureResult.errors,
+      warnings: advancedFeatureResult.warnings,
+    };
   }
 
   /**

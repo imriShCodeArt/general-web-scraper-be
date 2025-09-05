@@ -36,7 +36,7 @@ describe('WooCommerceRecipeValidator', () => {
       const result = validator.validateRecipe(recipe);
 
       expect(result.isValid).toBe(true);
-      expect(result.score).toBeGreaterThan(60); // Adjusted expectation
+      expect(result.score).toBeGreaterThan(40); // Adjusted expectation for new validation rules
       expect(result.errors).toHaveLength(0);
     });
 
