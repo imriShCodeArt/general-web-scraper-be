@@ -126,7 +126,7 @@ export class GenericAdapter extends BaseAdapter {
         ? this.extractImagesFromSelector(dom, selectors.images).slice(0, 3)
         : this.extractImagesFromSelector(dom, selectors.images), // Limit images in fast mode
       category: selectors.category ? this.extractWithFallbacks(dom, selectors.category) : undefined,
-      productType: 'simple', // Default to simple, could be enhanced to detect variable products
+      productType: 'simple', // Default; will switch to 'variable' if variations are found
       attributes: fastMode ? {} : this.extractAttributesFromSelector(dom, selectors.attributes), // Skip attributes in fast mode
       variations: fastMode
         ? []
@@ -138,6 +138,11 @@ export class GenericAdapter extends BaseAdapter {
     // Prefer archive H1 as category if configured/available
     if (!product.category && this.archiveCategory) {
       product.category = this.archiveCategory;
+    }
+
+    // If variations were found, mark as variable product
+    if (product.variations && product.variations.length > 0) {
+      product.productType = 'variable';
     }
 
     // Apply transformations (simplified in fast mode)
@@ -1061,9 +1066,151 @@ export class GenericAdapter extends BaseAdapter {
             } else {
               if (process.env.SCRAPER_DEBUG === '1')
                 console.log(
-                  'No actual price/SKU variations found, treating as simple product with attributes',
+                  'No explicit price/SKU variations detected; generating variation rows from attribute options',
                 );
-              // Don't create variations - this is just a simple product with attribute options
+
+              // Build attribute option groups from all selects within this element
+              type OptionGroup = { name: string; options: { value: string; text: string }[] };
+              const groups: OptionGroup[] = [];
+
+              Array.from(selectElements).forEach((selectEl, idx) => {
+                // Derive attribute name: prefer name attr; fallback to preceding label text; fallback to OptionN
+                const rawName =
+                  (selectEl.getAttribute('name') || selectEl.getAttribute('data-attribute') || '')
+                    .toString()
+                    .trim();
+                let displayName = rawName
+                  .replace(/^attribute_/i, '')
+                  .replace(/^pa_/i, '')
+                  .replace(/[_-]+/g, ' ')
+                  .trim();
+                if (!displayName) {
+                  const label = (selectEl.previousElementSibling ||
+                    element.querySelector('label')) as HTMLElement | null;
+                  displayName = label?.textContent?.trim() || `Option ${idx + 1}`;
+                }
+                displayName = displayName.replace(/\b\w/g, (c) => c.toUpperCase());
+
+                const options = Array.from(selectEl.querySelectorAll('option[value]'))
+                  .map((o) => ({
+                    value: (o.getAttribute('value') || '').trim(),
+                    text: (o.textContent || '').trim(),
+                  }))
+                  .filter((o) => o.value && o.text && !this.isPlaceholderValue(o.text));
+
+                if (options.length > 0) {
+                  groups.push({ name: displayName, options });
+                }
+              });
+
+              // Generate Cartesian product of option groups
+              const combine = (
+                acc: { skuSuffix: string; attrs: Record<string, string> }[],
+                group: OptionGroup,
+              ) => {
+                const next: { skuSuffix: string; attrs: Record<string, string> }[] = [];
+                for (const partial of acc) {
+                  for (const opt of group.options) {
+                    next.push({
+                      skuSuffix: partial.skuSuffix ? `${partial.skuSuffix}-${opt.value}` : opt.value,
+                      attrs: { ...partial.attrs, [group.name]: opt.text },
+                    });
+                  }
+                }
+                return next;
+              };
+
+              const combos = groups.reduce(
+                (acc, g) => combine(acc, g),
+                [{ skuSuffix: '', attrs: {} as Record<string, string> }],
+              );
+
+              const basePrice = this.extractText(dom, '.price, [data-price], .product-price') || '';
+              const baseSku = this.extractText(dom, '.sku, [data-sku], .product-sku') || 'SKU';
+
+              for (const c of combos) {
+                variations.push({
+                  sku: c.skuSuffix ? `${baseSku}-${c.skuSuffix}` : baseSku,
+                  regularPrice: basePrice,
+                  taxClass: '',
+                  stockStatus: 'instock',
+                  images: [],
+                  attributeAssignments: c.attrs,
+                });
+              }
+            }
+          }
+
+          // If there are no <select> elements, try site-specific option blocks
+          if (selectElements.length === 0) {
+            const optionBlocks = element.querySelectorAll('[class^="input-option"]');
+            if (optionBlocks.length > 0) {
+              if (process.env.SCRAPER_DEBUG === '1')
+                console.log(`Found ${optionBlocks.length} input-option blocks`);
+
+              type OptionGroup = { name: string; options: { value: string; text: string }[] };
+              const groups: OptionGroup[] = [];
+
+              for (const block of Array.from(optionBlocks)) {
+                // Try to derive a group name from a heading/label within the block
+                const nameCandidate =
+                  block.querySelector('label, .title, .name, .attribute-name, .option-name, h3, h4, strong');
+                let name = nameCandidate?.textContent?.trim() || '';
+                if (!name) continue;
+
+                // Collect option texts from common child nodes (li, label, span, a, option)
+                const valueNodes = block.querySelectorAll('li, label, span, a, option');
+                const opts: { value: string; text: string }[] = [];
+                for (const node of Array.from(valueNodes)) {
+                  const text = (node as HTMLElement).textContent?.trim() || '';
+                  if (!text || this.isPlaceholderValue(text)) continue;
+                  const valAttr = (node as HTMLElement).getAttribute?.('value') || text;
+                  opts.push({ value: valAttr.trim(), text });
+                }
+                const unique = Array.from(new Map(opts.map(o => [o.text, o])).values());
+                if (unique.length > 0) {
+                  // Normalize group name (PascalCase from words)
+                  name = name.replace(/[_-]+/g, ' ').trim().replace(/\b\w/g, c => c.toUpperCase());
+                  groups.push({ name, options: unique });
+                }
+              }
+
+              if (groups.length > 0) {
+                const combine = (
+                  acc: { skuSuffix: string; attrs: Record<string, string> }[],
+                  group: OptionGroup,
+                ) => {
+                  const next: { skuSuffix: string; attrs: Record<string, string> }[] = [];
+                  for (const partial of acc) {
+                    for (const opt of group.options) {
+                      next.push({
+                        skuSuffix: partial.skuSuffix ? `${partial.skuSuffix}-${opt.value}` : opt.value,
+                        attrs: { ...partial.attrs, [group.name]: opt.text },
+                      });
+                    }
+                  }
+                  return next;
+                };
+
+                const combos = groups.reduce(
+                  (acc, g) => combine(acc, g),
+                  [{ skuSuffix: '', attrs: {} as Record<string, string> }],
+                );
+
+                const basePrice = this.extractText(dom, '.price, [data-price], .product-price') || '';
+                const baseSku = this.extractText(dom, '.sku, [data-sku], .product-sku') || 'SKU';
+
+                for (const c of combos) {
+                  variations.push({
+                    sku: c.skuSuffix ? `${baseSku}-${c.skuSuffix}` : baseSku,
+                    regularPrice: basePrice,
+                    taxClass: '',
+                    stockStatus: 'instock',
+                    images: [],
+                    attributeAssignments: c.attrs,
+                  });
+                }
+              }
             }
           }
 

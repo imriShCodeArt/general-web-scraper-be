@@ -11,6 +11,9 @@ behavior:
   retryAttempts: 5
   retryDelay: 2000
   waitForSelector: 5000
+  waitForSelectors:
+    - '.description_pr'
+    - '.options_group'
   scrollToLoad: true
   waitForImages: true
   waitForNetworkIdle: true
@@ -35,45 +38,94 @@ selectors:
     - '.product-title'
     - '.item-title'
     - 'h2'
+    - '.product-name'
+    - '.product-info h1'
 
   price:
     - '.price'
     - '[class*="price"]'
     - '.amount'
     - '.product-price'
+    - '.price-current'
+    - '.current-price'
+    - '.sale-price'
+    - '.regular-price'
+
+  salePrice:
+    - '.price-old'
+    - '.old-price'
+    - '.regular-price'
+    - '.price-regular'
+    - '.original-price'
 
   sku:
     - '.sku'
     - '.product-sku'
     - '[data-sku]'
+    - '.product-code'
+    - '.model'
+    - '.product-id'
 
   description:
+    - '.description_pr'
     - '.description'
     - '.product-description'
     - '.content'
     - '.item-description'
+    - '.product-info'
+    - '.product-details'
+    - '.product-specs'
+    - '.product-attributes'
+    - '.product-text'
 
   shortDescription:
     - '.excerpt'
     - '.summary'
     - '.short-description'
+    - '.description_pr p'
+
+  # Variations and attributes (options group on product page)
+  variations:
+    - '.options_group select[name]'
+    - '.options_group input[name][type="radio"]'
+    - '.options_group input[name][type="checkbox"]'
+    - '.options_group [class^="input-option"] select[name]'
+    - '.options_group [class^="input-option"] input[name][type="radio"]'
+    - '.options_group [class^="input-option"] input[name][type="checkbox"]'
+
+  variationForm:
+    - '.options_group form'
+    - 'form'
+    - '.options_group [class^="input-option"]'
+
+  # Attribute container handled in the comprehensive list below
 
   images:
-    - 'img'
     - '.gallery img'
     - '.product-images img'
     - '.item-images img'
+    - '.product-gallery img'
+    - '.main-image img'
+    - '.product-photo img'
+    - '.image-gallery img'
 
   stock:
     - '.stock'
     - '.availability'
     - '.in-stock'
     - '.out-of-stock'
+    - '.stock-status'
+    - '.product-availability'
+    - '.inventory'
 
   category:
     - '.breadcrumb'
     - '.category'
     - 'nav a'
+    - '.breadcrumbs'
+    - '.category-path'
+    - '.product-category'
+    - '.breadcrumb a'
 
   # Additional selectors for furniture-specific data
   attributes:
@@ -81,73 +133,94 @@ selectors:
     - '.attributes'
     - '.specifications'
     - '.product-specs'
+    - '.product-info'
+    - '.product-details'
+    - '.product-features'
+    - '.chair-specs'
+    - '.furniture-specs'
+    - '.options_group [class^="input-option"]'
+    - '.options_group'
+
+  # Hebrew-specific selectors
+  model:
+    - '.model'
+    - '.product-model'
+    - '.chair-model'
+    - '.furniture-model'
+    - '[data-model]'
+
+  brand:
+    - '.brand'
+    - '.product-brand'
+    - '.manufacturer'
+    - '.producer'
+
+  material:
+    - '.material'
+    - '.product-material'
+    - '.chair-material'
+    - '.furniture-material'
+    - '[data-material]'
+
+  color:
+    - '.color'
+    - '.product-color'
+    - '.chair-color'
+    - '.furniture-color'
+    - '[data-color]'
+
+  dimensions:
+    - '.dimensions'
+    - '.product-dimensions'
+    - '.chair-dimensions'
+    - '.furniture-dimensions'
+    - '[data-dimensions]'
 
 # Data transformation rules
 transforms:
-  # Clean up Hebrew text and prices
+  # Arrays of regex replacements in the form "pattern->replacement"
+  # Clean excessive whitespace in title
   title:
-    - type: 'text'
-      clean: true
-      trim: true
-      removeExtraSpaces: true
+    - '\n-> '
+    - '\t-> '
+    - '\s{2,}-> '
 
+  # Normalize price values (remove currency, spaces, keep digits and dot)
   price:
-    - type: 'price'
-      currency: 'ILS'
-      removeCurrency: true
-      clean: true
+    - ',->.'
+    - '₪->'
+    - '\s->'
+    - '[^0-9.]->'
+    - '^(\\d+\\.\\d+).*$-> $1'
 
+  salePrice:
+    - ',->.'
+    - '₪->'
+    - '\s->'
+    - '[^0-9.]->'
+    - '^.*?(\\d+\\.\\d+)$-> $1'
+
+  # Clean description whitespace
   description:
-    - type: 'text'
-      clean: true
-      trim: true
-      removeExtraSpaces: true
+    - '\r-> '
+    - '\n-> '
+    - '\t-> '
+    - '\s{2,}-> '
 
-  # Extract attributes for furniture products
+  # Optional attribute value normalizations by attribute name
   attributes:
     Material:
-      selectors:
-        - '.material'
-        - '.product-material'
-        - '[data-material]'
-        - '.specifications .material'
-      transform:
-        - type: 'text'
-          clean: true
-          trim: true
-
+      - '\s{2,}-> '
     Color:
-      selectors:
-        - '.color'
-        - '.product-color'
-        - '[data-color]'
-        - '.specifications .color'
-      transform:
-        - type: 'text'
-          clean: true
-          trim: true
-
+      - '\s{2,}-> '
     Dimensions:
-      selectors:
-        - '.dimensions'
-        - '.product-dimensions'
-        - '[data-dimensions]'
-        - '.specifications .dimensions'
-      transform:
-        - type: 'text'
-          clean: true
-          trim: true
-
+      - '\s{2,}-> '
     Brand:
-      selectors:
-        - '.brand'
-        - '.product-brand'
-        - '[data-brand]'
-        - '.specifications .brand'
-      transform:
-        - type: 'text'
-          clean: true
-          trim: true
+      - '\s{2,}-> '
+    Weight:
+      - '\s{2,}-> '
+    Warranty:
+      - '\s{2,}-> '
 
 # Validation rules
 validation:
@@ -191,9 +264,16 @@ language:
 
 # Site-specific headers
 headers:
-  'Accept-Language': 'he-IL,he;q=0.9,en;q=0.8'
-  'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8'
-  'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36'
+  'Accept-Language': 'he-IL,he;q=0.9,en-US;q=0.8,en;q=0.7'
+  'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8'
+  'Accept-Encoding': 'gzip, deflate, br, zstd'
+  'Upgrade-Insecure-Requests': '1'
+  'Sec-Fetch-Site': 'same-origin'
+  'Sec-Fetch-Mode': 'navigate'
+  'Sec-Fetch-User': '?1'
+  'Sec-Fetch-Dest': 'document'
+  'Referer': 'https://shukrehut.co.il/he/כיסאות'
+  'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0.0.0 Safari/537.36'
 
 # JavaScript execution settings
 javascript:
@@ -207,8 +287,45 @@ javascript:
     - '.show-more'
     - '.pagination .next'
     - '.pagination a'
-  waitForSelector: '.item, .product, article'
+    - '.next-page'
+    - 'a[rel="next"]'
+  waitForSelector: '.item, .product, article, .product-item, .chair-item, .description_pr, .options_group'
   debugMode: true
+  waitForSelectorTimeout: 10000
+  scrollDelay: 1000
+  imageLoadTimeout: 15000
+
+# Fallback selectors for when primary selectors fail
+fallbacks:
+  title:
+    - 'h1, h2, h3'
+    - '.product-name, .item-name'
+    - '.product-title, .item-title'
+    - '[class*="title"]'
+    - '[class*="name"]'
+
+  price:
+    - '[class*="price"]'
+    - '[class*="amount"]'
+    - '[class*="cost"]'
+    - '.price, .amount, .cost'
+    - 'span:contains("₪")'
+    - 'div:contains("₪")'
+
+  description:
+    - '.product-info, .product-details'
+    - '.content, .description'
+    - '.product-text, .item-text'
+    - '[class*="description"]'
+    - '[class*="info"]'
+    - '[class*="details"]'
+
+  images:
+    - 'img[src*="chair"]'
+    - 'img[src*="samba"]'
+    - 'img[src*="furniture"]'
+    - 'img[alt*="כסא"]'
+    - 'img[alt*="כיסא"]'
 
 # Error handling
 errorHandling:
@@ -218,6 +335,7 @@ errorHandling:
   maxRetries: 3
   debugMode: true
   logProductDiscovery: true
+  fallbackToGenericSelectors: true
 
 # Performance settings
 performance:
