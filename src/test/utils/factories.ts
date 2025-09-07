@@ -82,20 +82,18 @@ export const factories = {
   normalizedProduct(overrides?: DeepPartial<NormalizedProduct>): NormalizedProduct {
     const base: NormalizedProduct = {
       id: 'p-001',
-      title: 'Premium Test Product',
-      slug: 'premium-test-product',
-      description:
-        'A comprehensive test product description with detailed information about features, benefits, and specifications. This product is designed for testing purposes and includes realistic content for validation.',
-      shortDescription: 'High-quality test product with advanced features',
+      title: 'Test Product',
+      slug: 'test-product',
+      description: 'A test product description for validation purposes.',
+      shortDescription: 'Test product',
       sku: 'TP-001',
       stockStatus: 'instock',
-      images: ['https://example.com/image1.jpg', 'https://example.com/image2.jpg'],
+      images: ['https://example.com/image1.jpg'],
       category: 'Test Category',
       productType: 'simple',
       attributes: {
-        color: ['Red', 'Blue', 'Green'],
-        size: ['Small', 'Medium', 'Large'],
-        material: ['Cotton', 'Polyester'],
+        color: ['Red', 'Blue'],
+        size: ['Small', 'Medium'],
       },
       variations: [],
       regularPrice: '29.99',
@@ -110,20 +108,18 @@ export const factories = {
   variableProduct(overrides?: DeepPartial<NormalizedProduct>): NormalizedProduct {
     const base: NormalizedProduct = {
       id: 'p-002',
-      title: 'Variable Test Product Collection',
-      slug: 'variable-test-product-collection',
-      description:
-        'A comprehensive variable product with multiple variations. Each variation offers different combinations of attributes while maintaining consistent quality and design. Perfect for testing complex product structures.',
-      shortDescription: 'Multi-variation test product with extensive options',
+      title: 'Variable Test Product',
+      slug: 'variable-test-product',
+      description: 'A variable product with multiple variations for testing.',
+      shortDescription: 'Variable test product',
       sku: 'VTP-001',
       stockStatus: 'instock',
-      images: ['https://example.com/variable1.jpg', 'https://example.com/variable2.jpg'],
+      images: ['https://example.com/variable1.jpg'],
       category: 'Test Category',
       productType: 'variable',
       attributes: {
-        color: ['Red', 'Blue', 'Green', 'Black', 'White'],
-        size: ['XS', 'S', 'M', 'L', 'XL', 'XXL'],
-        material: ['Cotton', 'Polyester', 'Wool'],
+        color: ['Red', 'Blue'],
+        size: ['Small', 'Medium'],
       },
       variations: [
         {
@@ -135,8 +131,7 @@ export const factories = {
           images: ['https://example.com/red-s.jpg'],
           attributeAssignments: {
             color: 'Red',
-            size: 'S',
-            material: 'Cotton',
+            size: 'Small',
           },
         },
         {
@@ -148,34 +143,7 @@ export const factories = {
           images: ['https://example.com/blue-m.jpg'],
           attributeAssignments: {
             color: 'Blue',
-            size: 'M',
-            material: 'Polyester',
-          },
-        },
-        {
-          sku: 'VTP-001-GREEN-L',
-          regularPrice: '34.99',
-          salePrice: '29.99',
-          taxClass: 'standard',
-          stockStatus: 'outofstock',
-          images: ['https://example.com/green-l.jpg'],
-          attributeAssignments: {
-            color: 'Green',
-            size: 'L',
-            material: 'Wool',
-          },
-        },
-        {
-          sku: 'VTP-001-BLACK-XL',
-          regularPrice: '34.99',
-          salePrice: '29.99',
-          taxClass: 'standard',
-          stockStatus: 'instock',
-          images: ['https://example.com/black-xl.jpg'],
-          attributeAssignments: {
-            color: 'Black',
-            size: 'XL',
-            material: 'Cotton',
+            size: 'Medium',
           },
         },
       ],
