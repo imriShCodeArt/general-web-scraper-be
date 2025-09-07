@@ -1,6 +1,6 @@
 #!/usr/bin/env ts-node
 
-import { RecipeManager } from './lib/recipe-manager';
+import { RecipeManager } from './lib/core/services/recipe-manager';
 import { rootContainer, TOKENS, initializeServices, cleanupServices } from './lib/composition-root';
 
 async function testRecipeSystem() {

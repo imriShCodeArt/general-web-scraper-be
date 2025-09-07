@@ -2,7 +2,7 @@ import {
   WooCommerceAttributeNamingRules,
   WooCommerceValidationError,
   WooCommerceValidationWarning,
-} from '../types';
+} from '../../domain/types';
 import { WOOCOMMERCE_ATTRIBUTE_NAMING_RULES } from './woocommerce-validation-schema';
 
 /**

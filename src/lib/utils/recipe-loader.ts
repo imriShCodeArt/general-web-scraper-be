@@ -1,8 +1,8 @@
 import { readFileSync, existsSync, readdirSync } from 'fs';
 import { join, extname } from 'path';
 import { parse } from 'yaml';
-import { RecipeConfig, WooCommerceValidationResult, WooCommerceValidationConfig } from '../types';
-import { WooCommerceRecipeValidator } from './woocommerce-recipe-validator';
+import { RecipeConfig, WooCommerceValidationResult, WooCommerceValidationConfig } from '../domain/types';
+import { WooCommerceRecipeValidator } from '../validation/woocommerce/woocommerce-recipe-validator';
 
 
 

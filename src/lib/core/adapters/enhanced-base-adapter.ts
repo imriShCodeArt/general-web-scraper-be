@@ -1,14 +1,24 @@
-import { SiteAdapter, RawProduct, RecipeConfig, ValidationError } from '../types';
-import { HttpClient } from './http-client';
-import { PuppeteerHttpClient } from './puppeteer-http-client';
+import {
+  SiteAdapter,
+  RecipeConfig,
+  ValidationError,
+  Result,
+  ScrapingError,
+  RawProductData,
+  NormalizableProductData,
+  JsonData,
+} from '../../domain/types';
+import { HttpClient } from '../../infrastructure/http/http-client';
+import { PuppeteerHttpClient } from '../../infrastructure/http/puppeteer-http-client';
 import { JSDOM } from 'jsdom';
-import { ErrorFactory, ErrorCodes } from './error-handler';
-import { RawProductData, JsonData } from '../types';
+import { ErrorFactory, ErrorCodes, retryManager } from '../../utils/error-handler';
 
 /**
- * Base adapter class that provides common functionality for all site adapters
+ * Enhanced Base Adapter with better generics, error handling, and validation
  */
-export abstract class BaseAdapter implements SiteAdapter<RawProduct> {
+export abstract class EnhancedBaseAdapter<T extends RawProductData = RawProductData>
+implements SiteAdapter<T>
+{
   protected httpClient: HttpClient;
   protected puppeteerClient: PuppeteerHttpClient | null = null;
   protected config: RecipeConfig;
@@ -35,7 +45,7 @@ export abstract class BaseAdapter implements SiteAdapter<RawProduct> {
   /**
    * Abstract method to extract product data
    */
-  abstract extractProduct(url: string): Promise<RawProduct>;
+  abstract extractProduct(url: string): Promise<T>;
 
   /**
    * Get configuration
@@ -47,7 +57,7 @@ export abstract class BaseAdapter implements SiteAdapter<RawProduct> {
   /**
    * Validate a product using recipe validation rules with proper generic constraints
    */
-  validateProduct(product: RawProduct): ValidationError[] {
+  validateProduct(product: T): ValidationError[] {
     const errors: ValidationError[] = [];
     const validation = this.config.validation;
 
@@ -58,7 +68,7 @@ export abstract class BaseAdapter implements SiteAdapter<RawProduct> {
     // Required fields validation
     if (validation.requiredFields) {
       for (const field of validation.requiredFields) {
-        const value = (product as unknown as Record<string, unknown>)[field];
+        const value = (product as JsonData<unknown>)[field];
         if (!value || (typeof value === 'string' && value.trim() === '')) {
           errors.push({
             field,
@@ -71,56 +81,112 @@ export abstract class BaseAdapter implements SiteAdapter<RawProduct> {
     }
 
     // Price format validation
-    if (validation.priceFormat && product.price) {
+    if (validation.priceFormat && (product as NormalizableProductData).price) {
       const priceRegex = new RegExp(validation.priceFormat);
-      if (!priceRegex.test(product.price)) {
+      if (!priceRegex.test((product as NormalizableProductData).price!)) {
         errors.push({
           field: 'price',
-          value: product.price,
+          value: (product as NormalizableProductData).price,
           expected: `format matching ${validation.priceFormat}`,
-          message: `Price format validation failed for '${product.price}'`,
+          message: `Price format validation failed for '${(product as NormalizableProductData).price}'`,
         } as ValidationError);
       }
     }
 
     // SKU format validation
-    if (validation.skuFormat && product.sku) {
+    if (validation.skuFormat && (product as NormalizableProductData).sku) {
       const skuRegex = new RegExp(validation.skuFormat);
-      if (!skuRegex.test(product.sku)) {
+      if (!skuRegex.test((product as NormalizableProductData).sku!)) {
         errors.push({
           field: 'sku',
-          value: product.sku,
+          value: (product as NormalizableProductData).sku,
           expected: `format matching ${validation.skuFormat}`,
-          message: `SKU format validation failed for '${product.sku}'`,
+          message: `SKU format validation failed for '${(product as NormalizableProductData).sku}'`,
         } as ValidationError);
       }
     }
 
     // Description length validation
-    if (validation.minDescriptionLength && product.description) {
-      if (product.description.length < validation.minDescriptionLength) {
+    if (validation.minDescriptionLength && (product as NormalizableProductData).description) {
+      if ((product as NormalizableProductData).description!.length < validation.minDescriptionLength) {
         errors.push({
           field: 'description',
-          value: product.description.length,
+          value: (product as NormalizableProductData).description!.length,
           expected: `at least ${validation.minDescriptionLength} characters`,
-          message: `Description is too short: ${product.description.length} characters`,
+          message: `Description is too short: ${(product as NormalizableProductData).description!.length} characters`,
         } as ValidationError);
       }
     }
 
     // Title length validation
-    if (validation.maxTitleLength && product.title) {
-      if (product.title.length > validation.maxTitleLength) {
+    if (validation.maxTitleLength && (product as NormalizableProductData).title) {
+      if ((product as NormalizableProductData).title!.length > validation.maxTitleLength) {
         errors.push({
           field: 'title',
-          value: product.title.length,
+          value: (product as NormalizableProductData).title!.length,
           expected: `at most ${validation.maxTitleLength} characters`,
-          message: `Title is too long: ${product.title.length} characters`,
+          message: `Title is too long: ${(product as NormalizableProductData).title!.length} characters`,
         } as ValidationError);
       }
     }
 
     return errors;
+  }
+
+  /**
+   * Extract product with validation and error handling
+   */
+  async extractProductWithValidation(url: string): Promise<Result<T, ScrapingError>> {
+    try {
+      const product = await this.extractProduct(url);
+      const validationErrors = this.validateProduct(product);
+
+      if (validationErrors.length > 0) {
+        const errorMessage = `Product validation failed: ${validationErrors.map((e) => e.message).join(', ')}`;
+        const error = ErrorFactory.createScrapingError(
+          errorMessage,
+          ErrorCodes.VALIDATION_ERROR,
+          false,
+          { url, validationErrors },
+        );
+        return { success: false, error };
+      }
+
+      return { success: true, data: product };
+    } catch (error) {
+      const scrapingError =
+        error instanceof Error
+          ? ErrorFactory.createScrapingError(error.message, ErrorCodes.UNKNOWN_ERROR, false, {
+            url,
+          })
+          : ErrorFactory.createScrapingError(
+            'Unknown error during product extraction',
+            ErrorCodes.UNKNOWN_ERROR,
+            false,
+            { url },
+          );
+
+      return { success: false, error: scrapingError };
+    }
+  }
+
+  /**
+   * Extract product with retry logic
+   */
+  async extractProductWithRetry(url: string): Promise<T> {
+    const retryConfig = {
+      maxAttempts: this.config.behavior?.retryAttempts || 3,
+      baseDelay: this.config.behavior?.retryDelay || 1000,
+      maxDelay: 30000,
+      backoffMultiplier: 2,
+      retryableErrors: [ErrorCodes.NETWORK_ERROR, ErrorCodes.TIMEOUT_ERROR],
+    };
+
+    return await retryManager.executeWithRetry(
+      () => this.extractProduct(url),
+      retryConfig,
+      `extractProduct(${url})`,
+    );
   }
 
   /**

@@ -3,30 +3,8 @@
 import app from './server';
 import { rootContainer } from './lib/composition-root';
 
-// Export main application components
-export { ScrapingService } from './lib/scraping-service';
-export { RecipeManager } from './lib/recipe-manager';
-export { RecipeLoader } from './lib/recipe-loader';
-export { StorageService } from './lib/storage';
-export { CsvGenerator } from './lib/csv-generator';
-export { HttpClient } from './lib/http-client';
-export { EnhancedBaseAdapter } from './lib/enhanced-base-adapter';
-export { BaseAdapter } from './lib/base-adapter';
-export { GenericAdapter } from './lib/generic-adapter';
-
-// Export DI container and composition root
-export { rootContainer, createRequestScope, initializeServices, cleanupServices } from './lib/composition-root';
-export { Container } from './lib/di/container';
-export { TOKENS } from './lib/di/tokens';
-
-// Export types
-export * from './types';
-
-// Export error handling
-export { ErrorFactory, ErrorCodes } from './lib/error-handler';
-
-// Export utilities
-export { NormalizationToolkit } from './lib/normalization';
+// Export main application components from lib
+export * from './lib';
 
 // Vercel serverless function handler
 export default (req: unknown, res: unknown) => {

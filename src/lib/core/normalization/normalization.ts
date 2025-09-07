@@ -3,8 +3,8 @@ import {
   RawVariation,
   ProductVariation,
   NormalizableProductData,
-} from '../types';
-import { debug } from './logger';
+} from '../../domain/types';
+import { debug } from '../../infrastructure/logging/logger';
 
 export class NormalizationToolkit {
   /**

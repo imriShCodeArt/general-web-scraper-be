@@ -4,7 +4,7 @@ import {
   WooCommerceValidationError,
   WooCommerceValidationWarning,
   WooCommerceValidationConfig,
-} from '../types';
+} from '../../domain/types';
 import { WooCommerceValidationSchema } from './woocommerce-validation-schema';
 import { WooCommerceAttributeValidator } from './woocommerce-attribute-validator';
 import { WooCommerceVariationValidator } from './woocommerce-variation-validator';

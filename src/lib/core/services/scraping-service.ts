@@ -10,13 +10,13 @@ import {
   ProductOptions,
   GenericMetadata,
   RecipeConfig,
-} from '../types';
-import { SiteAdapter } from '../types';
-import { NormalizationToolkit } from './normalization';
+  SiteAdapter,
+} from '../../domain/types';
+import { NormalizationToolkit } from '../normalization/normalization';
 import { CsvGenerator } from './csv-generator';
-import { StorageService } from './storage';
+import { StorageService } from '../../infrastructure/storage/storage';
 import { RecipeManager } from './recipe-manager';
-import { ErrorFactory, ErrorCodes } from './error-handler';
+import { ErrorFactory, ErrorCodes } from '../../utils/error-handler';
 import pino from 'pino';
 
 export class ScrapingService {

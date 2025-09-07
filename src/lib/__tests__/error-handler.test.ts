@@ -7,7 +7,7 @@ import {
   ErrorCodes,
   errorBoundary,
   retryManager,
-} from '../error-handler';
+} from '../utils/error-handler';
 
 describe('ScrapingErrorImpl', () => {
   it('should create a scraping error with all properties', () => {

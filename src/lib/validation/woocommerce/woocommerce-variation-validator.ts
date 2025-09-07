@@ -3,7 +3,7 @@ import {
   WooCommerceValidationError,
   WooCommerceValidationWarning,
   RecipeConfig,
-} from '../types';
+} from '../../domain/types';
 import { WOOCOMMERCE_VARIATION_DETECTION_RULES } from './woocommerce-validation-schema';
 
 /**

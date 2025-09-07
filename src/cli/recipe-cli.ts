@@ -1,11 +1,11 @@
 #!/usr/bin/env ts-node
 
-import { RecipeManager } from '../lib/recipe-manager';
+import { RecipeManager } from '../lib/core/services/recipe-manager';
 import { Command } from 'commander';
 import { rootContainer, TOKENS, initializeServices, cleanupServices } from '../lib/composition-root';
-import { RecipeComplianceAuditor } from '../lib/recipe-compliance-auditor';
-import { RecipeComplianceMonitor } from '../lib/recipe-compliance-monitor';
-import { RecipeMaintenanceTools } from '../lib/recipe-maintenance-tools';
+import { RecipeComplianceAuditor } from '../lib/utils/recipe-compliance-auditor';
+import { RecipeComplianceMonitor } from '../lib/utils/recipe-compliance-monitor';
+import { RecipeMaintenanceTools } from '../lib/utils/recipe-maintenance-tools';
 
 const program = new Command();
 let recipeManager: RecipeManager;

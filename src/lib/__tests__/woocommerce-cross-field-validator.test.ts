@@ -1,5 +1,5 @@
-import { WooCommerceCrossFieldValidator } from '../woocommerce-cross-field-validator';
-import { RecipeConfig } from '../../types';
+import { WooCommerceCrossFieldValidator } from '../validation/woocommerce/woocommerce-cross-field-validator';
+import { RecipeConfig } from '../domain/types';
 
 describe('WooCommerceCrossFieldValidator', () => {
   let validator: WooCommerceCrossFieldValidator;
