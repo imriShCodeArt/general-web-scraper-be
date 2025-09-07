@@ -304,11 +304,12 @@ export class GenericAdapter extends BaseAdapter {
         if (href) {
           const resolved = this.resolveUrl(href);
           // Accept only real product pages; exclude add-to-cart and category/archive links
-          // Support both singular and Shopify-style plural product paths
-          const isProduct = /(\/products\/|\/product\/)/.test(resolved);
+          // Support both singular and Shopify-style plural product paths, plus Hebrew URLs
+          const isProduct = /(\/products\/|\/product\/|\/כיסאות\/|\/כיסא\/|\/chair)/.test(resolved);
           const isAddToCart = /[?&]add-to-cart=/.test(resolved);
           const isCategory = /\/product-category\//.test(resolved);
-          if (isProduct && !isAddToCart && !isCategory && !seen.has(resolved)) {
+          const isArchivePage = /\/כיסאות$/.test(resolved); // Exclude the main category page
+          if (isProduct && !isAddToCart && !isCategory && !isArchivePage && !seen.has(resolved)) {
             urls.push(resolved);
             seen.add(resolved);
           }
