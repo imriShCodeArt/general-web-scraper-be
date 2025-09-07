@@ -1,0 +1,201 @@
+name: 'Shuk Rehut Furniture'
+description: 'Recipe for Shuk Rehut furniture store - Hebrew furniture e-commerce site'
+version: '1.0.0'
+siteUrl: 'https://shukrehut.co.il'
+
+# Site-specific settings
+behavior:
+  useHeadlessBrowser: true
+  rateLimit: 2000
+  maxConcurrent: 2
+  retryAttempts: 3
+  retryDelay: 1000
+  waitForSelector: 3000
+  scrollToLoad: true
+  waitForImages: true
+
+# Product discovery selectors
+selectors:
+  # Product listing page selectors
+  productLinks:
+    - '.product-item a'
+    - 'a[href*="/product/"]'
+
+  # Product page selectors
+  title:
+    - 'h1.product-title'
+    - 'h1'
+
+  price:
+    - '.price .amount'
+    - '.price'
+
+  sku:
+    - '.sku'
+    - '.product-sku'
+
+  description:
+    - '.product-description'
+    - '.description'
+
+  shortDescription:
+    - '.product-short-description'
+    - '.excerpt'
+
+  images:
+    - '.product-gallery img'
+    - '.gallery img'
+
+  stock:
+    - '.stock'
+    - '.availability'
+
+  category:
+    - '.breadcrumb'
+    - '.category'
+
+  # Additional selectors for furniture-specific data
+  attributes:
+    - '.product-attributes'
+    - '.attributes'
+    - '.specifications'
+    - '.product-specs'
+
+# Data transformation rules
+transforms:
+  # Clean up Hebrew text and prices
+  title:
+    - type: 'text'
+      clean: true
+      trim: true
+      removeExtraSpaces: true
+
+  price:
+    - type: 'price'
+      currency: 'ILS'
+      removeCurrency: true
+      clean: true
+
+  description:
+    - type: 'text'
+      clean: true
+      trim: true
+      removeExtraSpaces: true
+
+  # Extract attributes for furniture products
+  attributes:
+    Material:
+      selectors:
+        - '.material'
+        - '.product-material'
+        - '[data-material]'
+        - '.specifications .material'
+      transform:
+        - type: 'text'
+          clean: true
+          trim: true
+
+    Color:
+      selectors:
+        - '.color'
+        - '.product-color'
+        - '[data-color]'
+        - '.specifications .color'
+      transform:
+        - type: 'text'
+          clean: true
+          trim: true
+
+    Dimensions:
+      selectors:
+        - '.dimensions'
+        - '.product-dimensions'
+        - '[data-dimensions]'
+        - '.specifications .dimensions'
+      transform:
+        - type: 'text'
+          clean: true
+          trim: true
+
+    Brand:
+      selectors:
+        - '.brand'
+        - '.product-brand'
+        - '[data-brand]'
+        - '.specifications .brand'
+      transform:
+        - type: 'text'
+          clean: true
+          trim: true
+
+# Validation rules
+validation:
+  requiredFields: ['title', 'price', 'images']
+  minDescriptionLength: 10
+  maxTitleLength: 200
+  priceFormat: '^\\d+(\\.\\d{2})?$'
+  currency: 'ILS'
+
+# Pagination settings
+pagination:
+  nextPageSelector:
+    - '.pagination .next'
+    - '.pagination a[rel="next"]'
+    - '.next-page'
+    - 'a[aria-label="Next"]'
+  
+  pageNumberSelector:
+    - '.pagination .current'
+    - '.page-number'
+    - '.pagination .active'
+
+# Category-specific settings
+categories:
+  - name: 'כיסאות'
+    url: '/he/כיסאות'
+    subcategories:
+      - 'כיסאות נוח'
+      - 'כסאות בר'
+      - 'כסאות גיימינג'
+      - 'כסאות לסלון'
+      - 'כסאות מנהלים'
+      - 'כסאות משרדיים'
+
+# Hebrew language support
+language:
+  code: 'he'
+  direction: 'rtl'
+  currency: 'ILS'
+  dateFormat: 'DD/MM/YYYY'
+
+# Site-specific headers
+headers:
+  'Accept-Language': 'he-IL,he;q=0.9,en;q=0.8'
+  'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8'
+  'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36'
+
+# JavaScript execution settings
+javascript:
+  enabled: true
+  waitForNetworkIdle: true
+  waitForImages: true
+  scrollToBottom: true
+  clickLoadMore: true
+  loadMoreSelector:
+    - '.load-more'
+    - '.show-more'
+    - '.pagination .next'
+
+# Error handling
+errorHandling:
+  skipInvalidProducts: true
+  logErrors: true
+  retryOnError: true
+  maxRetries: 3
+
+# Performance settings
+performance:
+  maxProductsPerPage: 50
+  delayBetweenRequests: 1000
+  timeout: 30000
+  maxConcurrentRequests: 2
