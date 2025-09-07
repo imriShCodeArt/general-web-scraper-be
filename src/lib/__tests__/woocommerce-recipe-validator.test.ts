@@ -1,6 +1,6 @@
-import { WooCommerceRecipeValidator } from '../woocommerce-recipe-validator';
-import { RecipeConfig } from '../../types';
-import { WooCommerceValidationSchema } from '../woocommerce-validation-schema';
+import { WooCommerceRecipeValidator } from '../validation/woocommerce/woocommerce-recipe-validator';
+import { RecipeConfig } from '../domain/types';
+import { WooCommerceValidationSchema } from '../validation/woocommerce/woocommerce-validation-schema';
 
 describe('WooCommerceRecipeValidator', () => {
   let validator: WooCommerceRecipeValidator;

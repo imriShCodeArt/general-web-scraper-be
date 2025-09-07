@@ -3,7 +3,7 @@
  * Tests for extended field mapping, attribute column pairs, meta attribute columns, and price/stock validation
  */
 
-import { CsvGenerator } from '../lib/csv-generator';
+import { CsvGenerator } from '../lib/core/services/csv-generator';
 import {
   parseCsvRows,
   parseCsvRow,

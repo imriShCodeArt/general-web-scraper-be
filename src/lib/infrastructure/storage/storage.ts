@@ -1,6 +1,6 @@
-import { promises as fs } from 'fs';
+﻿import { promises as fs } from 'fs';
 import { join } from 'path';
-import { StorageEntry, JobResult } from '../types';
+import { StorageEntry, JobResult } from '../../domain/types';
 
 export class StorageService {
   private inMemoryStorage = new Map<string, StorageEntry>();
@@ -28,7 +28,7 @@ export class StorageService {
    * Store job results in both memory and filesystem
    */
   async storeJobResult(jobId: string, result: JobResult): Promise<void> {
-    console.log('🔍 DEBUG: storeJobResult called with:', {
+    console.log('≡ƒöì DEBUG: storeJobResult called with:', {
       jobId,
       parentCsvLength: result.parentCsv.length,
       variationCsvLength: result.variationCsv.length,
@@ -51,7 +51,7 @@ export class StorageService {
     // Store in filesystem
     await this.storeToFilesystem(jobId, entry);
 
-    console.log('🔍 DEBUG: storeJobResult completed for jobId:', jobId);
+    console.log('≡ƒöì DEBUG: storeJobResult completed for jobId:', jobId);
   }
 
   /**
@@ -76,12 +76,12 @@ export class StorageService {
    * Retrieve job result from memory first, then filesystem
    */
   async getJobResult(jobId: string): Promise<StorageEntry | null> {
-    console.log('🔍 DEBUG: getJobResult called for jobId:', jobId);
+    console.log('≡ƒöì DEBUG: getJobResult called for jobId:', jobId);
 
     // Check memory first
     const memoryEntry = this.inMemoryStorage.get(jobId);
     if (memoryEntry) {
-      console.log('🔍 DEBUG: getJobResult found in memory:', {
+      console.log('≡ƒöì DEBUG: getJobResult found in memory:', {
         hasParentCsv: !!memoryEntry.parentCsv,
         parentCsvLength: memoryEntry.parentCsv.length,
         hasVariationCsv: !!memoryEntry.variationCsv,
@@ -90,19 +90,19 @@ export class StorageService {
       return memoryEntry;
     }
 
-    console.log('🔍 DEBUG: getJobResult not found in memory, checking filesystem');
+    console.log('≡ƒöì DEBUG: getJobResult not found in memory, checking filesystem');
     // Check filesystem
     const filesystemEntry = await this.loadFromFilesystem(jobId);
 
     if (filesystemEntry) {
-      console.log('🔍 DEBUG: getJobResult found in filesystem:', {
+      console.log('≡ƒöì DEBUG: getJobResult found in filesystem:', {
         hasParentCsv: !!filesystemEntry.parentCsv,
         parentCsvLength: filesystemEntry.parentCsv.length,
         hasVariationCsv: !!filesystemEntry.variationCsv,
         variationCsvLength: filesystemEntry.variationCsv.length,
       });
     } else {
-      console.log('🔍 DEBUG: getJobResult not found anywhere');
+      console.log('≡ƒöì DEBUG: getJobResult not found anywhere');
     }
 
     return filesystemEntry;

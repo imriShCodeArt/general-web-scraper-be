@@ -1,4 +1,4 @@
-import { RecipeConfig, WooCommerceValidationError, WooCommerceValidationWarning } from '../types';
+import { RecipeConfig, WooCommerceValidationError, WooCommerceValidationWarning } from '../../domain/types';
 
 export interface AdvancedFeatureValidationResult {
   isValid: boolean;

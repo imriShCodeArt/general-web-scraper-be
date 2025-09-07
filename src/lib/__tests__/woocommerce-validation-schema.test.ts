@@ -1,7 +1,7 @@
-import { WooCommerceValidationSchema } from '../woocommerce-validation-schema';
-import { WooCommerceAttributeValidator } from '../woocommerce-attribute-validator';
-import { WooCommerceVariationValidator } from '../woocommerce-variation-validator';
-import { RecipeConfig } from '../../types';
+import { WooCommerceValidationSchema } from '../validation/woocommerce/woocommerce-validation-schema';
+import { WooCommerceAttributeValidator } from '../validation/woocommerce/woocommerce-attribute-validator';
+import { WooCommerceVariationValidator } from '../validation/woocommerce/woocommerce-variation-validator';
+import { RecipeConfig } from '../domain/types';
 
 describe('WooCommerceValidationSchema', () => {
   describe('getStrictConfig', () => {

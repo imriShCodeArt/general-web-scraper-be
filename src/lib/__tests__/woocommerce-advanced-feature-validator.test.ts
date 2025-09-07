@@ -1,5 +1,5 @@
-import { WooCommerceAdvancedFeatureValidator } from '../woocommerce-advanced-feature-validator';
-import { RecipeConfig } from '../../types';
+import { WooCommerceAdvancedFeatureValidator } from '../validation/woocommerce/woocommerce-advanced-feature-validator';
+import { RecipeConfig } from '../domain/types';
 
 describe('WooCommerceAdvancedFeatureValidator', () => {
   let validator: WooCommerceAdvancedFeatureValidator;

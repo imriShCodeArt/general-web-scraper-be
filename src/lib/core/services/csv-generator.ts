@@ -1,5 +1,5 @@
-import { NormalizedProduct } from '../types';
-import { debug } from './logger';
+import { NormalizedProduct } from '../../domain/types';
+import { debug } from '../../infrastructure/logging/logger';
 import { writeToBuffer } from 'fast-csv';
 import { Transform } from 'stream';
 

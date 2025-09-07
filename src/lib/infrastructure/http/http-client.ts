@@ -1,6 +1,6 @@
 import axios, { AxiosRequestConfig, AxiosResponse } from 'axios';
 import { JSDOM } from 'jsdom';
-import { JsonData } from '../types';
+import { JsonData } from '../../domain/types';
 
 export class HttpClient {
   private userAgents = [

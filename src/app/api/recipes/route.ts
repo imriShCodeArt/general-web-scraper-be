@@ -1,5 +1,5 @@
 import { Request, Response, Router } from 'express';
-import { RecipeManager } from '../../../lib/recipe-manager';
+import { RecipeManager } from '../../../lib/core/services/recipe-manager';
 import { createRequestScope, TOKENS } from '../../../lib/composition-root';
 
 // Simple request ID generator

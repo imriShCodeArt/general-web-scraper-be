@@ -1,9 +1,9 @@
-import { ScrapingService } from '../../lib/scraping-service';
-import { CsvGenerator } from '../../lib/csv-generator';
+import { ScrapingService } from '../../lib/core/services/scraping-service';
+import { CsvGenerator } from '../../lib/core/services/csv-generator';
 import { rootContainer, TOKENS } from '../../lib/composition-root';
-import type { Container } from '../../lib/di/container';
-import { RecipeManager } from '../../lib/recipe-manager';
-import { StorageService } from '../../lib/storage';
+import type { Container } from '../../lib/infrastructure/di/container';
+import { RecipeManager } from '../../lib/core/services/recipe-manager';
+import { StorageService } from '../../lib/infrastructure/storage/storage';
 import { testUtils } from '../setup';
 import { createServer, Server } from 'http';
 import { AddressInfo } from 'net';

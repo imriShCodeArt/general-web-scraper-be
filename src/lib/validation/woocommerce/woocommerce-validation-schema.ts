@@ -3,7 +3,7 @@ import {
   WooCommerceAttributeNamingRules,
   WooCommerceVariationDetectionRules,
   RecipeConfig,
-} from '../types';
+} from '../../domain/types';
 
 /**
  * Default WooCommerce validation configuration

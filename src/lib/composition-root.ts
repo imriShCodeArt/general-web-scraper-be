@@ -1,11 +1,11 @@
-import { Container } from './di/container';
-import { TOKENS } from './di/tokens';
-import { StorageService } from './storage';
-import { RecipeManager } from './recipe-manager';
-import { RecipeLoader } from './recipe-loader';
-import { CsvGenerator } from './csv-generator';
-import { ScrapingService } from './scraping-service';
-import { HttpClient } from './http-client';
+import { Container } from './infrastructure/di/container';
+import { TOKENS } from './infrastructure/di/tokens';
+import { StorageService } from './infrastructure/storage/storage';
+import { RecipeManager } from './core/services/recipe-manager';
+import { RecipeLoader } from './utils/recipe-loader';
+import { CsvGenerator } from './core/services/csv-generator';
+import { ScrapingService } from './core/services/scraping-service';
+import { HttpClient } from './infrastructure/http/http-client';
 import pino from 'pino';
 
 export interface AppConfig {

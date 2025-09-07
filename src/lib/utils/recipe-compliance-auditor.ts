@@ -1,6 +1,6 @@
 import { RecipeLoader } from './recipe-loader';
-import { WooCommerceRecipeValidator } from './woocommerce-recipe-validator';
-import { RecipeConfig, WooCommerceValidationResult } from '../types';
+import { WooCommerceRecipeValidator } from '../validation/woocommerce/woocommerce-recipe-validator';
+import { RecipeConfig, WooCommerceValidationResult } from '../domain/types';
 import { existsSync, readdirSync } from 'fs';
 import { join, extname } from 'path';
 

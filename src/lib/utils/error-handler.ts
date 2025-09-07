@@ -1,4 +1,4 @@
-import { ScrapingError, ValidationError, RetryConfig } from '../types';
+import { ScrapingError, ValidationError, RetryConfig } from '../domain/types';
 
 /**
  * Custom error classes for better error handling
