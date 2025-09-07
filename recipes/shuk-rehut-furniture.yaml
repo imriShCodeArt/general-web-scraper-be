@@ -6,53 +6,72 @@ siteUrl: 'https://shukrehut.co.il'
 # Site-specific settings
 behavior:
   useHeadlessBrowser: true
-  rateLimit: 2000
-  maxConcurrent: 2
-  retryAttempts: 3
-  retryDelay: 1000
-  waitForSelector: 3000
+  rateLimit: 3000
+  maxConcurrent: 1
+  retryAttempts: 5
+  retryDelay: 2000
+  waitForSelector: 5000
   scrollToLoad: true
   waitForImages: true
+  waitForNetworkIdle: true
+  delayAfterPageLoad: 2000
 
 # Product discovery selectors
 selectors:
   # Product listing page selectors
   productLinks:
+    - '.item a'
+    - '.product a'
+    - 'a[href*="product"]'
+    - '.product-link'
+    - 'article a'
     - '.product-item a'
-    - 'a[href*="/product/"]'
 
   # Product page selectors
   title:
-    - 'h1.product-title'
     - 'h1'
+    - '.product-title'
+    - '.item-title'
+    - 'h2'
 
   price:
-    - '.price .amount'
     - '.price'
+    - '.amount'
+    - '[class*="price"]'
+    - '.product-price'
 
   sku:
     - '.sku'
     - '.product-sku'
+    - '[data-sku]'
 
   description:
-    - '.product-description'
     - '.description'
+    - '.product-description'
+    - '.content'
+    - '.item-description'
 
   shortDescription:
-    - '.product-short-description'
     - '.excerpt'
+    - '.summary'
+    - '.short-description'
 
   images:
-    - '.product-gallery img'
+    - 'img'
     - '.gallery img'
+    - '.product-images img'
+    - '.item-images img'
 
   stock:
     - '.stock'
     - '.availability'
+    - '.in-stock'
+    - '.out-of-stock'
 
   category:
     - '.breadcrumb'
     - '.category'
+    - 'nav a'
 
   # Additional selectors for furniture-specific data
   attributes:
@@ -185,6 +204,9 @@ javascript:
     - '.load-more'
     - '.show-more'
     - '.pagination .next'
+    - '.pagination a'
+  waitForSelector: '.item, .product, article'
+  debugMode: true
 
 # Error handling
 errorHandling:
