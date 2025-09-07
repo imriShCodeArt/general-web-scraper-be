@@ -169,3 +169,7 @@ performance-data/
 
 # Generated diagrams
 docs/architecture.svg
+
+# Local/manual scripts and artifacts
+test-samba-recipe.js
+parent-*.csv
