@@ -21,6 +21,12 @@ selectors:
     - '.sku'
     - '.product-sku'
     - '[data-sku]'
+    - '.woocommerce-product-sku'
+    - '.product_meta .sku'
+    - 'meta[property="product:sku"]'
+    - '[itemprop="sku"]'
+    - '.product-sku-value'
+    - '.sku-value'
 
   description:
     - '.woocommerce-product-details__short-description'
@@ -47,10 +53,13 @@ selectors:
     - '.out-of-stock'
 
   category:
+    - 'h1'  # Use h1 from archive page as primary category source
     - '.woocommerce-breadcrumb'
     - '.breadcrumb'
     - '.category'
     - '.product-category'
+    - '.page-title'
+    - '.archive-title'
 
   # Product discovery
   productLinks:
@@ -70,21 +79,35 @@ selectors:
     - '.variations'
     - '.product-options'
     - '.woocommerce-variations'
+    - '.product_attributes'
+    - '.variation-attributes'
 
   variations:
     - '.variations_form'
     - '.woocommerce-variations'
     - "select[name*='attribute']"
+    - '.variation-selects'
 
   variationForm:
     - 'form.variations_form'
     - '.variations_form'
     - '.woocommerce-variations'
+    - 'form.woocommerce-variations-form'
 
   variationSelects:
     - "select[name*='attribute_pa_']"
     - "select[name*='attribute_']"
     - "select[name*='pa_']"
+    - '.variation-select select'
+    - '.woocommerce-variation-select select'
+    - 'select.variation-select'
+
+  # Specific variation value selectors
+  variationValues:
+    - "select[name*='attribute'] option:not([value=''])"
+    - ".variation-select option:not([value=''])"
+    - ".woocommerce-variation-select option:not([value=''])"
+    - "select option[value]:not([value=''])"
 
   # Embedded data sources
   embeddedJson:
@@ -127,6 +150,16 @@ transforms:
     - 'replace:בחירת צבע|בחר צבע'
     - 'replace:בחירת גודל|בחר גודל'
     - 'replace:בחירת חומר|בחר חומר'
+    - 'replace:^בחר.*|^בחירת.*'
+    - 'replace:^Choose.*|^Select.*'
+
+  variationValues:
+    - "replace:^\\s+|\\s+$"
+    - 'replace:בחירת אפשרות|בחר אפשרות'
+    - 'replace:^בחר.*|^בחירת.*'
+    - 'replace:^Choose.*|^Select.*'
+    - 'replace:^--.*|^---.*'
+    - 'replace:^\\s*$'  # Remove empty values
 
 behavior:
   waitForSelectors:
@@ -165,3 +198,29 @@ validation:
     - 'variationSelects'
   maxDescriptionLength: 500
   maxImageCount: 10
+
+woocommerceValidation:
+  # Product type detection rules
+  productTypeDetection:
+    # If no variations found, mark as simple
+    simpleIfNoVariations: true
+    # If variations exist but no actual variation options, mark as simple
+    simpleIfEmptyVariations: true
+    # Check for actual variation selectors with options
+    requireVariationOptions: true
+  # Attribute naming rules
+  attributeNaming:
+    # Use Hebrew attribute names
+    preferredLanguage: 'he'
+    # Map common attributes
+    attributeMapping:
+      'General': 'כללי'
+      'Color': 'צבע'
+      'Size': 'גודל'
+      'Material': 'חומר'
+  # Variation validation
+  variationValidation:
+    # Require actual values in variation attributes
+    requireAttributeValues: true
+    # Skip products with empty variation attributes
+    skipEmptyVariations: true
