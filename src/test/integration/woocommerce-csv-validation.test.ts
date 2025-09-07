@@ -6,7 +6,7 @@
  * Task 4.3: Add end-to-end tests from NormalizedProduct to valid CSV output
  */
 
-import { CsvGenerator } from '../../lib/csv-generator';
+import { CsvGenerator } from '../../lib/core/services/csv-generator';
 import {
   parseCsvRows,
   findCsvRowByValue,

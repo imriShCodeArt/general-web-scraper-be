@@ -8,7 +8,7 @@
  * - Memory efficiency and performance benchmarks
  */
 
-import { CsvGenerator } from '../../lib/csv-generator';
+import { CsvGenerator } from '../../lib/core/services/csv-generator';
 import { parseCsvRows } from '../utils/csv-parsing';
 import { validateWooCommerceCsvStructure } from '../utils/woocommerce-matchers';
 import { factories } from '../utils/factories';

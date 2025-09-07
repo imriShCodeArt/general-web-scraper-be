@@ -3,7 +3,7 @@
  * This file shows how to use the new CSV parsing utilities and WooCommerce matchers
  */
 
-import { CsvGenerator } from '../../lib/csv-generator';
+import { CsvGenerator } from '../../lib/core/services/csv-generator';
 import {
   parseCsvRows,
   parseCsvRow,

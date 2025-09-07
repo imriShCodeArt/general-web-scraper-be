@@ -1,7 +1,7 @@
-import { ScrapingService } from '../../lib/scraping-service';
-import { RecipeManager } from '../../lib/recipe-manager';
+import { ScrapingService } from '../../lib/core/services/scraping-service';
+import { RecipeManager } from '../../lib/core/services/recipe-manager';
 import { SiteAdapter, RawProduct } from '../../types';
-import { CsvGenerator } from '../../lib/csv-generator';
+import { CsvGenerator } from '../../lib/core/services/csv-generator';
 import path from 'path';
 import fs from 'fs';
 

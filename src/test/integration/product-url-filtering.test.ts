@@ -1,4 +1,4 @@
-import { GenericAdapter } from '../../lib/generic-adapter';
+import { GenericAdapter } from '../../lib/core/adapters/generic-adapter';
 import { RecipeConfig } from '../../types';
 import { JSDOM } from 'jsdom';
 

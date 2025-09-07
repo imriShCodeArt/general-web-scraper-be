@@ -9,7 +9,7 @@
  * This serves as a comprehensive demonstration of WooCommerce integration features.
  */
 
-import { CsvGenerator } from '../../lib/csv-generator';
+import { CsvGenerator } from '../../lib/core/services/csv-generator';
 import { factories } from '../utils/factories';
 import {
   generateCsvTemplate,

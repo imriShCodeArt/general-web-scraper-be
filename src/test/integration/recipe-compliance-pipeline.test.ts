@@ -1,6 +1,6 @@
-import { RecipeComplianceAuditor } from '../../lib/recipe-compliance-auditor';
-import { WooCommerceRecipeValidator } from '../../lib/woocommerce-recipe-validator';
-import { RecipeLoader } from '../../lib/recipe-loader';
+import { RecipeComplianceAuditor } from '../../lib/utils/recipe-compliance-auditor';
+import { WooCommerceRecipeValidator } from '../../lib/validation/woocommerce/woocommerce-recipe-validator';
+import { RecipeLoader } from '../../lib/utils/recipe-loader';
 import { RecipeConfig } from '../../types';
 
 describe('Recipe Compliance Pipeline Integration Tests', () => {
