@@ -21,8 +21,10 @@ selectors:
   # Product listing page selectors
   productLinks:
     - '.item a'
-    - '.product a'
+    - 'a[href*="chair"]'
+    - 'a[href*="כיסא"]'
     - 'a[href*="product"]'
+    - '.product a'
     - '.product-link'
     - 'article a'
     - '.product-item a'
@@ -36,8 +38,8 @@ selectors:
 
   price:
     - '.price'
-    - '.amount'
     - '[class*="price"]'
+    - '.amount'
     - '.product-price'
 
   sku:
@@ -214,6 +216,8 @@ errorHandling:
   logErrors: true
   retryOnError: true
   maxRetries: 3
+  debugMode: true
+  logProductDiscovery: true
 
 # Performance settings
 performance:
