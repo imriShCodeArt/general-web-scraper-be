@@ -58,7 +58,7 @@ export abstract class BaseAdapter implements SiteAdapter<RawProduct> {
     // Required fields validation
     if (validation.requiredFields) {
       for (const field of validation.requiredFields) {
-        const value = (product as any)[field];
+        const value = (product as unknown as Record<string, unknown>)[field];
         if (!value || (typeof value === 'string' && value.trim() === '')) {
           errors.push({
             field,

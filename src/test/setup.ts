@@ -52,6 +52,14 @@ afterEach(() => {
 
   // Clear all mocks
   jest.clearAllMocks();
+
+  // Clear all timers to prevent memory leaks
+  jest.clearAllTimers();
+
+  // Force garbage collection if available
+  if (global.gc) {
+    global.gc();
+  }
 });
 
 // Test utilities

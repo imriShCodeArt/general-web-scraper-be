@@ -7,7 +7,7 @@ import { Transform } from 'stream';
  * Interface for CSV writing operations
  */
 export interface CsvWriter {
-  writeToBuffer(data: any[], options?: any): Promise<Buffer>;
+  writeToBuffer(data: Record<string, unknown>[], options?: Record<string, unknown>): Promise<Buffer>;
   cleanup?(): void;
 }
 
@@ -17,7 +17,7 @@ export interface CsvWriter {
 export class FastCsvWriter implements CsvWriter {
   private activeStreams: Transform[] = [];
 
-  async writeToBuffer(data: any[], options?: any): Promise<Buffer> {
+  async writeToBuffer(data: Record<string, unknown>[], options?: Record<string, unknown>): Promise<Buffer> {
     try {
       const buffer = await writeToBuffer(data, options);
       return buffer;
