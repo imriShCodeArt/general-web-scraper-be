@@ -41,7 +41,7 @@ Tests the interaction between different services and components.
 - `scraping-service.test.ts` - Scraping service functionality
 - `recipe-manager.test.ts` - Recipe management and validation
 - `woocommerce-csv-validation.test.ts` - WooCommerce CSV validation
-- `phase4-demonstration.test.ts` - Phase 4 functionality demonstration
+- `woocommerce-integration-demonstration.test.ts` - WooCommerce integration demonstration
 
 **Coverage:**
 - ✅ Service integration and dependency injection
@@ -54,7 +54,7 @@ Tests the interaction between different services and components.
 Tests for performance, scalability, and edge cases.
 
 **Files:**
-- `phase5-performance-edge-cases.test.ts` - Phase 5 comprehensive testing
+- `performance-edge-cases.test.ts` - Performance and edge case testing
 - `scrape-performance.test.ts` - Scraping performance benchmarks
 
 **Coverage:**
@@ -69,7 +69,7 @@ Tests for performance, scalability, and edge cases.
 Tests for specific functionality areas with extensive coverage.
 
 **Files:**
-- `comprehensive-csv-coverage.test.ts` - Phase 3 CSV coverage
+- `csv-extended-fields.test.ts` - CSV extended fields and attribute mapping
 
 **Coverage:**
 - ✅ Extended field mapping
@@ -161,7 +161,7 @@ npm test -- --testPathPattern="integration/"
 npm test -- --testPathPattern="performance/"
 
 # Specific test file
-npm test -- --testPathPattern="phase5-performance-edge-cases.test.ts"
+npm test -- --testPathPattern="performance-edge-cases.test.ts"
 ```
 
 ### Run with Coverage

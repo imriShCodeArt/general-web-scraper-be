@@ -1,9 +1,11 @@
 /**
- * Phase 5: Performance and Edge Case Testing
+ * Performance and Edge Case Testing
  *
- * Task 5.1: Add tests for large datasets with extended fields
- * Task 5.2: Add tests for products with missing extended fields
- * Task 5.3: Add tests for special characters in extended fields
+ * Tests for:
+ * - Large datasets with extended fields
+ * - Products with missing extended fields
+ * - Special characters in extended fields
+ * - Memory efficiency and performance benchmarks
  */
 
 import { CsvGenerator } from '../../lib/csv-generator';
@@ -15,7 +17,7 @@ import { NormalizedProduct } from '../../types';
 // Import WooCommerce matchers
 import '../setup-woocommerce-matchers';
 
-describe('Phase 5: Performance and Edge Case Testing', () => {
+describe('Performance and Edge Case Testing', () => {
   let csvGenerator: CsvGenerator;
 
   beforeEach(() => {

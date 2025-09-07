@@ -1,5 +1,5 @@
 /**
- * Comprehensive CSV Test Coverage for Phase 3
+ * CSV Extended Fields Test Coverage
  * Tests for extended field mapping, attribute column pairs, meta attribute columns, and price/stock validation
  */
 
@@ -18,7 +18,7 @@ import { factories } from './utils/factories';
 // Import WooCommerce matchers
 import './setup-woocommerce-matchers';
 
-describe('Phase 3: Comprehensive CSV Test Coverage', () => {
+describe('CSV Extended Fields Test Coverage', () => {
   let csvGenerator: CsvGenerator;
   let mockProducts: any[];
 
