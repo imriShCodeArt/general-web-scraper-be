@@ -1016,9 +1016,14 @@ export class GenericAdapter extends BaseAdapter {
             'select[name*="attribute"], select[class*="variation"], select[class*="attribute"]',
           );
 
-          if (selectElements.length > 0) {
+          // Also look for radio button variations
+          const radioElements = element.querySelectorAll(
+            'input[type="radio"][name*="option"], input[type="radio"][name*="attribute"], input[type="radio"][name*="variation"]',
+          );
+
+          if (selectElements.length > 0 || radioElements.length > 0) {
             if (process.env.SCRAPER_DEBUG === '1')
-              console.log(`Found ${selectElements.length} variation select elements`);
+              console.log(`Found ${selectElements.length} variation select elements and ${radioElements.length} radio elements`);
 
             // Only create variations if we have actual variation data (different prices, SKUs, etc.)
             // Don't create variations for every attribute option to avoid CSV duplication
@@ -1029,7 +1034,11 @@ export class GenericAdapter extends BaseAdapter {
             const hasPriceVariations = this.checkForPriceVariations(dom);
             const hasSkuVariations = this.checkForSkuVariations(dom);
 
-            if (hasPriceVariations || hasSkuVariations) {
+            // For radio buttons, we'll create variations even without price/SKU differences
+            // since they represent different product options (like colors)
+            const hasRadioVariations = radioElements.length > 0;
+
+            if (hasPriceVariations || hasSkuVariations || hasRadioVariations) {
               if (process.env.SCRAPER_DEBUG === '1')
                 console.log('Found actual price/SKU variations, creating variation records');
 
@@ -1060,6 +1069,56 @@ export class GenericAdapter extends BaseAdapter {
                         [attributeName!]: value,
                       },
                     });
+                  }
+                }
+              }
+
+              // Process radio button variations
+              if (radioElements.length > 0) {
+                if (process.env.SCRAPER_DEBUG === '1')
+                  console.log(`Processing ${radioElements.length} radio button variations`);
+
+                // Group radio buttons by name attribute
+                const radioGroups = new Map<string, HTMLInputElement[]>();
+                Array.from(radioElements).forEach((radio) => {
+                  const name = radio.getAttribute('name') || 'unknown';
+                  if (!radioGroups.has(name)) {
+                    radioGroups.set(name, []);
+                  }
+                  radioGroups.get(name)!.push(radio as HTMLInputElement);
+                });
+
+                // Create variations for each radio group
+                for (const [groupName, radios] of radioGroups) {
+                  const attributeName = groupName.replace(/^option\[(\d+)\]$/, 'Option $1')
+                    .replace(/[[\]]/g, '')
+                    .replace(/[_-]/g, ' ')
+                    .trim();
+
+                  for (const radio of radios) {
+                    const value = radio.getAttribute('value') || '';
+                    const text = this.extractText(dom, `label:has(input[value="${value}"])`) ||
+                                radio.getAttribute('data-original-title') ||
+                                radio.getAttribute('title') ||
+                                value;
+
+                    if (value && text && !this.isPlaceholderValue(text)) {
+                      const sku = `${baseSku}-${value}`;
+
+                      variations.push({
+                        sku,
+                        regularPrice: basePrice,
+                        taxClass: '',
+                        stockStatus: 'instock',
+                        images: [],
+                        attributeAssignments: {
+                          [attributeName]: value,
+                        },
+                      });
+
+                      if (process.env.SCRAPER_DEBUG === '1')
+                        console.log(`Created radio variation: ${attributeName} = ${value} (${text})`);
+                    }
                   }
                 }
               }
