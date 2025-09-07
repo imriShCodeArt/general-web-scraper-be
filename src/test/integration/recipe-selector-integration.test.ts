@@ -20,10 +20,10 @@ describe('Recipe Selector Integration Tests', () => {
         sku: ['.sku'],
         stock: ['.stock'],
         category: ['.breadcrumb'],
-        attributes: ['.attributes']
-      }
+        attributes: ['.attributes'],
+      },
     };
-    
+
     adapter = new GenericAdapter(mockRecipe, 'https://test.com');
   });
 
@@ -153,15 +153,16 @@ describe('Recipe Selector Integration Tests', () => {
         ...mockRecipe,
         selectors: {
           ...mockRecipe.selectors,
-          productLinks: undefined as any
-        }
+          productLinks: undefined as any,
+        },
       };
 
       const adapter = new GenericAdapter(invalidRecipe, 'https://test.com');
-      
+
       // The error is thrown when discoverProducts is called, not in constructor
       await expect(async () => {
-        for await (const url of adapter.discoverProducts()) {
+        // eslint-disable-next-line @typescript-eslint/no-unused-vars
+        for await (const _url of adapter.discoverProducts()) {
           // This should not execute
         }
       }).rejects.toThrow('Product links selector not configured in recipe');
@@ -172,8 +173,8 @@ describe('Recipe Selector Integration Tests', () => {
         ...mockRecipe,
         selectors: {
           ...mockRecipe.selectors,
-          productLinks: '.item a'
-        }
+          productLinks: '.item a',
+        },
       };
 
       const adapter = new GenericAdapter(singleSelectorRecipe, 'https://test.com');

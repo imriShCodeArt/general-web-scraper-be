@@ -20,10 +20,10 @@ describe('Product URL Filtering Integration Tests', () => {
         sku: ['.sku'],
         stock: ['.stock'],
         category: ['.breadcrumb'],
-        attributes: ['.attributes']
-      }
+        attributes: ['.attributes'],
+      },
     };
-    
+
     adapter = new GenericAdapter(mockRecipe, 'https://test.com');
   });
 
@@ -34,7 +34,7 @@ describe('Product URL Filtering Integration Tests', () => {
         'https://shukrehut.co.il/he/כיסאות/כסא-מנהלים-מפואר-ויוקרתי-madonna-cotton',
         'https://shukrehut.co.il/he/כיסאות/כסא-מחשב-רשת-waltz',
         'https://test.com/כיסא/מוצר-1',
-        'https://test.com/כיסאות/מוצר-2'
+        'https://test.com/כיסאות/מוצר-2',
       ];
 
       testUrls.forEach(url => {
@@ -48,7 +48,7 @@ describe('Product URL Filtering Integration Tests', () => {
         'https://shop.com/products/chair-1',
         'https://shop.com/product/chair-2',
         'https://test.com/products/furniture/chair-3',
-        'https://test.com/product/office-chair'
+        'https://test.com/product/office-chair',
       ];
 
       testUrls.forEach(url => {
@@ -62,7 +62,7 @@ describe('Product URL Filtering Integration Tests', () => {
         'https://shukrehut.co.il/he/כיסאות', // Main category page
         'https://test.com/כיסאות', // Category page
         'https://shop.com/products', // Products listing
-        'https://shop.com/categories/furniture' // Category page
+        'https://shop.com/categories/furniture', // Category page
       ];
 
       testUrls.forEach(url => {
@@ -80,7 +80,7 @@ describe('Product URL Filtering Integration Tests', () => {
         'https://shop.com/checkout',
         'https://shop.com/account',
         'https://shop.com/login',
-        'https://shop.com/search?q=chair'
+        'https://shop.com/search?q=chair',
       ];
 
       testUrls.forEach(url => {
