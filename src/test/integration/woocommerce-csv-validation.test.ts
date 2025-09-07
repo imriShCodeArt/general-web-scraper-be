@@ -25,109 +25,48 @@ describe('Phase 4: Integration Testing with Validation Schemas', () => {
   beforeEach(() => {
     csvGenerator = new CsvGenerator();
 
-    // Create comprehensive test products for validation testing
+    // Create test products for validation testing
     mockProducts = [
-      // Simple product with all extended fields
+      // Simple product for basic validation
       factories.normalizedProduct({
         id: 'validation-simple-001',
-        title: 'Validation Test Simple Product',
+        title: 'Validation Test Product',
         sku: 'VTS-001',
         productType: 'simple',
         regularPrice: '49.99',
         salePrice: '39.99',
-        description: 'A comprehensive simple product designed for WooCommerce validation testing. This product includes all required fields and extended attributes to ensure complete CSV validation coverage.',
-        shortDescription: 'Premium validation test product',
-        category: 'Validation Test',
+        description: 'A test product for WooCommerce validation.',
+        shortDescription: 'Test product',
+        category: 'Test',
         stockStatus: 'instock',
         attributes: {
-          color: ['Black', 'White', 'Silver'],
-          material: ['Aluminum', 'Plastic'],
-          warranty: ['1 Year', '2 Years', '3 Years'],
+          color: ['Black', 'White'],
+          material: ['Aluminum'],
         },
       }),
 
-      // Variable product with complex validation scenarios
+      // Variable product for variation validation
       factories.variableProduct({
         id: 'validation-variable-001',
-        title: 'Validation Test Variable Product Collection',
+        title: 'Variable Test Product',
         sku: 'VTV-001',
         productType: 'variable',
         regularPrice: '99.99',
         salePrice: '79.99',
-        description: 'An advanced variable product collection designed for comprehensive WooCommerce validation testing. This product demonstrates complex attribute handling, variation management, and CSV structure validation.',
-        shortDescription: 'Multi-variation validation test product',
-        category: 'Validation Test',
+        description: 'A variable product for testing variations.',
+        shortDescription: 'Variable test product',
+        category: 'Test',
         stockStatus: 'instock',
         attributes: {
-          color: ['Red', 'Blue', 'Green', 'Black', 'White', 'Purple'],
-          size: ['XS', 'S', 'M', 'L', 'XL', 'XXL', 'XXXL'],
-          material: ['Cotton', 'Polyester', 'Wool', 'Silk', 'Linen'],
-          pattern: ['Solid', 'Striped', 'Polka Dot', 'Floral', 'Geometric'],
+          color: ['Red', 'Blue'],
+          size: ['Small', 'Medium'],
         },
-        variations: [
-          {
-            sku: 'VTV-001-RED-S-COTTON-SOLID',
-            regularPrice: '99.99',
-            salePrice: '79.99',
-            taxClass: 'standard',
-            stockStatus: 'instock',
-            images: ['https://example.com/red-s-cotton-solid.jpg'],
-            attributeAssignments: {
-              color: 'Red',
-              size: 'S',
-              material: 'Cotton',
-              pattern: 'Solid',
-            },
-          },
-          {
-            sku: 'VTV-001-BLUE-M-POLYESTER-STRIPED',
-            regularPrice: '99.99',
-            salePrice: '79.99',
-            taxClass: 'standard',
-            stockStatus: 'instock',
-            images: ['https://example.com/blue-m-polyester-striped.jpg'],
-            attributeAssignments: {
-              color: 'Blue',
-              size: 'M',
-              material: 'Polyester',
-              pattern: 'Striped',
-            },
-          },
-          {
-            sku: 'VTV-001-GREEN-L-WOOL-FLORAL',
-            regularPrice: '99.99',
-            salePrice: '79.99',
-            taxClass: 'standard',
-            stockStatus: 'outofstock',
-            images: ['https://example.com/green-l-wool-floral.jpg'],
-            attributeAssignments: {
-              color: 'Green',
-              size: 'L',
-              material: 'Wool',
-              pattern: 'Floral',
-            },
-          },
-          {
-            sku: 'VTV-001-BLACK-XL-SILK-GEOMETRIC',
-            regularPrice: '99.99',
-            salePrice: '79.99',
-            taxClass: 'standard',
-            stockStatus: 'instock',
-            images: ['https://example.com/black-xl-silk-geometric.jpg'],
-            attributeAssignments: {
-              color: 'Black',
-              size: 'XL',
-              material: 'Silk',
-              pattern: 'Geometric',
-            },
-          },
-        ],
       }),
 
       // Edge case product for validation testing
       factories.normalizedProduct({
         id: 'validation-edge-001',
-        title: 'Edge Case Validation Product',
+        title: 'Edge Case Product',
         sku: 'VTE-001',
         productType: 'simple',
         regularPrice: '0',

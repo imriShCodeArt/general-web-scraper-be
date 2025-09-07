@@ -19,45 +19,45 @@ This document provides comprehensive coverage verification of all WooCommerce CS
 #### 1.1 Required Columns (`required_columns`)
 - **Rule**: All required WooCommerce parent columns must be present
 - **Required Columns**: ID, post_title, post_name, post_status, post_content, post_excerpt, post_parent, post_type, menu_order, sku, stock_status, images, tax:product_type, tax:product_cat, description, regular_price, sale_price
-- **Test Coverage**: ✅ `comprehensive-csv-coverage.test.ts` - Task 3.1
+- **Test Coverage**: ✅ `csv-extended-fields.test.ts` - Task 3.1
 - **Test Coverage**: ✅ `woocommerce-csv-validation.test.ts` - Task 4.1
 - **Matcher**: `toHaveWooCommerceParentColumns`
 
 #### 1.2 Post Type Validation (`post_type_validation`)
 - **Rule**: post_type must be "product" for all parent products
-- **Test Coverage**: ✅ `comprehensive-csv-coverage.test.ts` - Task 3.1
+- **Test Coverage**: ✅ `csv-extended-fields.test.ts` - Task 3.1
 - **Test Coverage**: ✅ `woocommerce-csv-validation.test.ts` - Task 4.1
 - **Matcher**: `toHaveWooCommerceProductType`
 
 #### 1.3 SKU Validation (`sku_validation`)
 - **Rule**: SKU must be unique and non-empty
-- **Test Coverage**: ✅ `comprehensive-csv-coverage.test.ts` - Task 3.1
+- **Test Coverage**: ✅ `csv-extended-fields.test.ts` - Task 3.1
 - **Test Coverage**: ✅ `woocommerce-csv-validation.test.ts` - Task 4.1
-- **Test Coverage**: ✅ `phase5-performance-edge-cases.test.ts` - Task 5.3
+- **Test Coverage**: ✅ `performance-edge-cases.test.ts` - Task 5.3
 
 #### 1.4 Price Format Validation (`price_format_validation`)
 - **Rule**: Prices must be in valid format (numeric with up to 2 decimal places)
-- **Test Coverage**: ✅ `comprehensive-csv-coverage.test.ts` - Task 3.4
+- **Test Coverage**: ✅ `csv-extended-fields.test.ts` - Task 3.4
 - **Test Coverage**: ✅ `woocommerce-csv-validation.test.ts` - Task 4.1
-- **Test Coverage**: ✅ `phase5-performance-edge-cases.test.ts` - Task 5.3
+- **Test Coverage**: ✅ `performance-edge-cases.test.ts` - Task 5.3
 - **Matcher**: `toHaveValidPriceFormat`
 
 #### 1.5 Stock Status Validation (`stock_status_validation`)
 - **Rule**: Stock status must be one of: instock, outofstock, onbackorder
-- **Test Coverage**: ✅ `comprehensive-csv-coverage.test.ts` - Task 3.4
+- **Test Coverage**: ✅ `csv-extended-fields.test.ts` - Task 3.4
 - **Test Coverage**: ✅ `woocommerce-csv-validation.test.ts` - Task 4.1
-- **Test Coverage**: ✅ `phase5-performance-edge-cases.test.ts` - Task 5.2
+- **Test Coverage**: ✅ `performance-edge-cases.test.ts` - Task 5.2
 - **Matcher**: `toHaveValidStockStatus`
 
 #### 1.6 Product Type Validation (`product_type_validation`)
 - **Rule**: Product type must be simple or variable
-- **Test Coverage**: ✅ `comprehensive-csv-coverage.test.ts` - Task 3.1
+- **Test Coverage**: ✅ `csv-extended-fields.test.ts` - Task 3.1
 - **Test Coverage**: ✅ `woocommerce-csv-validation.test.ts` - Task 4.1
 - **Matcher**: `toHaveWooCommerceProductType`
 
 #### 1.7 Attribute Column Pairs (`attribute_column_pairs`)
 - **Rule**: Attribute columns must have corresponding data columns
-- **Test Coverage**: ✅ `comprehensive-csv-coverage.test.ts` - Task 3.2
+- **Test Coverage**: ✅ `csv-extended-fields.test.ts` - Task 3.2
 - **Test Coverage**: ✅ `woocommerce-csv-validation.test.ts` - Task 4.1
 - **Matcher**: `toHaveAttributeColumnPairs`
 
@@ -66,53 +66,53 @@ This document provides comprehensive coverage verification of all WooCommerce CS
 #### 2.1 Required Columns (`required_columns`)
 - **Rule**: All required WooCommerce variation columns must be present
 - **Required Columns**: ID, post_type, post_status, parent_sku, post_title, post_name, post_content, post_excerpt, menu_order, sku, stock_status, regular_price, sale_price, tax_class, images
-- **Test Coverage**: ✅ `comprehensive-csv-coverage.test.ts` - Task 3.3
+- **Test Coverage**: ✅ `csv-extended-fields.test.ts` - Task 3.3
 - **Test Coverage**: ✅ `woocommerce-csv-validation.test.ts` - Task 4.1
 - **Matcher**: `toHaveWooCommerceVariationColumns`
 
 #### 2.2 Post Type Validation (`post_type_validation`)
 - **Rule**: post_type must be "product_variation" for all variations
-- **Test Coverage**: ✅ `comprehensive-csv-coverage.test.ts` - Task 3.3
+- **Test Coverage**: ✅ `csv-extended-fields.test.ts` - Task 3.3
 - **Test Coverage**: ✅ `woocommerce-csv-validation.test.ts` - Task 4.1
 - **Matcher**: `toHaveWooCommerceProductType`
 
 #### 2.3 Parent SKU Validation (`parent_sku_validation`)
 - **Rule**: parent_sku must be non-empty and reference valid parent product
-- **Test Coverage**: ✅ `comprehensive-csv-coverage.test.ts` - Task 3.3
+- **Test Coverage**: ✅ `csv-extended-fields.test.ts` - Task 3.3
 - **Test Coverage**: ✅ `woocommerce-csv-validation.test.ts` - Task 4.1
 - **Matcher**: `toHaveValidParentSkuReferences`
 
 #### 2.4 Variation SKU Validation (`variation_sku_validation`)
 - **Rule**: Variation SKU must be unique and non-empty
-- **Test Coverage**: ✅ `comprehensive-csv-coverage.test.ts` - Task 3.3
+- **Test Coverage**: ✅ `csv-extended-fields.test.ts` - Task 3.3
 - **Test Coverage**: ✅ `woocommerce-csv-validation.test.ts` - Task 4.1
-- **Test Coverage**: ✅ `phase5-performance-edge-cases.test.ts` - Task 5.3
+- **Test Coverage**: ✅ `performance-edge-cases.test.ts` - Task 5.3
 
 #### 2.5 Price Format Validation (`price_format_validation`)
 - **Rule**: Variation prices must be in valid format
-- **Test Coverage**: ✅ `comprehensive-csv-coverage.test.ts` - Task 3.4
+- **Test Coverage**: ✅ `csv-extended-fields.test.ts` - Task 3.4
 - **Test Coverage**: ✅ `woocommerce-csv-validation.test.ts` - Task 4.1
-- **Test Coverage**: ✅ `phase5-performance-edge-cases.test.ts` - Task 5.3
+- **Test Coverage**: ✅ `performance-edge-cases.test.ts` - Task 5.3
 - **Matcher**: `toHaveValidPriceFormat`
 
 #### 2.6 Stock Status Validation (`stock_status_validation`)
 - **Rule**: Variation stock status must be valid
-- **Test Coverage**: ✅ `comprehensive-csv-coverage.test.ts` - Task 3.4
+- **Test Coverage**: ✅ `csv-extended-fields.test.ts` - Task 3.4
 - **Test Coverage**: ✅ `woocommerce-csv-validation.test.ts` - Task 4.1
-- **Test Coverage**: ✅ `phase5-performance-edge-cases.test.ts` - Task 5.2
+- **Test Coverage**: ✅ `performance-edge-cases.test.ts` - Task 5.2
 - **Matcher**: `toHaveValidStockStatus`
 
 ### 3. Cross-CSV Validation Rules
 
 #### 3.1 Parent SKU References (`parent_sku_references`)
 - **Rule**: All variation parent_sku values must reference existing parent products
-- **Test Coverage**: ✅ `comprehensive-csv-coverage.test.ts` - Task 3.3
+- **Test Coverage**: ✅ `csv-extended-fields.test.ts` - Task 3.3
 - **Test Coverage**: ✅ `woocommerce-csv-validation.test.ts` - Task 4.1
 - **Matcher**: `toHaveValidParentSkuReferences`
 
 #### 3.2 Variation Attribute Consistency (`variation_attribute_consistency`)
 - **Rule**: Variation attribute values must match parent attribute options
-- **Test Coverage**: ✅ `comprehensive-csv-coverage.test.ts` - Task 3.3
+- **Test Coverage**: ✅ `csv-extended-fields.test.ts` - Task 3.3
 - **Test Coverage**: ✅ `woocommerce-csv-validation.test.ts` - Task 4.1
 - **Matcher**: `toHaveMatchingVariationAttributes`
 
@@ -134,7 +134,7 @@ This document provides comprehensive coverage verification of all WooCommerce CS
 
 ## 🧪 Test File Coverage
 
-### Phase 3: Comprehensive CSV Coverage (`comprehensive-csv-coverage.test.ts`)
+### CSV Extended Fields Coverage (`csv-extended-fields.test.ts`)
 - **Coverage**: All 7 parent CSV rules + 6 variation CSV rules + 2 cross-CSV rules
 - **Tests**: 50+ individual test cases
 - **Focus**: Extended field mapping, attribute columns, meta attributes, price/stock validation
@@ -144,12 +144,12 @@ This document provides comprehensive coverage verification of all WooCommerce CS
 - **Tests**: 20+ validation-specific tests
 - **Focus**: Template-based testing, end-to-end validation, error handling
 
-### Phase 5: Performance & Edge Cases (`phase5-performance-edge-cases.test.ts`)
+### Performance & Edge Cases (`performance-edge-cases.test.ts`)
 - **Coverage**: Edge cases for all validation rules
 - **Tests**: 14 performance and edge case tests
 - **Focus**: Large datasets, missing fields, special characters
 
-### Phase 4 Demonstration (`phase4-demonstration.test.ts`)
+### WooCommerce Integration Demonstration (`woocommerce-integration-demonstration.test.ts`)
 - **Coverage**: Complete validation pipeline demonstration
 - **Tests**: 8 demonstration tests
 - **Focus**: End-to-end validation workflow

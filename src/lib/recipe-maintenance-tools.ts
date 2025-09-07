@@ -43,7 +43,7 @@ export class RecipeMaintenanceTools {
     return { updated };
   }
 
-  private safeLoad(path: string): any {
+  private safeLoad(path: string): Record<string, unknown> {
     try {
       const content = readFileSync(path, 'utf-8');
       if (path.endsWith('.json')) return JSON.parse(content);

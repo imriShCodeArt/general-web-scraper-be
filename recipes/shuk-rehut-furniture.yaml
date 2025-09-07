@@ -1,0 +1,345 @@
+name: 'Shuk Rehut Furniture'
+description: 'Recipe for Shuk Rehut furniture store - Hebrew furniture e-commerce site'
+version: '1.0.0'
+siteUrl: 'https://shukrehut.co.il'
+
+# Site-specific settings
+behavior:
+  useHeadlessBrowser: true
+  rateLimit: 3000
+  maxConcurrent: 1
+  retryAttempts: 5
+  retryDelay: 2000
+  waitForSelector: 5000
+  waitForSelectors:
+    - '.description_pr'
+    - '.options_group'
+  scrollToLoad: true
+  waitForImages: true
+  waitForNetworkIdle: true
+  delayAfterPageLoad: 2000
+
+# Product discovery selectors
+selectors:
+  # Product listing page selectors
+  productLinks:
+    - '.item a'
+    - 'a[href*="chair"]'
+    - 'a[href*="כיסא"]'
+    - 'a[href*="product"]'
+    - '.product a'
+    - '.product-link'
+    - 'article a'
+    - '.product-item a'
+
+  # Product page selectors
+  title:
+    - 'h1'
+    - '.product-title'
+    - '.item-title'
+    - 'h2'
+    - '.product-name'
+    - '.product-info h1'
+
+  price:
+    - '.price'
+    - '[class*="price"]'
+    - '.amount'
+    - '.product-price'
+    - '.price-current'
+    - '.current-price'
+    - '.sale-price'
+    - '.regular-price'
+
+  salePrice:
+    - '.price-old'
+    - '.old-price'
+    - '.regular-price'
+    - '.price-regular'
+    - '.original-price'
+
+  sku:
+    - '.sku'
+    - '.product-sku'
+    - '[data-sku]'
+    - '.product-code'
+    - '.model'
+    - '.product-id'
+
+  description:
+    - '.description_pr'
+    - '.description'
+    - '.product-description'
+    - '.content'
+    - '.item-description'
+    - '.product-info'
+    - '.product-details'
+    - '.product-specs'
+    - '.product-attributes'
+    - '.product-text'
+
+  shortDescription:
+    - '.excerpt'
+    - '.summary'
+    - '.short-description'
+    - '.description_pr p'
+
+  # Variations and attributes (options group on product page)
+  variations:
+    - '.options_group select[name]'
+    - '.options_group input[name][type="radio"]'
+    - '.options_group input[name][type="checkbox"]'
+    - '.options_group [class^="input-option"] select[name]'
+    - '.options_group [class^="input-option"] input[name][type="radio"]'
+    - '.options_group [class^="input-option"] input[name][type="checkbox"]'
+
+  variationForm:
+    - '.options_group form'
+    - 'form'
+    - '.options_group [class^="input-option"]'
+
+  # Attribute container handled in the comprehensive list below
+
+  images:
+    - '.gallery img'
+    - '.product-images img'
+    - '.item-images img'
+    - '.product-gallery img'
+    - '.main-image img'
+    - '.product-photo img'
+    - '.image-gallery img'
+
+  stock:
+    - '.stock'
+    - '.availability'
+    - '.in-stock'
+    - '.out-of-stock'
+    - '.stock-status'
+    - '.product-availability'
+    - '.inventory'
+
+  category:
+    - '.breadcrumb'
+    - '.category'
+    - 'nav a'
+    - '.breadcrumbs'
+    - '.category-path'
+    - '.product-category'
+    - '.breadcrumb a'
+
+  # Additional selectors for furniture-specific data
+  attributes:
+    - '.product-attributes'
+    - '.attributes'
+    - '.specifications'
+    - '.product-specs'
+    - '.product-info'
+    - '.product-details'
+    - '.product-features'
+    - '.chair-specs'
+    - '.furniture-specs'
+    - '.options_group [class^="input-option"]'
+    - '.options_group'
+
+  # Hebrew-specific selectors
+  model:
+    - '.model'
+    - '.product-model'
+    - '.chair-model'
+    - '.furniture-model'
+    - '[data-model]'
+
+  brand:
+    - '.brand'
+    - '.product-brand'
+    - '.manufacturer'
+    - '.producer'
+
+  material:
+    - '.material'
+    - '.product-material'
+    - '.chair-material'
+    - '.furniture-material'
+    - '[data-material]'
+
+  color:
+    - '.color'
+    - '.product-color'
+    - '.chair-color'
+    - '.furniture-color'
+    - '[data-color]'
+
+  dimensions:
+    - '.dimensions'
+    - '.product-dimensions'
+    - '.chair-dimensions'
+    - '.furniture-dimensions'
+    - '[data-dimensions]'
+
+# Data transformation rules
+transforms:
+  # Arrays of regex replacements in the form "pattern->replacement"
+  # Clean excessive whitespace in title
+  title:
+    - '\n-> '
+    - '\t-> '
+    - '\s{2,}-> '
+
+  # Normalize price values (remove currency, spaces, keep digits and dot)
+  price:
+    - ',->.'
+    - '₪->'
+    - '\s->'
+    - '[^0-9.]->'
+    - '^(\\d+\\.\\d+).*$-> $1'
+
+  salePrice:
+    - ',->.'
+    - '₪->'
+    - '\s->'
+    - '[^0-9.]->'
+    - '^.*?(\\d+\\.\\d+)$-> $1'
+
+  # Clean description whitespace
+  description:
+    - '\r-> '
+    - '\n-> '
+    - '\t-> '
+    - '\s{2,}-> '
+
+  # Optional attribute value normalizations by attribute name
+  attributes:
+    Material:
+      - '\s{2,}-> '
+    Color:
+      - '\s{2,}-> '
+    Dimensions:
+      - '\s{2,}-> '
+    Brand:
+      - '\s{2,}-> '
+    Weight:
+      - '\s{2,}-> '
+    Warranty:
+      - '\s{2,}-> '
+
+# Validation rules
+validation:
+  requiredFields: ['title', 'price', 'images']
+  minDescriptionLength: 10
+  maxTitleLength: 200
+  priceFormat: '^\\d+(\\.\\d{2})?$'
+  currency: 'ILS'
+
+# Pagination settings
+pagination:
+  nextPageSelector:
+    - '.pagination .next'
+    - '.pagination a[rel="next"]'
+    - '.next-page'
+    - 'a[aria-label="Next"]'
+  
+  pageNumberSelector:
+    - '.pagination .current'
+    - '.page-number'
+    - '.pagination .active'
+
+# Category-specific settings
+categories:
+  - name: 'כיסאות'
+    url: '/he/כיסאות'
+    subcategories:
+      - 'כיסאות נוח'
+      - 'כסאות בר'
+      - 'כסאות גיימינג'
+      - 'כסאות לסלון'
+      - 'כסאות מנהלים'
+      - 'כסאות משרדיים'
+
+# Hebrew language support
+language:
+  code: 'he'
+  direction: 'rtl'
+  currency: 'ILS'
+  dateFormat: 'DD/MM/YYYY'
+
+# Site-specific headers
+headers:
+  'Accept-Language': 'he-IL,he;q=0.9,en-US;q=0.8,en;q=0.7'
+  'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8'
+  'Accept-Encoding': 'gzip, deflate, br, zstd'
+  'Upgrade-Insecure-Requests': '1'
+  'Sec-Fetch-Site': 'same-origin'
+  'Sec-Fetch-Mode': 'navigate'
+  'Sec-Fetch-User': '?1'
+  'Sec-Fetch-Dest': 'document'
+  'Referer': 'https://shukrehut.co.il/he/כיסאות'
+  'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0.0.0 Safari/537.36'
+
+# JavaScript execution settings
+javascript:
+  enabled: true
+  waitForNetworkIdle: true
+  waitForImages: true
+  scrollToBottom: true
+  clickLoadMore: true
+  loadMoreSelector:
+    - '.load-more'
+    - '.show-more'
+    - '.pagination .next'
+    - '.pagination a'
+    - '.next-page'
+    - 'a[rel="next"]'
+  waitForSelector: '.item, .product, article, .product-item, .chair-item, .description_pr, .options_group'
+  debugMode: true
+  waitForSelectorTimeout: 10000
+  scrollDelay: 1000
+  imageLoadTimeout: 15000
+
+# Fallback selectors for when primary selectors fail
+fallbacks:
+  title:
+    - 'h1, h2, h3'
+    - '.product-name, .item-name'
+    - '.product-title, .item-title'
+    - '[class*="title"]'
+    - '[class*="name"]'
+
+  price:
+    - '[class*="price"]'
+    - '[class*="amount"]'
+    - '[class*="cost"]'
+    - '.price, .amount, .cost'
+    - 'span:contains("₪")'
+    - 'div:contains("₪")'
+
+  description:
+    - '.product-info, .product-details'
+    - '.content, .description'
+    - '.product-text, .item-text'
+    - '[class*="description"]'
+    - '[class*="info"]'
+    - '[class*="details"]'
+
+  images:
+    - 'img[src*="chair"]'
+    - 'img[src*="samba"]'
+    - 'img[src*="furniture"]'
+    - 'img[alt*="כסא"]'
+    - 'img[alt*="כיסא"]'
+
+# Error handling
+errorHandling:
+  skipInvalidProducts: true
+  logErrors: true
+  retryOnError: true
+  maxRetries: 3
+  debugMode: true
+  logProductDiscovery: true
+  fallbackToGenericSelectors: true
+
+# Performance settings
+performance:
+  maxProductsPerPage: 50
+  delayBetweenRequests: 1000
+  timeout: 30000
+  maxConcurrentRequests: 2

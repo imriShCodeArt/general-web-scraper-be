@@ -117,7 +117,7 @@ export class RecipeLoader implements RecipeLoader {
       }
 
       // Store validation result in recipe metadata
-      (recipe as any).woocommerceValidation = wooCommerceResult;
+      (recipe as RecipeConfig & { woocommerceValidation?: WooCommerceValidationResult }).woocommerceValidation = wooCommerceResult;
     }
 
     return recipe;
