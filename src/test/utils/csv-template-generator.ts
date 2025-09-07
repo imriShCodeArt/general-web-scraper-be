@@ -7,8 +7,8 @@
  * ensuring that all required WooCommerce columns are present even with minimal data.
  */
 
-import { CsvGenerator } from '../../lib/csv-generator';
-import { NormalizedProduct } from '../../types';
+import { CsvGenerator } from '../../lib/core/services/csv-generator';
+import { NormalizedProduct } from '../../lib/domain/types';
 import { factories } from './factories';
 
 export interface CsvTemplateOptions {

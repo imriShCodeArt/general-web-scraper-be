@@ -1,4 +1,4 @@
-import { RecipeComplianceAuditor, type ComplianceAuditReport } from '../recipe-compliance-auditor';
+import { RecipeComplianceAuditor, type ComplianceAuditReport } from '../utils/recipe-compliance-auditor';
 
 describe('RecipeComplianceAuditor - reports', () => {
   const auditor = new RecipeComplianceAuditor('./recipes');

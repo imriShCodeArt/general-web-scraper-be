@@ -1,5 +1,5 @@
-import { Container } from '../di/container';
-import { TOKENS } from '../di/tokens';
+import { Container } from '../infrastructure/di/container';
+import { TOKENS } from '../infrastructure/di/tokens';
 
 describe('Container', () => {
   let container: Container;

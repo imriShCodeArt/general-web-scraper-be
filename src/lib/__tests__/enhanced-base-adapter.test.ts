@@ -1,12 +1,12 @@
-import { EnhancedBaseAdapter } from '../enhanced-base-adapter';
-import { RawProduct, RecipeConfig } from '../../types';
-import { HttpClient } from '../http-client';
-import { PuppeteerHttpClient } from '../puppeteer-http-client';
+import { EnhancedBaseAdapter } from '../core/adapters/enhanced-base-adapter';
+import { RawProduct, RecipeConfig } from '../domain/types';
+import { HttpClient } from '../infrastructure/http/http-client';
+import { PuppeteerHttpClient } from '../infrastructure/http/puppeteer-http-client';
 import { JSDOM } from 'jsdom';
 
 // Mock dependencies
-jest.mock('../http-client');
-jest.mock('../puppeteer-http-client');
+jest.mock('../infrastructure/http/http-client');
+jest.mock('../infrastructure/http/puppeteer-http-client');
 
 const MockHttpClient = HttpClient as jest.MockedClass<typeof HttpClient>;
 const MockPuppeteerHttpClient = PuppeteerHttpClient as jest.MockedClass<typeof PuppeteerHttpClient>;

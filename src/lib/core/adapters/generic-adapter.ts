@@ -1,6 +1,6 @@
 import { BaseAdapter } from './base-adapter';
-import { RecipeConfig, RawProduct, RawVariation, ValidationError } from '../types';
-import { ValidationErrorImpl } from './error-handler';
+import { RecipeConfig, RawProduct, RawVariation, ValidationError } from '../../domain/types';
+import { ValidationErrorImpl } from '../../utils/error-handler';
 import { JSDOM } from 'jsdom';
 
 export class GenericAdapter extends BaseAdapter {

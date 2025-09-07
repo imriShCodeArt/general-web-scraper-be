@@ -1,5 +1,5 @@
-import { WooCommercePerformanceValidator } from '../woocommerce-performance-validator';
-import { RecipeConfig } from '../../types';
+import { WooCommercePerformanceValidator } from '../validation/woocommerce/woocommerce-performance-validator';
+import { RecipeConfig } from '../domain/types';
 
 describe('WooCommercePerformanceValidator', () => {
   let validator: WooCommercePerformanceValidator;

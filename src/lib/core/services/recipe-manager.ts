@@ -1,6 +1,6 @@
-import { RecipeLoader } from './recipe-loader';
-import { GenericAdapter } from './generic-adapter';
-import { RecipeConfig, SiteAdapter, RawProductData, WooCommerceValidationResult } from '../types';
+import { RecipeLoader } from '../../utils/recipe-loader';
+import { GenericAdapter } from '../adapters/generic-adapter';
+import { RecipeConfig, SiteAdapter, RawProductData, WooCommerceValidationResult } from '../../domain/types';
 
 export class RecipeManager {
   private recipesDir: string;
