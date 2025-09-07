@@ -163,3 +163,9 @@ dist/
 # Local development files
 .local
 local/
+
+# Performance and metrics
+performance-data/
+
+# Generated diagrams
+docs/architecture.svg
