@@ -268,7 +268,7 @@ export class CsvGenerator {
           }
         }
         for (const rawName of Object.keys(aggregatedAttributes)) {
-          // Use display names in meta attribute headers (e.g., meta:attribute_Color)
+          // Use display name and, when applicable, raw pa_* name in meta attribute headers
           const displayName = this.attributeDisplayName(rawName);
           if (!/^pa_/i.test(rawName)) {
             warn('⚠️ Runtime check (CSV variation headers): non pa_ attribute encountered', {
@@ -277,6 +277,9 @@ export class CsvGenerator {
             });
           }
           attributeHeadersSet.add(`meta:attribute_${displayName}`);
+          if (/^pa_/i.test(rawName)) {
+            attributeHeadersSet.add(`meta:attribute_${rawName}`);
+          }
         }
         debug('Product is variable, processing variations');
         for (const variation of product.variations) {
@@ -298,17 +301,19 @@ export class CsvGenerator {
             images: ((variation.images[0] || product.images[0] || '') as string).toString(),
           };
 
-          // Add attribute values per variation using meta:attribute_Name columns as in examples
+          // Add attribute values per variation using meta:attribute_<Name> columns
           const assignments = variation.attributeAssignments || {};
           // Ensure all known attribute headers exist on this row (fill missing as empty)
           for (const header of attributeHeadersSet) {
             row[header] = row[header] || '';
           }
           for (const [rawName, attrValue] of Object.entries(assignments)) {
-            // Use display name in header
+            // Populate display-name header and, when applicable, raw pa_* header
             const displayName = this.attributeDisplayName(rawName);
-            const header = `meta:attribute_${displayName}`;
-            row[header] = attrValue as string;
+            row[`meta:attribute_${displayName}`] = attrValue as string;
+            if (/^pa_/i.test(rawName)) {
+              row[`meta:attribute_${rawName}`] = attrValue as string;
+            }
           }
 
           variationRows.push(row);
@@ -325,6 +330,16 @@ export class CsvGenerator {
 
     if (variationRows.length === 0) {
       return '';
+    }
+
+    // Deduplicate variation rows by SKU (keep first occurrence)
+    const seenSku = new Set<string>();
+    const dedupedRows: Record<string, string>[] = [];
+    for (const row of variationRows) {
+      const sku = row.sku;
+      if (!sku || seenSku.has(sku)) continue;
+      seenSku.add(sku);
+      dedupedRows.push(row);
     }
 
     // Build stable headers: base columns + any dynamic meta:attribute_* columns discovered across products
@@ -351,7 +366,7 @@ export class CsvGenerator {
     debug('generateVariationCsv completed', { rows: variationRows.length, headers });
 
     try {
-      const buffer = await this.csvWriter.writeToBuffer(variationRows, {
+      const buffer = await this.csvWriter.writeToBuffer(dedupedRows, {
         headers,
         quote: true,
         escape: '"',
