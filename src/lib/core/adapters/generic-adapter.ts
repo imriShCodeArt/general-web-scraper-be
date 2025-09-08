@@ -1013,7 +1013,6 @@ export class GenericAdapter extends BaseAdapter {
         for (const element of variationElements) {
           // Check if the element itself is a radio button
           const isRadioButton = element.tagName === 'INPUT' && element.getAttribute('type') === 'radio';
-          
           // Look for variation options in select elements
           const selectElements = element.querySelectorAll(
             'select[name*="attribute"], select[class*="variation"], select[class*="attribute"]',
@@ -1050,7 +1049,6 @@ export class GenericAdapter extends BaseAdapter {
                 const options = select.querySelectorAll('option[value]:not([value=""])');
                 const attributeName =
                   select.getAttribute('name') || select.getAttribute('data-attribute') || 'Unknown';
-                
                 // Convert to WooCommerce taxonomy format with pa_ prefix
                 const taxonomyAttributeName = `pa_${attributeName.toLowerCase().replace(/\s+/g, '_')}`;
 
@@ -1086,10 +1084,10 @@ export class GenericAdapter extends BaseAdapter {
 
                 const name = element.getAttribute('name') || 'unknown';
                 const value = element.getAttribute('value') || '';
-                
+
                 // Try to find the Hebrew text from associated elements
                 let text = '';
-                
+
                 // Look for data-original-title in sibling img elements
                 const parentLabel = element.closest('label');
                 if (parentLabel) {
@@ -1098,11 +1096,11 @@ export class GenericAdapter extends BaseAdapter {
                     text = img.getAttribute('data-original-title') || '';
                   }
                 }
-                
+
                 // Fallback to other attributes
                 if (!text) {
-                  text = element.getAttribute('data-original-title') || 
-                         element.getAttribute('title') || 
+                  text = element.getAttribute('data-original-title') ||
+                         element.getAttribute('title') ||
                          value;
                 }
 
@@ -1111,7 +1109,6 @@ export class GenericAdapter extends BaseAdapter {
                   .replace(/[[\]]/g, '')
                   .replace(/[_-]/g, ' ')
                   .trim();
-                
                 // Look for the control label in the same options_group
                 const optionsGroup = element.closest('.options_group');
                 if (optionsGroup) {
@@ -1181,10 +1178,10 @@ export class GenericAdapter extends BaseAdapter {
 
                   for (const radio of radios) {
                     const value = radio.getAttribute('value') || '';
-                    
+
                     // Try to find the Hebrew text from associated elements
                     let text = '';
-                    
+
                     // Look for data-original-title in sibling img elements
                     const parentLabel = radio.closest('label');
                     if (parentLabel) {
@@ -1193,7 +1190,7 @@ export class GenericAdapter extends BaseAdapter {
                         text = img.getAttribute('data-original-title') || '';
                       }
                     }
-                    
+
                     // Fallback to other methods
                     if (!text) {
                       text = this.extractText(dom, `label:has(input[value="${value}"])`) ||

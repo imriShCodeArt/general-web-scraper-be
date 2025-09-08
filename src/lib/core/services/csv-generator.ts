@@ -79,13 +79,13 @@ export class CsvGenerator {
           aggregatedAttributes[key] = existing;
         }
       }
-      
+
       debug('Aggregated attributes for product', {
         productTitle: product.title,
         productType: product.productType,
         attributesFromProduct: Object.keys(product.attributes || {}),
         attributesFromVariations: product.variations?.map(v => Object.keys(v.attributeAssignments || {})) || [],
-        finalAggregatedAttributes: Object.keys(aggregatedAttributes)
+        finalAggregatedAttributes: Object.keys(aggregatedAttributes),
       });
 
       const row: Record<string, string> = {
@@ -122,7 +122,6 @@ export class CsvGenerator {
       const firstVariation = (product.variations || [])[0];
 
       for (const [rawName, values] of Object.entries(aggregatedAttributes)) {
-        const displayName = this.attributeDisplayName(rawName);
         // Use the raw attribute name (with pa_ prefix) for column headers as per WooCommerce spec
         const headerName = rawName;
 
