@@ -14,6 +14,7 @@ behavior:
   waitForSelectors:
     - '.description_pr'
     - '.options_group'
+    - '.options_group [class^="input-option"]'
     - '#input-option386'
     - '.form-group'
   scrollToLoad: true
@@ -88,10 +89,13 @@ selectors:
 
   # Variations and attributes (Shuk Rehut specific selectors)
   variations:
+    # Prioritize scoped controls inside the options group/form
+    - '.options_group select[name*="option"]'
     - '.options_group input[name*="option"][type="radio"]'
     - '.options_group input[name*="option"][type="checkbox"]'
     - '#input-option386 input[type="radio"]'
     - '#input-option386 input[type="checkbox"]'
+    - '#input-option386 select'
     - 'input[name*="option"][type="radio"]'
     - 'input[name*="option"][type="checkbox"]'
     - '.optstyle[type="radio"]'
@@ -107,6 +111,7 @@ selectors:
 
   variationForm:
     - '.options_group'
+    - '.options_group form'
     - '#input-option386'
     - 'form'
     - '.variation-form'
