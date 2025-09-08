@@ -122,8 +122,8 @@ export class CsvGenerator {
       const firstVariation = (product.variations || [])[0];
 
       for (const [rawName, values] of Object.entries(aggregatedAttributes)) {
-        // Use the raw attribute name (with pa_ prefix) for column headers as per WooCommerce spec
-        const headerName = rawName;
+        // Use display names for headers (e.g., Color, Size) to match tests/examples
+        const headerName = this.attributeDisplayName(rawName);
 
         row[`attribute:${headerName}`] = (values || []).join(' | ');
         const visible = 1;
@@ -137,6 +137,7 @@ export class CsvGenerator {
         if (isVariable && firstVariation && firstVariation.attributeAssignments) {
           const fv =
             firstVariation.attributeAssignments[rawName] ||
+            firstVariation.attributeAssignments[this.attributeDisplayName(rawName)] ||
             firstVariation.attributeAssignments[this.cleanAttributeName(rawName)] ||
             firstVariation.attributeAssignments[`pa_${this.cleanAttributeName(rawName)}`] ||
             '';
@@ -198,8 +199,9 @@ export class CsvGenerator {
           }
         }
         for (const rawName of Object.keys(aggregatedAttributes)) {
-          // Use the raw attribute name (with pa_ prefix) for column headers as per WooCommerce spec
-          attributeHeadersSet.add(`meta:attribute_${rawName}`);
+          // Use display names in meta attribute headers (e.g., meta:attribute_Color)
+          const displayName = this.attributeDisplayName(rawName);
+          attributeHeadersSet.add(`meta:attribute_${displayName}`);
         }
         debug('Product is variable, processing variations');
         for (const variation of product.variations) {
@@ -228,9 +230,10 @@ export class CsvGenerator {
             row[header] = row[header] || '';
           }
           for (const [rawName, attrValue] of Object.entries(assignments)) {
-            // Use the raw attribute name (with pa_ prefix) for column headers as per WooCommerce spec
-            const header = `meta:attribute_${rawName}`;
-            row[header] = attrValue;
+            // Use display name in header
+            const displayName = this.attributeDisplayName(rawName);
+            const header = `meta:attribute_${displayName}`;
+            row[header] = attrValue as string;
           }
 
           variationRows.push(row);
