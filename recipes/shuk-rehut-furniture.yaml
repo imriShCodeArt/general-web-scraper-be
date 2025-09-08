@@ -14,6 +14,8 @@ behavior:
   waitForSelectors:
     - '.description_pr'
     - '.options_group'
+    - '#input-option386'
+    - '.form-group'
   scrollToLoad: true
   waitForImages: true
   waitForNetworkIdle: true
@@ -84,18 +86,32 @@ selectors:
     - '.short-description'
     - '.description_pr p'
 
-  # Variations and attributes (options group on product page)
+  # Variations and attributes (Shuk Rehut specific selectors)
   variations:
-    - '.options_group select[name]'
-    - '.options_group input[name][type="radio"]'
-    - '.options_group input[name][type="checkbox"]'
-    - '.options_group [class^="input-option"] select[name]'
-    - '.options_group [class^="input-option"] input[name][type="radio"]'
-    - '.options_group [class^="input-option"] input[name][type="checkbox"]'
+    - '.options_group input[name*="option"][type="radio"]'
+    - '.options_group input[name*="option"][type="checkbox"]'
+    - '#input-option386 input[type="radio"]'
+    - '#input-option386 input[type="checkbox"]'
+    - 'input[name*="option"][type="radio"]'
+    - 'input[name*="option"][type="checkbox"]'
+    - '.optstyle[type="radio"]'
+    - '.optstyle[type="checkbox"]'
+    - 'select[name*="option"]'
+    - 'select[name*="variation"]'
+    - 'select[name*="attribute"]'
+    - '.variation select'
+    - '.option select'
+    - '.attribute select'
+    - '.product-options select'
+    - '.product-variations select'
 
   variationForm:
-    - '.options_group form'
+    - '.options_group'
+    - '#input-option386'
     - 'form'
+    - '.variation-form'
+    - '.product-options'
+    - '.product-variations'
     - '.options_group [class^="input-option"]'
 
   # Attribute container handled in the comprehensive list below
