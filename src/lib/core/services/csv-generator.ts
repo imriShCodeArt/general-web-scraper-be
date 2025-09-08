@@ -63,6 +63,56 @@ export class CsvGenerator {
       deduplicated: uniqueProducts.length,
     });
 
+    // Phase 4: Build batch-wide attribute union for parent CSV headers
+    const unionKeys = Array.from(this.aggregateAttributesAcrossProducts(uniqueProducts));
+    const attributeHeaderNames = unionKeys.map((raw) => this.attributeDisplayName(raw));
+    // Determine which attributes have defaults (only for variable products)
+    const defaultEligibleRawKeys = new Set<string>();
+    for (const p of uniqueProducts) {
+      if (p.productType === 'variable' && p.variations && p.variations.length > 0) {
+        for (const key of Object.keys(p.attributes || {})) {
+          defaultEligibleRawKeys.add(key);
+        }
+        for (const v of p.variations) {
+          for (const key of Object.keys(v.attributeAssignments || {})) {
+            defaultEligibleRawKeys.add(key);
+          }
+        }
+      }
+    }
+
+    // Build explicit headers so every row includes all attribute columns
+    const baseHeaders = [
+      'ID',
+      'post_title',
+      'post_name',
+      'post_status',
+      'post_content',
+      'post_excerpt',
+      'post_parent',
+      'post_type',
+      'menu_order',
+      'sku',
+      'stock_status',
+      'images',
+      'tax:product_type',
+      'tax:product_cat',
+      'description',
+      'regular_price',
+      'sale_price',
+    ];
+    const attributeHeaders: string[] = [];
+    for (let idx = 0; idx < attributeHeaderNames.length; idx++) {
+      const name = attributeHeaderNames[idx];
+      const rawKey = unionKeys[idx];
+      attributeHeaders.push(`attribute:${name}`);
+      attributeHeaders.push(`attribute_data:${name}`);
+      if (defaultEligibleRawKeys.has(rawKey)) {
+        attributeHeaders.push(`attribute_default:${name}`);
+      }
+    }
+    const allHeaders = [...baseHeaders, ...attributeHeaders];
+
     const csvData = uniqueProducts.map((product, index) => {
       // Build attributes from product.attributes plus union of variation attributeAssignments
       const aggregatedAttributes: Record<string, string[]> = {};
@@ -126,40 +176,24 @@ export class CsvGenerator {
         sale_price: product.salePrice || '',
       };
 
-      // Add attributes per Woo CSV Import Suite rules
-      // attribute:<Name> = pipe-separated values
-      // attribute_default:<Name> = default value (variable products)
-      // attribute_data:<Name> = position|visible|variation (variation flag only for variable products)
+      // Add attributes per Woo CSV Import Suite rules using the union keys
+      // attribute:<Name>, attribute_data:<Name>, attribute_default:<Name>
       const isVariable = product.productType === 'variable';
-      let position = 0;
       const firstVariation = (product.variations || [])[0];
-
-      for (const [rawName, values] of Object.entries(aggregatedAttributes)) {
-        if (!/^pa_/i.test(rawName)) {
-          warn('⚠️ Runtime check (CSV parent): building header for non pa_ attribute', {
-            productSku: product.sku,
-            rawName,
-          });
-        }
-        if (/\s/.test(rawName)) {
-          warn('⚠️ Runtime check (CSV parent): attribute name contains spaces', {
-            productSku: product.sku,
-            rawName,
-          });
-        }
-        // Use display names for headers (e.g., Color, Size) to match tests/examples
+      for (let i = 0; i < unionKeys.length; i++) {
+        const rawName = unionKeys[i];
         const headerName = this.attributeDisplayName(rawName);
+        const values = aggregatedAttributes[rawName] || [];
 
-        row[`attribute:${headerName}`] = (values || []).join(' | ');
+        // position|visible|is_taxonomy|in_variations
         const visible = 1;
         const isTaxonomy = /^pa_/i.test(rawName) ? 1 : 0;
         const inVariations = isVariable ? 1 : 0;
-        // position|visible|is_taxonomy|in_variations
-        row[`attribute_data:${headerName}`] =
-          `${position}|${visible}|${isTaxonomy}|${inVariations}`;
 
-        // Default attribute per first variation when variable
-        if (isVariable && firstVariation && firstVariation.attributeAssignments) {
+        row[`attribute:${headerName}`] = values.join(' | ');
+        row[`attribute_data:${headerName}`] = `${i}|${visible}|${isTaxonomy}|${inVariations}`;
+
+        if (defaultEligibleRawKeys.has(rawName) && isVariable && firstVariation && firstVariation.attributeAssignments) {
           const fv =
             firstVariation.attributeAssignments[rawName] ||
             firstVariation.attributeAssignments[this.attributeDisplayName(rawName)] ||
@@ -170,8 +204,6 @@ export class CsvGenerator {
             row[`attribute_default:${headerName}`] = fv;
           }
         }
-
-        position++;
       }
 
       return row;
@@ -181,7 +213,7 @@ export class CsvGenerator {
 
     try {
       const buffer = await this.csvWriter.writeToBuffer(csvData, {
-        headers: true,
+        headers: allHeaders,
         quote: true,
         escape: '"',
       });
