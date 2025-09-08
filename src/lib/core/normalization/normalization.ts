@@ -4,7 +4,8 @@ import {
   ProductVariation,
   NormalizableProductData,
 } from '../../domain/types';
-import { debug, warn } from '../../infrastructure/logging/logger';
+import { debug } from '../../infrastructure/logging/logger';
+import { normalizeAttrKey } from '../../helpers/attrs';
 
 export class NormalizationToolkit {
   /**
@@ -218,14 +219,10 @@ export class NormalizationToolkit {
       }
 
       // Runtime guardrails: warn for suspicious attribute keys
-      if (!/^pa_/i.test(key)) {
-        warn('⚠️ Runtime check: attribute key does not start with pa_:', key);
+      const cleanKey = normalizeAttrKey(key);
+      if (cleanKey !== key) {
+        debug('🔍 DEBUG: normalizeAttrKey changed key', { from: key, to: cleanKey });
       }
-      if (/\s/.test(key)) {
-        warn('⚠️ Runtime check: attribute key contains spaces:', key);
-      }
-
-      const cleanKey = this.cleanAttributeName(key);
       const cleanValues = values
         .filter((value): value is string => value !== undefined)
         .map((value) => this.cleanText(value))
@@ -455,7 +452,7 @@ export class NormalizationToolkit {
     const cleaned: Record<string, string> = {};
 
     for (const [key, value] of Object.entries(assignments)) {
-      const cleanKey = this.cleanAttributeName(key);
+      const cleanKey = normalizeAttrKey(key);
       const cleanValue = this.cleanText(value);
 
       if (cleanValue && !this.isPlaceholder(cleanValue)) {
