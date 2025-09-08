@@ -74,7 +74,7 @@ export class ScrapingService {
     logger?: pino.Logger,
   ) {
     this.logger = logger || pino({
-      level: process.env.LOG_LEVEL || 'warn',
+      level: process.env.SCRAPER_DEBUG === '1' ? 'debug' : (process.env.LOG_LEVEL || 'warn'),
       transport: {
         target: 'pino-pretty',
         options: {
