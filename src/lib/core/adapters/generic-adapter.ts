@@ -1011,6 +1011,8 @@ export class GenericAdapter extends BaseAdapter {
           console.log(`Found ${variationElements.length} variation elements with selector: ${sel}`);
 
         for (const element of variationElements) {
+          // Check if the element itself is a radio button
+          const isRadioButton = element.tagName === 'INPUT' && element.getAttribute('type') === 'radio';
           // Look for variation options in select elements
           const selectElements = element.querySelectorAll(
             'select[name*="attribute"], select[class*="variation"], select[class*="attribute"]',
@@ -1021,7 +1023,7 @@ export class GenericAdapter extends BaseAdapter {
             'input[type="radio"][name*="option"], input[type="radio"][name*="attribute"], input[type="radio"][name*="variation"]',
           );
 
-          if (selectElements.length > 0 || radioElements.length > 0) {
+          if (selectElements.length > 0 || radioElements.length > 0 || isRadioButton) {
             if (process.env.SCRAPER_DEBUG === '1')
               console.log(`Found ${selectElements.length} variation select elements and ${radioElements.length} radio elements`);
 
@@ -1047,6 +1049,8 @@ export class GenericAdapter extends BaseAdapter {
                 const options = select.querySelectorAll('option[value]:not([value=""])');
                 const attributeName =
                   select.getAttribute('name') || select.getAttribute('data-attribute') || 'Unknown';
+                // Convert to WooCommerce taxonomy format with pa_ prefix
+                const taxonomyAttributeName = `pa_${attributeName.toLowerCase().replace(/\s+/g, '_')}`;
 
                 if (process.env.SCRAPER_DEBUG === '1')
                   console.log(`Found ${options.length} options for attribute: ${attributeName}`);
@@ -1066,10 +1070,73 @@ export class GenericAdapter extends BaseAdapter {
                       stockStatus: 'instock',
                       images: [],
                       attributeAssignments: {
-                        [attributeName!]: value,
+                        [taxonomyAttributeName]: text, // Use the text with pa_ prefix
                       },
                     });
                   }
+                }
+              }
+
+              // Process single radio button (if the element itself is a radio button)
+              if (isRadioButton) {
+                if (process.env.SCRAPER_DEBUG === '1')
+                  console.log(`Processing single radio button: ${element.getAttribute('name')} = ${element.getAttribute('value')}`);
+
+                const name = element.getAttribute('name') || 'unknown';
+                const value = element.getAttribute('value') || '';
+
+                // Try to find the Hebrew text from associated elements
+                let text = '';
+
+                // Look for data-original-title in sibling img elements
+                const parentLabel = element.closest('label');
+                if (parentLabel) {
+                  const img = parentLabel.querySelector('img[data-original-title]');
+                  if (img) {
+                    text = img.getAttribute('data-original-title') || '';
+                  }
+                }
+
+                // Fallback to other attributes
+                if (!text) {
+                  text = element.getAttribute('data-original-title') ||
+                         element.getAttribute('title') ||
+                         value;
+                }
+
+                // Try to find the attribute name from the control label
+                let attributeName = name.replace(/^option\[(\d+)\]$/, 'Option $1')
+                  .replace(/[[\]]/g, '')
+                  .replace(/[_-]/g, ' ')
+                  .trim();
+                // Look for the control label in the same options_group
+                const optionsGroup = element.closest('.options_group');
+                if (optionsGroup) {
+                  const controlLabel = optionsGroup.querySelector('label.control-label');
+                  if (controlLabel) {
+                    attributeName = controlLabel.textContent?.trim() || attributeName;
+                  }
+                }
+
+                // Convert to WooCommerce taxonomy format with pa_ prefix
+                const taxonomyAttributeName = `pa_${attributeName.toLowerCase().replace(/\s+/g, '_')}`;
+
+                if (value && text && !this.isPlaceholderValue(text)) {
+                  const sku = `${baseSku}-${value}`;
+
+                  variations.push({
+                    sku,
+                    regularPrice: basePrice,
+                    taxClass: '',
+                    stockStatus: 'instock',
+                    images: [],
+                    attributeAssignments: {
+                      [taxonomyAttributeName]: text, // Use the Hebrew text with pa_ prefix
+                    },
+                  });
+
+                  if (process.env.SCRAPER_DEBUG === '1')
+                    console.log(`Created single radio variation: ${attributeName} = ${text} (value: ${value})`);
                 }
               }
 
@@ -1090,17 +1157,47 @@ export class GenericAdapter extends BaseAdapter {
 
                 // Create variations for each radio group
                 for (const [groupName, radios] of radioGroups) {
-                  const attributeName = groupName.replace(/^option\[(\d+)\]$/, 'Option $1')
+                  let attributeName = groupName.replace(/^option\[(\d+)\]$/, 'Option $1')
                     .replace(/[[\]]/g, '')
                     .replace(/[_-]/g, ' ')
                     .trim();
 
+                  // Try to find the attribute name from the control label
+                  if (radios.length > 0) {
+                    const optionsGroup = radios[0].closest('.options_group');
+                    if (optionsGroup) {
+                      const controlLabel = optionsGroup.querySelector('label.control-label');
+                      if (controlLabel) {
+                        attributeName = controlLabel.textContent?.trim() || attributeName;
+                      }
+                    }
+                  }
+
+                  // Convert to WooCommerce taxonomy format with pa_ prefix
+                  const taxonomyAttributeName = `pa_${attributeName.toLowerCase().replace(/\s+/g, '_')}`;
+
                   for (const radio of radios) {
                     const value = radio.getAttribute('value') || '';
-                    const text = this.extractText(dom, `label:has(input[value="${value}"])`) ||
-                                radio.getAttribute('data-original-title') ||
-                                radio.getAttribute('title') ||
-                                value;
+
+                    // Try to find the Hebrew text from associated elements
+                    let text = '';
+
+                    // Look for data-original-title in sibling img elements
+                    const parentLabel = radio.closest('label');
+                    if (parentLabel) {
+                      const img = parentLabel.querySelector('img[data-original-title]');
+                      if (img) {
+                        text = img.getAttribute('data-original-title') || '';
+                      }
+                    }
+
+                    // Fallback to other methods
+                    if (!text) {
+                      text = this.extractText(dom, `label:has(input[value="${value}"])`) ||
+                             radio.getAttribute('data-original-title') ||
+                             radio.getAttribute('title') ||
+                             value;
+                    }
 
                     if (value && text && !this.isPlaceholderValue(text)) {
                       const sku = `${baseSku}-${value}`;
@@ -1112,12 +1209,12 @@ export class GenericAdapter extends BaseAdapter {
                         stockStatus: 'instock',
                         images: [],
                         attributeAssignments: {
-                          [attributeName]: value,
+                          [taxonomyAttributeName]: text, // Use the Hebrew text with pa_ prefix
                         },
                       });
 
                       if (process.env.SCRAPER_DEBUG === '1')
-                        console.log(`Created radio variation: ${attributeName} = ${value} (${text})`);
+                        console.log(`Created radio variation: ${attributeName} = ${text} (value: ${value})`);
                     }
                   }
                 }
@@ -1294,9 +1391,18 @@ export class GenericAdapter extends BaseAdapter {
       }
     }
 
+    // Deduplicate variations by SKU
+    const uniqueVariations = new Map();
+    variations.forEach(variation => {
+      if (!uniqueVariations.has(variation.sku)) {
+        uniqueVariations.set(variation.sku, variation);
+      }
+    });
+    const deduplicatedVariations = Array.from(uniqueVariations.values());
+
     if (process.env.SCRAPER_DEBUG === '1')
-      console.log(`Extracted ${variations.length} variations total`);
-    return variations;
+      console.log(`Extracted ${variations.length} variations total, ${deduplicatedVariations.length} unique after deduplication`);
+    return deduplicatedVariations;
   }
 
 
