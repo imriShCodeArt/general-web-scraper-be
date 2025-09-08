@@ -13,6 +13,11 @@ Effects:
 - Activates `infrastructure/logging/logger.ts` debug output
 - Sets `pino` log level to `debug` in `server.ts` and `scraping-service.ts`
 - Enables additional runtime guardrail warnings for attribute keys
+- Wires Phase 2 helpers for observability (no behavior change):
+  - `helpers/dom.ts`: radio group discovery, label extraction, nearby label name
+  - `helpers/attrs.ts`: attribute key normalization and placeholder detection
+  - `helpers/variations.ts`: SKU utilities and variation list merging/deduping
+  - `helpers/csv.ts`: attribute union and header helpers
 
 ## What You’ll See
 
@@ -33,6 +38,7 @@ Effects:
    - Product type variable/simple
    - `finalAggregatedAttributes` keys
    - `meta:attribute_...` headers
+   - BaseAdapter: radio groups, name resolution (`selector vs helper`), option label vs text
 
 ## Notes
 
