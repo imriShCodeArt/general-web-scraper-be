@@ -3,6 +3,7 @@ import { HttpClient } from '../../infrastructure/http/http-client';
 import { PuppeteerHttpClient } from '../../infrastructure/http/puppeteer-http-client';
 import { JSDOM } from 'jsdom';
 import { ErrorFactory, ErrorCodes } from '../../utils/error-handler';
+import { isDebugEnabled } from '../../infrastructure/logging/logger';
 
 /**
  * Base adapter class that provides common functionality for all site adapters
@@ -286,6 +287,9 @@ export abstract class BaseAdapter implements SiteAdapter<RawProduct> {
     try {
       const variations: RawProductData['variations'] = [];
       const variationElements = this.extractElements(dom, selector);
+      if (isDebugEnabled()) {
+        console.log('🔍 DEBUG[BaseAdapter]: extractVariations elements count', variationElements.length);
+      }
 
       for (const element of variationElements) {
         const sku = element.querySelector('[data-sku], .sku, .product-sku')?.textContent?.trim();
@@ -305,6 +309,9 @@ export abstract class BaseAdapter implements SiteAdapter<RawProduct> {
         }
       }
 
+      if (isDebugEnabled()) {
+        console.log('🔍 DEBUG[BaseAdapter]: extracted variations', variations.length);
+      }
       return variations;
     } catch (error) {
       console.warn(`Failed to extract variations from selector '${selector}':`, error);

@@ -1,5 +1,5 @@
 import { NormalizedProduct } from '../../domain/types';
-import { debug } from '../../infrastructure/logging/logger';
+import { debug, warn } from '../../infrastructure/logging/logger';
 import { writeToBuffer } from 'fast-csv';
 import { Transform } from 'stream';
 
@@ -74,6 +74,19 @@ export class CsvGenerator {
       // Merge from variations - this is the main source of attributes for variable products
       for (const v of product.variations || []) {
         for (const [key, val] of Object.entries(v.attributeAssignments || {})) {
+          // Runtime guardrails for attribute keys
+          if (!/^pa_/i.test(key)) {
+            warn('⚠️ Runtime check (CSV parent): variation attribute key without pa_ prefix', {
+              productSku: product.sku,
+              key,
+            });
+          }
+          if (/\s/.test(key)) {
+            warn('⚠️ Runtime check (CSV parent): variation attribute key contains spaces', {
+              productSku: product.sku,
+              key,
+            });
+          }
           const existing = aggregatedAttributes[key] || [];
           if (val && !existing.includes(val)) existing.push(val);
           aggregatedAttributes[key] = existing;
@@ -122,6 +135,18 @@ export class CsvGenerator {
       const firstVariation = (product.variations || [])[0];
 
       for (const [rawName, values] of Object.entries(aggregatedAttributes)) {
+        if (!/^pa_/i.test(rawName)) {
+          warn('⚠️ Runtime check (CSV parent): building header for non pa_ attribute', {
+            productSku: product.sku,
+            rawName,
+          });
+        }
+        if (/\s/.test(rawName)) {
+          warn('⚠️ Runtime check (CSV parent): attribute name contains spaces', {
+            productSku: product.sku,
+            rawName,
+          });
+        }
         // Use display names for headers (e.g., Color, Size) to match tests/examples
         const headerName = this.attributeDisplayName(rawName);
 
@@ -194,6 +219,18 @@ export class CsvGenerator {
         }
         for (const v of product.variations || []) {
           for (const k of Object.keys(v.attributeAssignments || {})) {
+            if (!/^pa_/i.test(k)) {
+              warn('⚠️ Runtime check (CSV variation): variation attribute key without pa_ prefix', {
+                productSku: product.sku,
+                key: k,
+              });
+            }
+            if (/\s/.test(k)) {
+              warn('⚠️ Runtime check (CSV variation): variation attribute key contains spaces', {
+                productSku: product.sku,
+                key: k,
+              });
+            }
             const list = aggregatedAttributes[k] || [];
             aggregatedAttributes[k] = list;
           }
@@ -201,6 +238,12 @@ export class CsvGenerator {
         for (const rawName of Object.keys(aggregatedAttributes)) {
           // Use display names in meta attribute headers (e.g., meta:attribute_Color)
           const displayName = this.attributeDisplayName(rawName);
+          if (!/^pa_/i.test(rawName)) {
+            warn('⚠️ Runtime check (CSV variation headers): non pa_ attribute encountered', {
+              rawName,
+              productSku: product.sku,
+            });
+          }
           attributeHeadersSet.add(`meta:attribute_${displayName}`);
         }
         debug('Product is variable, processing variations');
@@ -343,6 +386,26 @@ export class CsvGenerator {
     const withoutPrefix = rawName.replace(/^pa_/i, '');
     const cleaned = withoutPrefix.replace(/[_-]+/g, ' ').trim().toLowerCase();
     return cleaned.replace(/\b\w/g, (c) => c.toUpperCase());
+  }
+
+  /**
+   * Aggregate attributes across products (union) - exposed for instrumentation
+   */
+  // eslint-disable-next-line class-methods-use-this
+  private aggregateAttributesAcrossProducts(products: NormalizedProduct[]): Set<string> {
+    const keys = new Set<string>();
+    for (const product of products) {
+      for (const key of Object.keys(product.attributes || {})) {
+        keys.add(key);
+      }
+      for (const variation of product.variations || []) {
+        for (const key of Object.keys(variation.attributeAssignments || {})) {
+          keys.add(key);
+        }
+      }
+    }
+    debug('🔍 DEBUG: aggregateAttributesAcrossProducts keys', Array.from(keys));
+    return keys;
   }
 
   /**

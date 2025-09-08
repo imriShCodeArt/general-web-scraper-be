@@ -37,7 +37,7 @@ const app = express();
 
 // Logger
 const logger = pino({
-  level: 'info',
+  level: process.env.SCRAPER_DEBUG === '1' ? 'debug' : 'info',
   transport: {
     target: 'pino-pretty',
     options: {

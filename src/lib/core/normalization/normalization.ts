@@ -4,7 +4,7 @@ import {
   ProductVariation,
   NormalizableProductData,
 } from '../../domain/types';
-import { debug } from '../../infrastructure/logging/logger';
+import { debug, warn } from '../../infrastructure/logging/logger';
 
 export class NormalizationToolkit {
   /**
@@ -215,6 +215,14 @@ export class NormalizationToolkit {
       if (!values || values.length === 0) {
         debug('❌ DEBUG: Skipping empty attribute:', key);
         continue;
+      }
+
+      // Runtime guardrails: warn for suspicious attribute keys
+      if (!/^pa_/i.test(key)) {
+        warn('⚠️ Runtime check: attribute key does not start with pa_:', key);
+      }
+      if (/\s/.test(key)) {
+        warn('⚠️ Runtime check: attribute key contains spaces:', key);
       }
 
       const cleanKey = this.cleanAttributeName(key);
