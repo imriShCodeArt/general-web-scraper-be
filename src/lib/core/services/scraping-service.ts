@@ -17,6 +17,10 @@ import { CsvGenerator } from './csv-generator';
 import { StorageService } from '../../infrastructure/storage/storage';
 import { RecipeManager } from './recipe-manager';
 import { ErrorFactory, ErrorCodes } from '../../utils/error-handler';
+import { pMapWithRateLimit } from '../../helpers/concurrency';
+import { Metrics, createInitialMetrics, aggregateMetrics, createBatchMetrics, formatMetrics } from '../../helpers/metrics';
+import { makeApiResponse, makeErrorResponse, makePerformanceResponse } from '../../helpers/api';
+import { makeCsvFilenames, generateJobId } from '../../helpers/naming';
 import pino from 'pino';
 
 /**
@@ -47,44 +51,20 @@ export class ScrapingService {
   private activeJobs = new Map<string, ScrapingJob<ProductOptions>>();
   private jobQueue: ScrapingJob<ProductOptions>[] = [];
   private isProcessing = false;
-  private performanceMetrics = {
-    totalJobs: 0,
-    totalProducts: 0,
-    averageTimePerProduct: 0,
-    totalProcessingTime: 0,
-  };
-
-  /**
-   * Helper method to create ApiResponse objects with required fields
-   */
-  private createApiResponse<T, E = string>(
-    success: boolean,
-    data?: T,
-    error?: E,
-    message?: string,
-  ): ApiResponse<T, E> {
-    return {
-      success,
-      data,
-      error,
-      message,
-      timestamp: new Date(),
-      requestId: randomUUID(),
-    };
-  }
+  private performanceMetrics: Metrics = createInitialMetrics();
 
   /**
    * Helper method to create success ApiResponse objects
    */
   private createSuccessResponse<T>(data: T, message?: string): ApiResponse<T, string> {
-    return this.createApiResponse(true, data, '', message);
+    return makeApiResponse(data, message, randomUUID());
   }
 
   /**
    * Helper method to create error ApiResponse objects
    */
-  private createErrorResponse<T, E>(error: E, message?: string): ApiResponse<T, E> {
-    return this.createApiResponse(false, undefined as T, error, message);
+  private createErrorResponse<T, E>(error: E, _message?: string): ApiResponse<T, string> {
+    return makeErrorResponse(error as string, undefined, randomUUID());
   }
 
   constructor(
@@ -129,8 +109,8 @@ export class ScrapingService {
    * @param jobId - The job identifier
    */
   private generateFilename(siteUrl: string, jobId: string): string {
-    const domain = new URL(siteUrl).hostname;
-    return `${domain}-${jobId}.csv`;
+    const filenames = makeCsvFilenames(siteUrl, jobId);
+    return filenames.parent; // Use parent filename as the main filename
   }
 
   /**
@@ -147,7 +127,7 @@ export class ScrapingService {
       }
 
       // Create job
-      const jobId = randomUUID();
+      const jobId = generateJobId();
       const job: ScrapingJob<ProductOptions> = {
         id: jobId,
         status: 'pending',
@@ -247,7 +227,6 @@ export class ScrapingService {
         }
 
         // Enhanced concurrent processing with optimized settings
-        const products: NormalizedProduct[] = [];
         const maxConcurrent = Math.min(
           recipe.behavior?.maxConcurrent || 10, // Increased default from 5 to 10
           productUrls.length, // Don't exceed the number of products
@@ -258,20 +237,15 @@ export class ScrapingService {
           `Processing ${productUrls.length} products with ${maxConcurrent} concurrent workers and ${rateLimit}ms rate limit`,
         );
 
-        // Process products in optimized batches with connection pooling
-        const batchSize = maxConcurrent;
-        for (let i = 0; i < productUrls.length; i += batchSize) {
-          const batch = productUrls.slice(i, i + batchSize);
-          const batchStartTime = Date.now();
-
-          // Process batch concurrently with better error handling
-          const batchPromises = batch.map(async (url, batchIndex) => {
+        // Process products using the new concurrency helper
+        const productResults = await pMapWithRateLimit(
+          productUrls,
+          async (url, index) => {
             if (!url) return null;
 
-            const globalIndex = i + batchIndex;
             try {
               this.logger.debug(
-                `Processing product ${globalIndex + 1}/${productUrls.length}: ${url}`,
+                `Processing product ${index + 1}/${productUrls.length}: ${url}`,
               );
 
               const startTime = Date.now();
@@ -297,7 +271,8 @@ export class ScrapingService {
                 hasAttributes: Object.keys(normalizedProduct.attributes).length > 0,
               });
 
-              job.processedProducts = globalIndex + 1;
+              // Only increment processed products for successful extractions
+              job.processedProducts++;
               return normalizedProduct;
             } catch (error) {
               const errorMsg = `Failed to process product ${url}: ${error}`;
@@ -310,24 +285,14 @@ export class ScrapingService {
               job.errors.push(scrapingError);
               return null;
             }
-          });
+          },
+          {
+            concurrency: maxConcurrent,
+            minDelayMs: rateLimit,
+          },
+        );
 
-          // Wait for batch to complete
-          const batchResults = await Promise.all(batchPromises);
-          const validProducts = batchResults.filter((p) => p !== null) as NormalizedProduct[];
-          products.push(...validProducts);
-
-          const batchTime = Date.now() - batchStartTime;
-          this.logger.debug(
-            `Batch completed in ${batchTime}ms, processed ${validProducts.length}/${batch.length} products successfully`,
-          );
-
-          // Fixed delay between batches to respect configured rateLimit
-          if (i + batchSize < productUrls.length && rateLimit > 0) {
-            this.logger.debug(`Waiting ${rateLimit}ms before next batch...`);
-            await this.delay(rateLimit);
-          }
-        }
+        const products = productResults.filter((p) => p !== null) as NormalizedProduct[];
 
         // Generate CSV files
         const csvResult = await CsvGenerator.generateBothCsvs(products);
@@ -368,21 +333,23 @@ export class ScrapingService {
         // totalProducts should remain as the total discovered, not just successful ones
         job.processedProducts = products.length;
 
-        // Update performance metrics
+        // Update performance metrics using the new metrics helper
         const jobDuration = job.completedAt.getTime() - job.startedAt!.getTime();
-        this.performanceMetrics.totalJobs++;
-        this.performanceMetrics.totalProducts += products.length;
-        this.performanceMetrics.totalProcessingTime += jobDuration;
-        this.performanceMetrics.averageTimePerProduct =
-          this.performanceMetrics.totalProducts > 0
-            ? this.performanceMetrics.totalProcessingTime / this.performanceMetrics.totalProducts
-            : 0;
+        const batchMetrics = createBatchMetrics(
+          products.length,
+          products.length, // All products were successful
+          0, // No failed products in this batch
+          jobDuration,
+          job.errors.map(e => e.message),
+        );
+
+        this.performanceMetrics = aggregateMetrics(this.performanceMetrics, batchMetrics);
 
         this.logger.info(
           `Job ${job.id} completed successfully. Processed ${products.length} products in ${jobDuration}ms.`,
         );
         this.logger.info(
-          `Performance Metrics - Avg: ${this.performanceMetrics.averageTimePerProduct.toFixed(2)}ms/product, Total: ${this.performanceMetrics.totalProducts} products`,
+          `Performance Metrics - ${formatMetrics(this.performanceMetrics)}`,
         );
       } finally {
         // Clean up adapter resources (including Puppeteer)
@@ -569,15 +536,25 @@ export class ScrapingService {
    */
   async getPerformanceMetrics(): Promise<ApiResponse<GenericMetadata<unknown>>> {
     try {
-      return this.createSuccessResponse({
-        ...this.performanceMetrics,
+      const metrics = {
+        totalJobs: this.performanceMetrics.totalJobs,
         activeJobs: this.activeJobs.size,
+        completedJobs: this.performanceMetrics.successfulProducts,
+        failedJobs: this.performanceMetrics.failedProducts,
+        averageProcessingTime: this.performanceMetrics.averageProcessingTime,
+        averageTimePerProduct: this.performanceMetrics.averageTimePerProduct,
+        totalProcessingTime: this.performanceMetrics.totalProcessingTime,
+        averageProductsPerJob: this.performanceMetrics.totalProducts / Math.max(this.activeJobs.size + this.jobQueue.length, 1),
+        totalProductsProcessed: this.performanceMetrics.totalProducts,
+        totalProducts: this.performanceMetrics.totalProducts,
         queuedJobs: this.jobQueue.length,
         isProcessing: this.isProcessing,
         // Backward/compat aliases used by some tests
         currentActiveJobs: this.activeJobs.size,
         queueLength: this.jobQueue.length,
-      });
+      };
+
+      return makePerformanceResponse(metrics, randomUUID());
     } catch (error) {
       return this.createErrorResponse(`Failed to get performance metrics: ${error}`);
     }
