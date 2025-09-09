@@ -43,4 +43,22 @@ export function cleanAttributeName(rawKey: string): string {
     .toLowerCase();
 }
 
+// Phase 3: normalization helpers
+export function normalizeAttributes(map: Record<string, (string | undefined)[]>): Record<string, string[]> {
+  const result: Record<string, string[]> = {};
+  for (const [key, values] of Object.entries(map || {})) {
+    const cleanKey = normalizeAttrKey(key);
+    const list = (values || []).filter((v): v is string => typeof v === 'string' && v.trim() !== '');
+    if (list.length > 0) result[cleanKey] = list;
+  }
+  return result;
+}
+
+export function mergeAttributeAssignments(
+  a: Record<string, string>,
+  b: Record<string, string>,
+): Record<string, string> {
+  return { ...a, ...b };
+}
+
 

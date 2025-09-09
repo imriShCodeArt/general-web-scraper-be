@@ -1,11 +1,3 @@
-export function buildVariationSku(base: string, token: string): string {
-  const cleanBase = (base || '').trim().toUpperCase().replace(/[^A-Z0-9\-_.]/g, '');
-  const cleanToken = (token || '').trim().toUpperCase().replace(/[^A-Z0-9\-_.]/g, '');
-  if (!cleanBase) return cleanToken || 'VAR';
-  if (!cleanToken) return `${cleanBase}-VAR`;
-  return `${cleanBase}-${cleanToken}`;
-}
-
 export function createAssignments(name: string, value: string): Record<string, string> {
   return { [name]: value };
 }

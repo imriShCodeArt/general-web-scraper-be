@@ -5,7 +5,9 @@ import {
   NormalizableProductData,
 } from '../../domain/types';
 import { debug } from '../../infrastructure/logging/logger';
-import { normalizeAttrKey } from '../../helpers/attrs';
+import { normalizeAttrKey, normalizeAttributes as normalizeAttributesHelper } from '../../helpers/attrs';
+import { cleanText as cleanTextHelper, isPlaceholder as isPlaceholderHelper } from '../../helpers/text';
+import { generateSku as generateSkuHelper } from '../../helpers/sku';
 import { getFeatureFlags } from '../../config/feature-flags';
 
 /**
@@ -45,24 +47,24 @@ export class NormalizationToolkit {
     });
 
     const result: NormalizedProduct = {
-      id: raw.id || this.generateSku(url),
-      title: this.cleanText(raw.title || ''),
+      id: raw.id || generateSkuHelper(url),
+      title: cleanTextHelper(raw.title || ''),
       slug: this.generateSlug(raw.title || url),
-      description: this.cleanText(raw.description || ''),
-      shortDescription: this.cleanText(raw.shortDescription || ''),
-      sku: this.cleanSku(raw.sku || this.generateSku(url)),
+      description: cleanTextHelper(raw.description || ''),
+      shortDescription: cleanTextHelper(raw.shortDescription || ''),
+      sku: this.cleanSku(raw.sku || generateSkuHelper(url)),
       stockStatus: this.normalizeStockStatus(raw.stockStatus),
       images: this.normalizeImages(
         (raw.images || []).filter((img): img is string => img !== undefined),
       ),
-      category: this.cleanText(raw.category || 'Uncategorized'),
+      category: cleanTextHelper(raw.category || 'Uncategorized'),
       productType: this.detectProductType(raw),
-      attributes: this.normalizeAttributes(
-        raw.attributes || ({} as Record<string, (string | undefined)[]>),
+      attributes: normalizeAttributesHelper(
+        (raw.attributes || ({} as Record<string, (string | undefined)[]>)) as Record<string, (string | undefined)[]>,
       ),
       variations: this.normalizeVariations(raw.variations || []),
-      regularPrice: this.cleanText(raw.price || ''),
-      salePrice: this.cleanText(raw.salePrice || ''),
+      regularPrice: cleanTextHelper(raw.price || ''),
+      salePrice: cleanTextHelper(raw.salePrice || ''),
       normalizedAt: new Date(),
       sourceUrl: url,
       confidence: 0.8, // Default confidence score
@@ -255,8 +257,8 @@ export class NormalizationToolkit {
       }
       const cleanValues = values
         .filter((value): value is string => value !== undefined)
-        .map((value) => this.cleanText(value))
-        .filter((value) => value && !this.isPlaceholder(value));
+        .map((value) => cleanTextHelper(value))
+        .filter((value) => value && !isPlaceholderHelper(value));
 
       debug('🔍 DEBUG: Cleaned attribute:', cleanKey, 'cleanValues:', cleanValues);
 
