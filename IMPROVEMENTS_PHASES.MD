@@ -77,7 +77,7 @@ This plan improves modularity, testability, and maintainability first, then fixe
 - Goals
   - Deterministic end‑to‑end verification.
 - Tasks
-  - Add `scripts/smoke-scrape.ts`:
+  - Add `src/cli/smoke-scrape.ts`:
     - `--url <product>` or `--archive <url> --max 3`, `--recipe "Shuk Rehut Furniture"`.
     - Save CSVs to `./output/`.
     - Assertions:
