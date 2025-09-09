@@ -5,10 +5,31 @@ import {
   NormalizableProductData,
 } from '../../domain/types';
 import { debug } from '../../infrastructure/logging/logger';
+import { normalizeAttrKey } from '../../helpers/attrs';
+import { getFeatureFlags } from '../../config/feature-flags';
 
+/**
+ * Normalizes raw product data into WooCommerce-compatible format.
+ *
+ * This toolkit handles the conversion of scraped product data into a standardized
+ * format that can be used to generate WooCommerce CSV imports. It ensures proper
+ * attribute key normalization, SKU generation, and data validation.
+ *
+ * @see {@link ../../../woocommerce_csv_spec.md WooCommerce CSV Import Specification}
+ *
+ * Key features:
+ * - Normalizes attribute keys (adds pa_ prefix for taxonomy attributes)
+ * - Generates consistent SKUs and slugs
+ * - Validates and cleans product data
+ * - Handles variation data normalization
+ */
 export class NormalizationToolkit {
   /**
    * Normalize raw product data into standardized format with proper generic constraints
+   *
+   * @param raw Raw product data from scraping
+   * @param url Source URL of the product
+   * @returns Normalized product data ready for CSV generation
    */
   static normalizeProduct<T extends NormalizableProductData>(
     raw: T,
@@ -217,7 +238,21 @@ export class NormalizationToolkit {
         continue;
       }
 
-      const cleanKey = this.cleanAttributeName(key);
+      // Runtime guardrails: warn for suspicious attribute keys
+      // Feature flag: normalizedAttributeKeys
+      const featureFlags = getFeatureFlags();
+      const cleanKey = featureFlags.normalizedAttributeKeys ? normalizeAttrKey(key) : key;
+      if (cleanKey !== key) {
+        debug('🔍 DEBUG: normalizeAttrKey changed key', { from: key, to: cleanKey });
+      }
+
+      if (featureFlags.rolloutDebugMode) {
+        debug('Attribute normalization', {
+          enabled: featureFlags.normalizedAttributeKeys,
+          originalKey: key,
+          normalizedKey: cleanKey,
+        });
+      }
       const cleanValues = values
         .filter((value): value is string => value !== undefined)
         .map((value) => this.cleanText(value))
@@ -445,9 +480,11 @@ export class NormalizationToolkit {
    */
   static cleanAttributeAssignments(assignments: Record<string, string>): Record<string, string> {
     const cleaned: Record<string, string> = {};
+    const featureFlags = getFeatureFlags();
 
     for (const [key, value] of Object.entries(assignments)) {
-      const cleanKey = this.cleanAttributeName(key);
+      // Feature flag: normalizedAttributeKeys
+      const cleanKey = featureFlags.normalizedAttributeKeys ? normalizeAttrKey(key) : key;
       const cleanValue = this.cleanText(value);
 
       if (cleanValue && !this.isPlaceholder(cleanValue)) {

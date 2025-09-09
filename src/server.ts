@@ -37,7 +37,7 @@ const app = express();
 
 // Logger
 const logger = pino({
-  level: 'info',
+  level: process.env.SCRAPER_DEBUG === '1' ? 'debug' : 'info',
   transport: {
     target: 'pino-pretty',
     options: {
@@ -506,7 +506,7 @@ app.delete('/api/storage/clear', async (req, res) => {
 });
 
 // Error handling middleware
-app.use((error: Error, req: express.Request, res: express.Response) => {
+app.use((error: Error, req: express.Request, res: express.Response, _next: express.NextFunction) => {
   logger.error('Unhandled error:', error);
   res.status(500).json({
     success: false,

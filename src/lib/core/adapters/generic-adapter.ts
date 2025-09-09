@@ -123,14 +123,14 @@ export class GenericAdapter extends BaseAdapter {
       sku: this.extractWithFallbacks(dom, selectors.sku, fallbacks?.sku),
       stockStatus: this.extractStockStatusFromSelector(dom, selectors.stock),
       images: fastMode
-        ? this.extractImagesFromSelector(dom, selectors.images).slice(0, 3)
-        : this.extractImagesFromSelector(dom, selectors.images), // Limit images in fast mode
+        ? (await this.extractImagesFromSelector(dom, selectors.images)).slice(0, 3)
+        : await this.extractImagesFromSelector(dom, selectors.images), // Limit images in fast mode
       category: selectors.category ? this.extractWithFallbacks(dom, selectors.category) : undefined,
       productType: 'simple', // Default; will switch to 'variable' if variations are found
-      attributes: fastMode ? {} : this.extractAttributesFromSelector(dom, selectors.attributes), // Skip attributes in fast mode
+      attributes: fastMode ? {} : await this.extractAttributesFromSelector(dom, selectors.attributes), // Skip attributes in fast mode
       variations: fastMode
         ? []
-        : this.extractVariationsFromSelector(dom, selectors.variations || []), // Skip variations in fast mode
+        : await this.extractVariationsFromSelector(dom, selectors.variations || []), // Skip variations in fast mode
       price: this.extractPriceFromSelector(dom, selectors.price),
       salePrice: this.extractSalePrice(dom, selectors.price),
     };
@@ -329,7 +329,7 @@ export class GenericAdapter extends BaseAdapter {
   /**
    * Extract images using the configured selector
    */
-  protected override extractImages(dom: JSDOM, selector: string | string[]): string[] {
+  protected override async extractImages(dom: JSDOM, selector: string | string[], _scope?: Element): Promise<string[]> {
     const selectorArray = Array.isArray(selector) ? selector : [selector];
 
     // Shopify-focused gallery detection
@@ -489,7 +489,7 @@ export class GenericAdapter extends BaseAdapter {
 
     // 1) Try configured selectors FIRST (these are more reliable than gallery scopes)
     for (const sel of selectorArray) {
-      const nodes = this.extractElements(dom, sel);
+      const nodes = this.extractElementsSync(dom, sel);
       if (nodes.length > 0) {
         const urls = nodes
           .map((img) => {
@@ -553,7 +553,7 @@ export class GenericAdapter extends BaseAdapter {
 
     // 2) Fallback to configured selectors but apply strict filtering
     for (const sel of selectorArray) {
-      const nodes = this.extractElements(dom, sel);
+      const nodes = this.extractElementsSync(dom, sel);
       if (nodes.length > 0) {
         const urls = nodes
           .map((img) => {
@@ -622,52 +622,52 @@ export class GenericAdapter extends BaseAdapter {
   /**
    * Extract images from a selector that can be either a string or array of strings
    */
-  private extractImagesFromSelector(dom: JSDOM, selector: string | string[]): string[] {
+  private async extractImagesFromSelector(dom: JSDOM, selector: string | string[]): Promise<string[]> {
     if (Array.isArray(selector)) {
       // Try each selector until one works
       for (const sel of selector) {
-        const images = this.extractImages(dom, sel);
+        const images = await this.extractImages(dom, sel);
         if (images && images.length > 0) {
           return images;
         }
       }
       return [];
     }
-    return this.extractImages(dom, selector);
+    return await this.extractImages(dom, selector);
   }
 
   /**
    * Extract attributes from a selector that can be either a string or array of strings
    */
-  private extractAttributesFromSelector(dom: JSDOM, selector: string | string[]): Record<string, string[]> {
+  private async extractAttributesFromSelector(dom: JSDOM, selector: string | string[]): Promise<Record<string, string[]>> {
     if (Array.isArray(selector)) {
       // Try each selector until one works
       for (const sel of selector) {
-        const attrs = this.extractAttributes(dom, sel);
+        const attrs = await this.extractAttributes(dom, sel);
         if (attrs && Object.keys(attrs).length > 0) {
           return attrs;
         }
       }
       return {};
     }
-    return this.extractAttributes(dom, selector);
+    return await this.extractAttributes(dom, selector);
   }
 
   /**
    * Extract variations from a selector that can be either a string or array of strings
    */
-  private extractVariationsFromSelector(dom: JSDOM, selector: string | string[]): RawProduct['variations'] {
+  private async extractVariationsFromSelector(dom: JSDOM, selector: string | string[]): Promise<RawProduct['variations']> {
     if (Array.isArray(selector)) {
       // Try each selector until one works
       for (const sel of selector) {
-        const variations = this.extractVariations(dom, sel);
+        const variations = await this.extractVariations(dom, sel);
         if (variations && variations.length > 0) {
           return variations;
         }
       }
       return [];
     }
-    return this.extractVariations(dom, selector);
+    return await this.extractVariations(dom, selector) || [];
   }
 
   /**
@@ -690,15 +690,16 @@ export class GenericAdapter extends BaseAdapter {
   /**
    * Extract attributes using the configured selector
    */
-  protected override extractAttributes(
+  protected override async extractAttributes(
     dom: JSDOM,
     selector: string | string[],
-  ): Record<string, string[]> {
+    _scope?: Element,
+  ): Promise<Record<string, string[]>> {
     const selectorArray = Array.isArray(selector) ? selector : [selector];
     const attributes: Record<string, string[]> = {};
 
     for (const sel of selectorArray) {
-      const attributeElements = this.extractElements(dom, sel);
+      const attributeElements = this.extractElementsSync(dom, sel);
 
       if (attributeElements.length > 0) {
         for (const element of attributeElements) {
@@ -755,7 +756,7 @@ export class GenericAdapter extends BaseAdapter {
   /**
    * Extract variations using the configured selector - improved for WooCommerce
    */
-  protected override extractVariations(dom: JSDOM, selector?: string | string[]): RawVariation[] {
+  protected override async extractVariations(dom: JSDOM, selector: string | string[], _scope?: Element): Promise<RawVariation[] | undefined> {
     if (!selector) return [];
 
     const selectorArray = Array.isArray(selector) ? selector : [selector];
@@ -1004,21 +1005,28 @@ export class GenericAdapter extends BaseAdapter {
     // 2) Fallback: extract from DOM selects/prices as before
     // First, try to extract variations from variation forms (WooCommerce style)
     for (const sel of selectorArray) {
-      const variationElements = this.extractElements(dom, sel);
+      const variationElements = this.extractElementsSync(dom, sel);
 
       if (variationElements.length > 0) {
         if (process.env.SCRAPER_DEBUG === '1')
           console.log(`Found ${variationElements.length} variation elements with selector: ${sel}`);
 
         for (const element of variationElements) {
+          // Check if the element itself is a radio button
+          const isRadioButton = element.tagName === 'INPUT' && element.getAttribute('type') === 'radio';
           // Look for variation options in select elements
           const selectElements = element.querySelectorAll(
             'select[name*="attribute"], select[class*="variation"], select[class*="attribute"]',
           );
 
-          if (selectElements.length > 0) {
+          // Also look for radio button variations
+          const radioElements = element.querySelectorAll(
+            'input[type="radio"][name*="option"], input[type="radio"][name*="attribute"], input[type="radio"][name*="variation"]',
+          );
+
+          if (selectElements.length > 0 || radioElements.length > 0 || isRadioButton) {
             if (process.env.SCRAPER_DEBUG === '1')
-              console.log(`Found ${selectElements.length} variation select elements`);
+              console.log(`Found ${selectElements.length} variation select elements and ${radioElements.length} radio elements`);
 
             // Only create variations if we have actual variation data (different prices, SKUs, etc.)
             // Don't create variations for every attribute option to avoid CSV duplication
@@ -1029,7 +1037,11 @@ export class GenericAdapter extends BaseAdapter {
             const hasPriceVariations = this.checkForPriceVariations(dom);
             const hasSkuVariations = this.checkForSkuVariations(dom);
 
-            if (hasPriceVariations || hasSkuVariations) {
+            // For radio buttons, we'll create variations even without price/SKU differences
+            // since they represent different product options (like colors)
+            const hasRadioVariations = radioElements.length > 0;
+
+            if (hasPriceVariations || hasSkuVariations || hasRadioVariations) {
               if (process.env.SCRAPER_DEBUG === '1')
                 console.log('Found actual price/SKU variations, creating variation records');
 
@@ -1038,6 +1050,8 @@ export class GenericAdapter extends BaseAdapter {
                 const options = select.querySelectorAll('option[value]:not([value=""])');
                 const attributeName =
                   select.getAttribute('name') || select.getAttribute('data-attribute') || 'Unknown';
+                // Convert to WooCommerce taxonomy format with pa_ prefix
+                const taxonomyAttributeName = `pa_${attributeName.toLowerCase().replace(/\s+/g, '_')}`;
 
                 if (process.env.SCRAPER_DEBUG === '1')
                   console.log(`Found ${options.length} options for attribute: ${attributeName}`);
@@ -1057,9 +1071,152 @@ export class GenericAdapter extends BaseAdapter {
                       stockStatus: 'instock',
                       images: [],
                       attributeAssignments: {
-                        [attributeName!]: value,
+                        [taxonomyAttributeName]: text, // Use the text with pa_ prefix
                       },
                     });
+                  }
+                }
+              }
+
+              // Process single radio button (if the element itself is a radio button)
+              if (isRadioButton) {
+                if (process.env.SCRAPER_DEBUG === '1')
+                  console.log(`Processing single radio button: ${element.getAttribute('name')} = ${element.getAttribute('value')}`);
+
+                const name = element.getAttribute('name') || 'unknown';
+                const value = element.getAttribute('value') || '';
+
+                // Try to find the Hebrew text from associated elements
+                let text = '';
+
+                // Look for data-original-title in sibling img elements
+                const parentLabel = element.closest('label');
+                if (parentLabel) {
+                  const img = parentLabel.querySelector('img[data-original-title]');
+                  if (img) {
+                    text = img.getAttribute('data-original-title') || '';
+                  }
+                }
+
+                // Fallback to other attributes
+                if (!text) {
+                  text = element.getAttribute('data-original-title') ||
+                         element.getAttribute('title') ||
+                         value;
+                }
+
+                // Try to find the attribute name from the control label
+                let attributeName = name.replace(/^option\[(\d+)\]$/, 'Option $1')
+                  .replace(/[[\]]/g, '')
+                  .replace(/[_-]/g, ' ')
+                  .trim();
+                // Look for the control label in the same options_group
+                const optionsGroup = element.closest('.options_group');
+                if (optionsGroup) {
+                  const controlLabel = optionsGroup.querySelector('label.control-label');
+                  if (controlLabel) {
+                    attributeName = controlLabel.textContent?.trim() || attributeName;
+                  }
+                }
+
+                // Convert to WooCommerce taxonomy format with pa_ prefix
+                const taxonomyAttributeName = `pa_${attributeName.toLowerCase().replace(/\s+/g, '_')}`;
+
+                if (value && text && !this.isPlaceholderValue(text)) {
+                  const sku = `${baseSku}-${value}`;
+
+                  variations.push({
+                    sku,
+                    regularPrice: basePrice,
+                    taxClass: '',
+                    stockStatus: 'instock',
+                    images: [],
+                    attributeAssignments: {
+                      [taxonomyAttributeName]: text, // Use the Hebrew text with pa_ prefix
+                    },
+                  });
+
+                  if (process.env.SCRAPER_DEBUG === '1')
+                    console.log(`Created single radio variation: ${attributeName} = ${text} (value: ${value})`);
+                }
+              }
+
+              // Process radio button variations
+              if (radioElements.length > 0) {
+                if (process.env.SCRAPER_DEBUG === '1')
+                  console.log(`Processing ${radioElements.length} radio button variations`);
+
+                // Group radio buttons by name attribute
+                const radioGroups = new Map<string, HTMLInputElement[]>();
+                Array.from(radioElements).forEach((radio) => {
+                  const name = radio.getAttribute('name') || 'unknown';
+                  if (!radioGroups.has(name)) {
+                    radioGroups.set(name, []);
+                  }
+                  radioGroups.get(name)!.push(radio as HTMLInputElement);
+                });
+
+                // Create variations for each radio group
+                for (const [groupName, radios] of radioGroups) {
+                  let attributeName = groupName.replace(/^option\[(\d+)\]$/, 'Option $1')
+                    .replace(/[[\]]/g, '')
+                    .replace(/[_-]/g, ' ')
+                    .trim();
+
+                  // Try to find the attribute name from the control label
+                  if (radios.length > 0) {
+                    const optionsGroup = radios[0].closest('.options_group');
+                    if (optionsGroup) {
+                      const controlLabel = optionsGroup.querySelector('label.control-label');
+                      if (controlLabel) {
+                        attributeName = controlLabel.textContent?.trim() || attributeName;
+                      }
+                    }
+                  }
+
+                  // Convert to WooCommerce taxonomy format with pa_ prefix
+                  const taxonomyAttributeName = `pa_${attributeName.toLowerCase().replace(/\s+/g, '_')}`;
+
+                  for (const radio of radios) {
+                    const value = radio.getAttribute('value') || '';
+
+                    // Try to find the Hebrew text from associated elements
+                    let text = '';
+
+                    // Look for data-original-title in sibling img elements
+                    const parentLabel = radio.closest('label');
+                    if (parentLabel) {
+                      const img = parentLabel.querySelector('img[data-original-title]');
+                      if (img) {
+                        text = img.getAttribute('data-original-title') || '';
+                      }
+                    }
+
+                    // Fallback to other methods
+                    if (!text) {
+                      text = this.extractText(dom, `label:has(input[value="${value}"])`) ||
+                             radio.getAttribute('data-original-title') ||
+                             radio.getAttribute('title') ||
+                             value;
+                    }
+
+                    if (value && text && !this.isPlaceholderValue(text)) {
+                      const sku = `${baseSku}-${value}`;
+
+                      variations.push({
+                        sku,
+                        regularPrice: basePrice,
+                        taxClass: '',
+                        stockStatus: 'instock',
+                        images: [],
+                        attributeAssignments: {
+                          [taxonomyAttributeName]: text, // Use the Hebrew text with pa_ prefix
+                        },
+                      });
+
+                      if (process.env.SCRAPER_DEBUG === '1')
+                        console.log(`Created radio variation: ${attributeName} = ${text} (value: ${value})`);
+                    }
                   }
                 }
               }
@@ -1235,9 +1392,18 @@ export class GenericAdapter extends BaseAdapter {
       }
     }
 
+    // Deduplicate variations by SKU
+    const uniqueVariations = new Map();
+    variations.forEach(variation => {
+      if (!uniqueVariations.has(variation.sku)) {
+        uniqueVariations.set(variation.sku, variation);
+      }
+    });
+    const deduplicatedVariations = Array.from(uniqueVariations.values());
+
     if (process.env.SCRAPER_DEBUG === '1')
-      console.log(`Extracted ${variations.length} variations total`);
-    return variations;
+      console.log(`Extracted ${variations.length} variations total, ${deduplicatedVariations.length} unique after deduplication`);
+    return deduplicatedVariations;
   }
 
 

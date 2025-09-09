@@ -395,8 +395,9 @@ describe('CSV Extended Fields Test Coverage', () => {
       const simpleProductRow = findCsvRowByValue(parentCsv, 'sku', 'SIMPLE-001');
 
       // Should not have attribute_default columns for simple products
-      expect(simpleProductRow?.['attribute_default:Color']).toBeUndefined();
-      expect(simpleProductRow?.['attribute_default:Size']).toBeUndefined();
+      // Accept either absence (undefined) or empty cell when headers are global
+      expect([undefined, '']).toContain(simpleProductRow?.['attribute_default:Color']);
+      expect([undefined, '']).toContain(simpleProductRow?.['attribute_default:Size']);
     });
 
     it('should extract attribute column pairs correctly', async () => {

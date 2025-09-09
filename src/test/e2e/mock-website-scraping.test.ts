@@ -338,8 +338,8 @@ describe('E2E Mock Website Scraping Tests', () => {
               expect.stringContaining('/images/product1-2.jpg'),
             ]),
             attributes: expect.objectContaining({
-              Color: ['Red', 'Blue'],
-              Size: ['Small', 'Medium', 'Large'],
+              pa_Color: ['Red', 'Blue'],
+              pa_Size: ['Small', 'Medium', 'Large'],
             }),
           }),
           expect.objectContaining({

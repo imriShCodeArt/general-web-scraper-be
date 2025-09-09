@@ -1,7 +1,8 @@
 import { NormalizedProduct } from '../../domain/types';
-import { debug } from '../../infrastructure/logging/logger';
+import { debug, warn } from '../../infrastructure/logging/logger';
 import { writeToBuffer } from 'fast-csv';
 import { Transform } from 'stream';
+import { getFeatureFlags } from '../../config/feature-flags';
 
 /**
  * Interface for CSV writing operations
@@ -38,8 +39,31 @@ export class FastCsvWriter implements CsvWriter {
   }
 }
 
+/**
+ * Generates WooCommerce-compatible CSV files for product imports.
+ *
+ * This class handles the creation of parent and variation CSV files that conform to
+ * WooCommerce's CSV import specification. For detailed information about the CSV format,
+ * column requirements, and validation rules, see:
+ *
+ * @see {@link ../../../woocommerce_csv_spec.md WooCommerce CSV Import Specification}
+ *
+ * Key features:
+ * - Generates parent CSV with attribute definitions and metadata
+ * - Creates variation CSV with proper attribute mappings
+ * - Ensures column name consistency between parent and variations
+ * - Handles both custom and taxonomy attributes (pa_ prefixed)
+ * - Validates attribute data flags and naming conventions
+ */
 export class CsvGenerator {
-  constructor(private csvWriter: CsvWriter = new FastCsvWriter()) {}
+  private featureFlags = getFeatureFlags();
+
+  constructor(private csvWriter: CsvWriter = new FastCsvWriter()) {
+    // Log feature flags status for debugging
+    if (this.featureFlags.rolloutDebugMode) {
+      debug('CsvGenerator initialized with feature flags', this.featureFlags);
+    }
+  }
 
   /**
    * Clean up any resources used by the CSV generator
@@ -51,7 +75,31 @@ export class CsvGenerator {
   }
 
   /**
+   * Legacy method to get attribute keys (pre-Phase 4 behavior)
+   * Used when batch-wide attribute union feature flag is disabled
+   */
+  private getLegacyAttributeKeys(products: NormalizedProduct[]): string[] {
+    const keys = new Set<string>();
+    for (const product of products) {
+      if (product.attributes) {
+        for (const key of Object.keys(product.attributes)) {
+          keys.add(key);
+        }
+      }
+    }
+    return Array.from(keys);
+  }
+
+  /**
    * Generate Parent CSV for WooCommerce import
+   *
+   * Creates a parent CSV file that defines the product structure and attribute sets.
+   * Each row represents a variable product with its attribute definitions.
+   *
+   * @see {@link ../../../woocommerce_csv_spec.md#2-parent-csv-variable-products Parent CSV Format}
+   *
+   * @param products Array of normalized products
+   * @returns CSV data as string
    */
   async generateParentCsv(products: NormalizedProduct[]): Promise<string> {
     debug('generateParentCsv called with products', { count: products.length });
@@ -63,6 +111,67 @@ export class CsvGenerator {
       deduplicated: uniqueProducts.length,
     });
 
+    // Phase 4: Build batch-wide attribute union for parent CSV headers
+    // Feature flag: batchWideAttributeUnion
+    const unionKeys = this.featureFlags.batchWideAttributeUnion
+      ? Array.from(this.aggregateAttributesAcrossProducts(uniqueProducts))
+      : this.getLegacyAttributeKeys(uniqueProducts);
+    const attributeHeaderNames = unionKeys.map((raw) => this.attributeDisplayName(raw));
+
+    if (this.featureFlags.rolloutDebugMode) {
+      debug('Batch-wide attribute union', {
+        enabled: this.featureFlags.batchWideAttributeUnion,
+        unionKeys: unionKeys.length,
+        attributeHeaderNames: attributeHeaderNames.length,
+      });
+    }
+    // Determine which attributes have defaults (only for variable products)
+    const defaultEligibleRawKeys = new Set<string>();
+    for (const p of uniqueProducts) {
+      if (p.productType === 'variable' && p.variations && p.variations.length > 0) {
+        for (const key of Object.keys(p.attributes || {})) {
+          defaultEligibleRawKeys.add(key);
+        }
+        for (const v of p.variations) {
+          for (const key of Object.keys(v.attributeAssignments || {})) {
+            defaultEligibleRawKeys.add(key);
+          }
+        }
+      }
+    }
+
+    // Build explicit headers so every row includes all attribute columns
+    const baseHeaders = [
+      'ID',
+      'post_title',
+      'post_name',
+      'post_status',
+      'post_content',
+      'post_excerpt',
+      'post_parent',
+      'post_type',
+      'menu_order',
+      'sku',
+      'stock_status',
+      'images',
+      'tax:product_type',
+      'tax:product_cat',
+      'description',
+      'regular_price',
+      'sale_price',
+    ];
+    const attributeHeaders: string[] = [];
+    for (let idx = 0; idx < attributeHeaderNames.length; idx++) {
+      const name = attributeHeaderNames[idx];
+      const rawKey = unionKeys[idx];
+      attributeHeaders.push(`attribute:${name}`);
+      attributeHeaders.push(`attribute_data:${name}`);
+      if (defaultEligibleRawKeys.has(rawKey)) {
+        attributeHeaders.push(`attribute_default:${name}`);
+      }
+    }
+    const allHeaders = [...baseHeaders, ...attributeHeaders];
+
     const csvData = uniqueProducts.map((product, index) => {
       // Build attributes from product.attributes plus union of variation attributeAssignments
       const aggregatedAttributes: Record<string, string[]> = {};
@@ -71,14 +180,35 @@ export class CsvGenerator {
         const values = Array.from(new Set((vals || []).filter(Boolean)));
         aggregatedAttributes[key] = values;
       }
-      // Merge from variations
+      // Merge from variations - this is the main source of attributes for variable products
       for (const v of product.variations || []) {
         for (const [key, val] of Object.entries(v.attributeAssignments || {})) {
+          // Runtime guardrails for attribute keys
+          if (!/^pa_/i.test(key)) {
+            warn('⚠️ Runtime check (CSV parent): variation attribute key without pa_ prefix', {
+              productSku: product.sku,
+              key,
+            });
+          }
+          if (/\s/.test(key)) {
+            warn('⚠️ Runtime check (CSV parent): variation attribute key contains spaces', {
+              productSku: product.sku,
+              key,
+            });
+          }
           const existing = aggregatedAttributes[key] || [];
           if (val && !existing.includes(val)) existing.push(val);
           aggregatedAttributes[key] = existing;
         }
       }
+
+      debug('Aggregated attributes for product', {
+        productTitle: product.title,
+        productType: product.productType,
+        attributesFromProduct: Object.keys(product.attributes || {}),
+        attributesFromVariations: product.variations?.map(v => Object.keys(v.attributeAssignments || {})) || [],
+        finalAggregatedAttributes: Object.keys(aggregatedAttributes),
+      });
 
       const row: Record<string, string> = {
         ID: '', // Will be auto-generated by WooCommerce
@@ -105,30 +235,27 @@ export class CsvGenerator {
         sale_price: product.salePrice || '',
       };
 
-      // Add attributes per Woo CSV Import Suite rules
-      // attribute:<Name> = pipe-separated values
-      // attribute_default:<Name> = default value (variable products)
-      // attribute_data:<Name> = position|visible|variation (variation flag only for variable products)
+      // Add attributes per Woo CSV Import Suite rules using the union keys
+      // attribute:<Name>, attribute_data:<Name>, attribute_default:<Name>
       const isVariable = product.productType === 'variable';
-      let position = 0;
       const firstVariation = (product.variations || [])[0];
+      for (let i = 0; i < unionKeys.length; i++) {
+        const rawName = unionKeys[i];
+        const headerName = this.attributeDisplayName(rawName);
+        const values = aggregatedAttributes[rawName] || [];
 
-      for (const [rawName, values] of Object.entries(aggregatedAttributes)) {
-        const displayName = this.attributeDisplayName(rawName);
-        const headerName = displayName; // use local attribute naming like in examples (e.g., Color, Size)
-
-        row[`attribute:${headerName}`] = (values || []).join(' | ');
+        // position|visible|is_taxonomy|in_variations
         const visible = 1;
         const isTaxonomy = /^pa_/i.test(rawName) ? 1 : 0;
         const inVariations = isVariable ? 1 : 0;
-        // position|visible|is_taxonomy|in_variations
-        row[`attribute_data:${headerName}`] =
-          `${position}|${visible}|${isTaxonomy}|${inVariations}`;
 
-        // Default attribute per first variation when variable
-        if (isVariable && firstVariation && firstVariation.attributeAssignments) {
+        row[`attribute:${headerName}`] = values.join(' | ');
+        row[`attribute_data:${headerName}`] = `${i}|${visible}|${isTaxonomy}|${inVariations}`;
+
+        if (defaultEligibleRawKeys.has(rawName) && isVariable && firstVariation && firstVariation.attributeAssignments) {
           const fv =
             firstVariation.attributeAssignments[rawName] ||
+            firstVariation.attributeAssignments[this.attributeDisplayName(rawName)] ||
             firstVariation.attributeAssignments[this.cleanAttributeName(rawName)] ||
             firstVariation.attributeAssignments[`pa_${this.cleanAttributeName(rawName)}`] ||
             '';
@@ -136,8 +263,6 @@ export class CsvGenerator {
             row[`attribute_default:${headerName}`] = fv;
           }
         }
-
-        position++;
       }
 
       return row;
@@ -147,7 +272,7 @@ export class CsvGenerator {
 
     try {
       const buffer = await this.csvWriter.writeToBuffer(csvData, {
-        headers: true,
+        headers: allHeaders,
         quote: true,
         escape: '"',
       });
@@ -160,6 +285,15 @@ export class CsvGenerator {
 
   /**
    * Generate Variation CSV for WooCommerce import
+   *
+   * Creates a variation CSV file that defines individual product variations.
+   * Each row represents a specific combination of attribute values with its own
+   * SKU, price, and inventory data.
+   *
+   * @see {@link ../../../woocommerce_csv_spec.md#3-variation-csv-child-rows Variation CSV Format}
+   *
+   * @param products Array of normalized products
+   * @returns CSV data as string
    */
   async generateVariationCsv(products: NormalizedProduct[]): Promise<string> {
     const variationRows: Record<string, string>[] = [];
@@ -185,13 +319,35 @@ export class CsvGenerator {
         }
         for (const v of product.variations || []) {
           for (const k of Object.keys(v.attributeAssignments || {})) {
+            if (!/^pa_/i.test(k)) {
+              warn('⚠️ Runtime check (CSV variation): variation attribute key without pa_ prefix', {
+                productSku: product.sku,
+                key: k,
+              });
+            }
+            if (/\s/.test(k)) {
+              warn('⚠️ Runtime check (CSV variation): variation attribute key contains spaces', {
+                productSku: product.sku,
+                key: k,
+              });
+            }
             const list = aggregatedAttributes[k] || [];
             aggregatedAttributes[k] = list;
           }
         }
         for (const rawName of Object.keys(aggregatedAttributes)) {
+          // Use display name and, when applicable, raw pa_* name in meta attribute headers
           const displayName = this.attributeDisplayName(rawName);
+          if (!/^pa_/i.test(rawName)) {
+            warn('⚠️ Runtime check (CSV variation headers): non pa_ attribute encountered', {
+              rawName,
+              productSku: product.sku,
+            });
+          }
           attributeHeadersSet.add(`meta:attribute_${displayName}`);
+          if (/^pa_/i.test(rawName)) {
+            attributeHeadersSet.add(`meta:attribute_${rawName}`);
+          }
         }
         debug('Product is variable, processing variations');
         for (const variation of product.variations) {
@@ -213,16 +369,19 @@ export class CsvGenerator {
             images: ((variation.images[0] || product.images[0] || '') as string).toString(),
           };
 
-          // Add attribute values per variation using meta:attribute_Name columns as in examples
+          // Add attribute values per variation using meta:attribute_<Name> columns
           const assignments = variation.attributeAssignments || {};
           // Ensure all known attribute headers exist on this row (fill missing as empty)
           for (const header of attributeHeadersSet) {
             row[header] = row[header] || '';
           }
           for (const [rawName, attrValue] of Object.entries(assignments)) {
+            // Populate display-name header and, when applicable, raw pa_* header
             const displayName = this.attributeDisplayName(rawName);
-            const header = `meta:attribute_${displayName}`;
-            row[header] = attrValue;
+            row[`meta:attribute_${displayName}`] = attrValue as string;
+            if (/^pa_/i.test(rawName)) {
+              row[`meta:attribute_${rawName}`] = attrValue as string;
+            }
           }
 
           variationRows.push(row);
@@ -239,6 +398,16 @@ export class CsvGenerator {
 
     if (variationRows.length === 0) {
       return '';
+    }
+
+    // Deduplicate variation rows by SKU (keep first occurrence)
+    const seenSku = new Set<string>();
+    const dedupedRows: Record<string, string>[] = [];
+    for (const row of variationRows) {
+      const sku = row.sku;
+      if (!sku || seenSku.has(sku)) continue;
+      seenSku.add(sku);
+      dedupedRows.push(row);
     }
 
     // Build stable headers: base columns + any dynamic meta:attribute_* columns discovered across products
@@ -265,7 +434,7 @@ export class CsvGenerator {
     debug('generateVariationCsv completed', { rows: variationRows.length, headers });
 
     try {
-      const buffer = await this.csvWriter.writeToBuffer(variationRows, {
+      const buffer = await this.csvWriter.writeToBuffer(dedupedRows, {
         headers,
         quote: true,
         escape: '"',
@@ -332,6 +501,26 @@ export class CsvGenerator {
     const withoutPrefix = rawName.replace(/^pa_/i, '');
     const cleaned = withoutPrefix.replace(/[_-]+/g, ' ').trim().toLowerCase();
     return cleaned.replace(/\b\w/g, (c) => c.toUpperCase());
+  }
+
+  /**
+   * Aggregate attributes across products (union) - exposed for instrumentation
+   */
+  // eslint-disable-next-line class-methods-use-this
+  private aggregateAttributesAcrossProducts(products: NormalizedProduct[]): Set<string> {
+    const keys = new Set<string>();
+    for (const product of products) {
+      for (const key of Object.keys(product.attributes || {})) {
+        keys.add(key);
+      }
+      for (const variation of product.variations || []) {
+        for (const key of Object.keys(variation.attributeAssignments || {})) {
+          keys.add(key);
+        }
+      }
+    }
+    debug('🔍 DEBUG: aggregateAttributesAcrossProducts keys', Array.from(keys));
+    return keys;
   }
 
   /**
