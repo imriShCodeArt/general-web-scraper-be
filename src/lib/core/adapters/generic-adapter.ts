@@ -1,6 +1,7 @@
 import { BaseAdapter } from './base-adapter';
 import { extractWithFallbacks as extractWithFallbacksHelper } from '../../helpers/dom';
 import { applyTransforms as applyTransformsHelper, applyAttributeTransforms } from '../../helpers/transforms';
+import { parsePrice, extractStockStatus } from '../../helpers/parse';
 import { RecipeConfig, RawProduct, RawVariation, ValidationError } from '../../domain/types';
 import { ValidationErrorImpl } from '../../utils/error-handler';
 import { JSDOM } from 'jsdom';
@@ -543,7 +544,7 @@ export class GenericAdapter extends BaseAdapter {
     for (const sel of selectorArray) {
       const stockText = this.extractText(dom, sel);
       if (stockText) {
-        return this.normalizeStockText(stockText);
+        return extractStockStatus(dom, sel);
       }
     }
 
@@ -557,14 +558,14 @@ export class GenericAdapter extends BaseAdapter {
     if (Array.isArray(selector)) {
       // Try each selector until one works
       for (const sel of selector) {
-        const status = this.extractStockStatus(dom, sel);
+        const status = extractStockStatus(dom, sel);
         if (status && status.trim()) {
           return status;
         }
       }
       return 'instock';
     }
-    return this.extractStockStatus(dom, selector);
+    return extractStockStatus(dom, selector);
   }
 
   /**
@@ -625,14 +626,16 @@ export class GenericAdapter extends BaseAdapter {
     if (Array.isArray(selector)) {
       // Try each selector until one works
       for (const sel of selector) {
-        const price = this.extractPrice(dom, sel);
+        const priceText = this.extractText(dom, sel);
+        const price = parsePrice(priceText);
         if (price && price.trim()) {
           return price;
         }
       }
       return '';
     }
-    return this.extractPrice(dom, selector);
+    const priceText = this.extractText(dom, selector);
+    return parsePrice(priceText);
   }
 
   /**
@@ -1328,7 +1331,7 @@ export class GenericAdapter extends BaseAdapter {
           if (sku && !variations.some((v) => v.sku === sku)) {
             variations.push({
               sku,
-              regularPrice: this.cleanPrice(price || ''),
+              regularPrice: parsePrice(price || ''),
               taxClass: '',
               stockStatus: 'instock',
               images: [],
@@ -1596,7 +1599,7 @@ export class GenericAdapter extends BaseAdapter {
           const saleText = saleElement.textContent?.trim();
           if (saleText && this.isValidPrice(saleText)) {
             if (process.env.SCRAPER_DEBUG === '1') console.log(`Found sale price: ${saleText}`);
-            return this.cleanPrice(saleText);
+            return parsePrice(saleText);
           }
         }
       }
@@ -1615,7 +1618,7 @@ export class GenericAdapter extends BaseAdapter {
           if (priceText && this.isValidPrice(priceText)) {
             if (process.env.SCRAPER_DEBUG === '1')
               console.log(`Found sale price from main selector: ${priceText}`);
-            return this.cleanPrice(priceText);
+            return parsePrice(priceText);
           }
         }
       }
