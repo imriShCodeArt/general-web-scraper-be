@@ -23,7 +23,7 @@ program
     // in real usage this would invoke the scraping pipeline.
     const productCount = Number(opts.max) || 3;
     const products = Array.from({ length: productCount }).map((_, i) =>
-      factories.variableProduct({ id: `p${i + 1}`, sku: `SKU-${i + 1}` })
+      factories.variableProduct({ id: `p${i + 1}`, sku: `SKU-${i + 1}` }),
     );
 
     const generator = new CsvGenerator();
