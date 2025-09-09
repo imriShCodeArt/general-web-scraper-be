@@ -8,22 +8,22 @@ import { PerformanceResilience } from '../../utils/performance-resilience';
 
 /**
  * Base adapter class that provides common functionality for all site adapters.
- * 
+ *
  * This abstract class defines the interface and common behavior for site-specific
  * scraping adapters. It handles HTTP requests, DOM parsing, element extraction,
  * and provides performance optimizations through caching and retry mechanisms.
- * 
+ *
  * @see {@link ../../../woocommerce_csv_spec.md WooCommerce CSV Import Specification}
  * @see {@link ../services/scraping-service.ts ScrapingService}
  * @see {@link ../../utils/performance-resilience.ts PerformanceResilience}
- * 
+ *
  * Key features:
  * - HTTP client abstraction (standard and Puppeteer)
  * - DOM parsing and element extraction
  * - Performance optimizations with caching and retry
  * - Error handling and validation
  * - Recipe-based configuration support
- * 
+ *
  * Subclasses should implement:
  * - `extractProduct()`: Main product extraction logic
  * - `extractImages()`: Image URL extraction

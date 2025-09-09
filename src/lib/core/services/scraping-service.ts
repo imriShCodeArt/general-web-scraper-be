@@ -21,16 +21,16 @@ import pino from 'pino';
 
 /**
  * Main scraping service that orchestrates the web scraping process.
- * 
+ *
  * This service handles the complete scraping workflow from URL processing
  * to CSV generation, including job management, error handling, and performance
  * monitoring. It integrates with adapters, normalization, and CSV generation
  * to produce WooCommerce-compatible output.
- * 
+ *
  * @see {@link ../../../woocommerce_csv_spec.md WooCommerce CSV Import Specification}
  * @see {@link ../adapters/README.md Site Adapters}
  * @see {@link ../normalization/normalization.ts Normalization Toolkit}
- * 
+ *
  * Key features:
  * - Job queue management with concurrency control
  * - Site-specific adapter selection and execution
