@@ -6,5 +6,8 @@ export * from './transforms';
 export * from './url';
 export * from './text';
 export * from './sku';
+export * from './dom-loader';
+export * from './parse';
+export * from './json';
 
 

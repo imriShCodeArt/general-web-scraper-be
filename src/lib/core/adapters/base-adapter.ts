@@ -4,6 +4,9 @@ import { PuppeteerHttpClient } from '../../infrastructure/http/puppeteer-http-cl
 import { JSDOM } from 'jsdom';
 import { applyTransforms } from '../../helpers/transforms';
 import { resolveUrl as resolveUrlHelper } from '../../helpers/url';
+import { getDomWithStrategy, createDomLoaderStrategy } from '../../helpers/dom-loader';
+import { parsePrice, extractStockStatus } from '../../helpers/parse';
+import { extractJsonFromScriptTags } from '../../helpers/json';
 import { ErrorFactory, ErrorCodes } from '../../utils/error-handler';
 import { isDebugEnabled } from '../../infrastructure/logging/logger';
 import { PerformanceResilience } from '../../utils/performance-resilience';
@@ -296,7 +299,7 @@ export abstract class BaseAdapter implements SiteAdapter<RawProduct> {
   protected extractPrice(dom: JSDOM, selector: string): string {
     try {
       const priceText = this.extractText(dom, selector);
-      return this.cleanPrice(priceText);
+      return parsePrice(priceText);
     } catch (error) {
       console.warn(`Failed to extract price from selector '${selector}':`, error);
       return '';
@@ -308,8 +311,7 @@ export abstract class BaseAdapter implements SiteAdapter<RawProduct> {
    */
   protected extractStockStatus(dom: JSDOM, selector: string): string {
     try {
-      const stockText = this.extractText(dom, selector);
-      return this.normalizeStockText(stockText);
+      return extractStockStatus(dom, selector);
     } catch (error) {
       console.warn(`Failed to extract stock status from selector '${selector}':`, error);
       return 'instock'; // Default to in stock
@@ -410,7 +412,7 @@ export abstract class BaseAdapter implements SiteAdapter<RawProduct> {
         if (sku) {
           variations.push({
             sku,
-            regularPrice: this.cleanPrice(price || ''),
+            regularPrice: parsePrice(price || ''),
             taxClass: '',
             stockStatus: 'instock',
             images: [],
@@ -450,7 +452,7 @@ export abstract class BaseAdapter implements SiteAdapter<RawProduct> {
         if (sku) {
           variations.push({
             sku,
-            regularPrice: this.cleanPrice(price || ''),
+            regularPrice: parsePrice(price || ''),
             taxClass: '',
             stockStatus: 'instock',
             images: [],
@@ -476,49 +478,24 @@ export abstract class BaseAdapter implements SiteAdapter<RawProduct> {
     return resolveUrlHelper(this.baseUrl, url);
   }
 
-  /**
-   * Clean price text
-   */
-  protected cleanPrice(priceText: string): string {
-    try {
-      return priceText
-        .replace(/[^\d.,]/g, '')
-        .replace(',', '.')
-        .trim();
-    } catch (error) {
-      console.warn(`Failed to clean price text '${priceText}':`, error);
-      return '';
-    }
-  }
-
-  /**
-   * Normalize stock text
-   */
-  protected normalizeStockText(stockText: string): string {
-    try {
-      const text = stockText.toLowerCase();
-
-      if (text.includes('out') || text.includes('unavailable') || text.includes('0')) {
-        return 'outofstock';
-      }
-
-      if (text.includes('in') || text.includes('available') || text.includes('stock')) {
-        return 'instock';
-      }
-
-      return 'instock'; // Default to in stock
-    } catch (error) {
-      console.warn(`Failed to normalize stock text '${stockText}':`, error);
-      return 'instock';
-    }
-  }
 
   /**
    * Extract embedded JSON data with error handling and proper typing
    */
   protected async extractEmbeddedJson(url: string, selectors: string[]): Promise<JsonData<unknown>[]> {
     try {
-      return await this.httpClient.extractEmbeddedJson(url, selectors);
+      const dom = await this.getDom(url);
+      const matchers = selectors.map(selector => ({
+        selector,
+        attribute: 'textContent',
+      }));
+
+      const jsonData = extractJsonFromScriptTags(dom, matchers);
+      return Object.entries(jsonData).map(([selector, data]) => ({
+        selector,
+        data,
+        url,
+      }));
     } catch (error) {
       console.warn(`Failed to extract embedded JSON from '${url}':`, error);
       return [];
@@ -599,21 +576,18 @@ export abstract class BaseAdapter implements SiteAdapter<RawProduct> {
    */
   protected async getDom(url: string, options?: { waitForSelectors?: string[] }): Promise<JSDOM> {
     try {
-      // Smart Puppeteer usage: use it when explicitly enabled in recipe
-      const needsJavaScript = this.config.behavior?.useHeadlessBrowser === true;
+      const strategy = createDomLoaderStrategy(
+        this.httpClient,
+        this.puppeteerClient || undefined,
+        this.config.behavior?.useHeadlessBrowser === true,
+      );
 
-      if (needsJavaScript && this.puppeteerClient) {
-        try {
-          console.log('🔍 DEBUG: Using Puppeteer for JavaScript execution:', url);
-          return await this.puppeteerClient.getDom(url, options);
-        } catch (error) {
-          console.warn('❌ DEBUG: Puppeteer failed, falling back to JSDOM:', error);
-          return await this.httpClient.getDom(url);
-        }
-      } else {
-        console.log('🔍 DEBUG: Using JSDOM (faster, no JavaScript execution):', url);
-        return await this.httpClient.getDom(url);
-      }
+      return await getDomWithStrategy(url, {
+        httpClient: this.httpClient,
+        puppeteerClient: this.puppeteerClient || undefined,
+        useHeadless: this.config.behavior?.useHeadlessBrowser === true,
+        timeout: 30000,
+      }, strategy);
     } catch (error) {
       throw ErrorFactory.createScrapingError(
         `Failed to get DOM for ${url}: ${error}`,
