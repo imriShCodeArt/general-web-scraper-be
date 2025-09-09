@@ -13,5 +13,7 @@ export * from './concurrency';
 export * from './metrics';
 export * from './api';
 export * from './naming';
+export * from './retry';
+export * from './errors';
 
 
