@@ -1,0 +1,42 @@
+name: Smoke (Live - Manual)
+
+on:
+  workflow_dispatch:
+    inputs:
+      archiveUrl:
+        description: 'Archive URL to scrape'
+        required: false
+        default: 'https://shukrehut.co.il/he/%D7%9B%D7%99%D7%A1%D7%90%D7%95%D7%AA'
+      max:
+        description: 'Max products from archive'
+        required: false
+        default: '2'
+
+jobs:
+  smoke-live:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Use Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Run live smoke
+        env:
+          SCRAPER_DEBUG: '1'
+        run: |
+          ARCHIVE_URL="${{ github.event.inputs.archiveUrl }}"
+          MAX="${{ github.event.inputs.max }}"
+          if [ -z "$ARCHIVE_URL" ]; then
+            npm run smoke:live
+          else
+            ts-node src/cli/smoke-scrape.ts --recipe 'Shuk Rehut Furniture' --archive "$ARCHIVE_URL" --max "$MAX"
+          fi
+
