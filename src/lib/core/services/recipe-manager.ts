@@ -1,6 +1,7 @@
 import { RecipeLoader } from '../../utils/recipe-loader';
 import { GenericAdapter } from '../adapters/generic-adapter';
 import { RecipeConfig, SiteAdapter, RawProductData, WooCommerceValidationResult } from '../../domain/types';
+import { buildAdapterCacheKey, validateSiteUrl } from '../../helpers';
 
 export class RecipeManager {
   private recipesDir: string;
@@ -31,14 +32,14 @@ export class RecipeManager {
     }
 
     // Validate that the recipe matches the site URL
-    if (!this.validateSiteUrl(recipe.siteUrl, siteUrl)) {
+    if (!validateSiteUrl(recipe.siteUrl, siteUrl)) {
       throw new Error(
         `Recipe '${recipe.name}' is configured for ${recipe.siteUrl}, not ${siteUrl}`,
       );
     }
 
     // Create cache key
-    const cacheKey = `${recipe.name}:${siteUrl}`;
+    const cacheKey = buildAdapterCacheKey(recipe.name, siteUrl);
 
     // Check if adapter is already cached
     if (this.adapterCache.has(cacheKey)) {
@@ -61,14 +62,14 @@ export class RecipeManager {
     const recipe = await this.recipeLoader.loadRecipeFromFile(recipeFilePath);
 
     // Validate that the recipe matches the site URL
-    if (!this.validateSiteUrl(recipe.siteUrl, siteUrl)) {
+    if (!validateSiteUrl(recipe.siteUrl, siteUrl)) {
       throw new Error(
         `Recipe '${recipe.name}' is configured for ${recipe.siteUrl}, not ${siteUrl}`,
       );
     }
 
     // Create cache key
-    const cacheKey = `${recipe.name}:${siteUrl}`;
+    const cacheKey = buildAdapterCacheKey(recipe.name, siteUrl);
 
     // Check if adapter is already cached
     if (this.adapterCache.has(cacheKey)) {
@@ -150,7 +151,7 @@ export class RecipeManager {
    * Get cached adapter
    */
   getCachedAdapter(recipeName: string, siteUrl: string): SiteAdapter | undefined {
-    const cacheKey = `${recipeName}:${siteUrl}`;
+    const cacheKey = buildAdapterCacheKey(recipeName, siteUrl);
     return this.adapterCache.get(cacheKey);
   }
 
@@ -158,35 +159,14 @@ export class RecipeManager {
    * Remove adapter from cache
    */
   removeCachedAdapter(recipeName: string, siteUrl: string): boolean {
-    const cacheKey = `${recipeName}:${siteUrl}`;
+    const cacheKey = buildAdapterCacheKey(recipeName, siteUrl);
     return this.adapterCache.delete(cacheKey);
   }
 
   /**
    * Validate that a recipe's site URL matches the requested site URL
    */
-  private validateSiteUrl(recipeUrl: string, siteUrl: string): boolean {
-    try {
-      // Handle wildcard URLs
-      if (recipeUrl === '*') {
-        return true; // Generic recipe matches any site
-      }
-
-      if (recipeUrl.startsWith('*.')) {
-        // Wildcard subdomain matching (e.g., *.co.il)
-        const recipeDomain = recipeUrl.substring(2); // Remove "*."
-        const siteHost = new URL(siteUrl).hostname;
-        return siteHost.endsWith(recipeDomain);
-      }
-
-      // Exact hostname matching
-      const recipeHost = new URL(recipeUrl).hostname;
-      const siteHost = new URL(siteUrl).hostname;
-      return recipeHost === siteHost;
-    } catch {
-      return false;
-    }
-  }
+  // URL validation moved to helpers/recipe-utils.ts
 
   /**
    * Get recipe loader instance
