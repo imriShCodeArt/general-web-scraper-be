@@ -193,7 +193,7 @@ export abstract class BaseAdapter implements SiteAdapter<RawProduct> {
   protected async extractElements(dom: JSDOM, selector: string | string[], scope?: Element): Promise<Element[]> {
     try {
       const selectors = Array.isArray(selector) ? selector : [selector];
-      
+
       // Use performance resilience utilities for element discovery
       const elements = await PerformanceResilience.discoverElements(dom, selectors, scope, {
         maxAttempts: 2,
@@ -373,7 +373,7 @@ export abstract class BaseAdapter implements SiteAdapter<RawProduct> {
     try {
       const variations: RawProductData['variations'] = [];
       const variationElements = await this.extractElements(dom, selector, scope);
-      
+
       if (isDebugEnabled()) {
         console.log('🔍 DEBUG[BaseAdapter]: extractVariations elements count', variationElements.length);
       }
@@ -413,7 +413,7 @@ export abstract class BaseAdapter implements SiteAdapter<RawProduct> {
     try {
       const variations: RawProductData['variations'] = [];
       const variationElements = this.extractElementsSync(dom, selector);
-      
+
       if (isDebugEnabled()) {
         console.log('🔍 DEBUG[BaseAdapter]: extractVariations elements count', variationElements.length);
       }

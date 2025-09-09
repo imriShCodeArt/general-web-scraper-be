@@ -329,7 +329,7 @@ export class GenericAdapter extends BaseAdapter {
   /**
    * Extract images using the configured selector
    */
-  protected override async extractImages(dom: JSDOM, selector: string | string[], scope?: Element): Promise<string[]> {
+  protected override async extractImages(dom: JSDOM, selector: string | string[], _scope?: Element): Promise<string[]> {
     const selectorArray = Array.isArray(selector) ? selector : [selector];
 
     // Shopify-focused gallery detection
@@ -693,7 +693,7 @@ export class GenericAdapter extends BaseAdapter {
   protected override async extractAttributes(
     dom: JSDOM,
     selector: string | string[],
-    scope?: Element,
+    _scope?: Element,
   ): Promise<Record<string, string[]>> {
     const selectorArray = Array.isArray(selector) ? selector : [selector];
     const attributes: Record<string, string[]> = {};
@@ -756,7 +756,7 @@ export class GenericAdapter extends BaseAdapter {
   /**
    * Extract variations using the configured selector - improved for WooCommerce
    */
-  protected override async extractVariations(dom: JSDOM, selector: string | string[], scope?: Element): Promise<RawVariation[] | undefined> {
+  protected override async extractVariations(dom: JSDOM, selector: string | string[], _scope?: Element): Promise<RawVariation[] | undefined> {
     if (!selector) return [];
 
     const selectorArray = Array.isArray(selector) ? selector : [selector];

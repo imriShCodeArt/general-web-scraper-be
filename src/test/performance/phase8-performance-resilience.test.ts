@@ -56,7 +56,7 @@ describe('Phase 8: Performance & Resilience', () => {
       expect(tightened).toContain('.options_group input[type="radio"]');
       expect(tightened).toContain('.options_group select[name*="option"]');
       expect(tightened).toContain('.options_group input[name*="option"]');
-      
+
       // Should also keep original as fallback
       expect(tightened).toContain('input[type="radio"]');
       expect(tightened).toContain('select[name*="option"]');
@@ -135,7 +135,7 @@ describe('Phase 8: Performance & Resilience', () => {
   describe('Element Caching', () => {
     it('should cache elements and return cached results', () => {
       const selector = '.options_group input[type="radio"]';
-      
+
       // First call should query DOM
       const elements1 = PerformanceResilience.getCachedElements(dom, selector);
       expect(elements1).toHaveLength(2);
@@ -148,7 +148,7 @@ describe('Phase 8: Performance & Resilience', () => {
     it('should respect cache TTL', async () => {
       const selector = '.options_group input[type="radio"]';
       const shortTtl = 10; // 10ms
-      
+
       // First call
       const elements1 = PerformanceResilience.getCachedElements(dom, selector, undefined, shortTtl);
       expect(elements1).toHaveLength(2);
@@ -165,13 +165,13 @@ describe('Phase 8: Performance & Resilience', () => {
     it('should cache elements with different scopes separately', () => {
       const selector = 'input[type="radio"]';
       const scope = dom.window.document.querySelector('.options_group');
-      
+
       // Query without scope
       const elements1 = PerformanceResilience.getCachedElements(dom, selector);
-      
+
       // Query with scope
       const elements2 = PerformanceResilience.getCachedElements(dom, selector, scope!);
-      
+
       expect(elements1).toHaveLength(2); // All radio inputs
       expect(elements2).toHaveLength(2); // Radio inputs in scope
       expect(elements1).not.toBe(elements2); // Different cached results
@@ -180,10 +180,10 @@ describe('Phase 8: Performance & Resilience', () => {
     it('should provide cache statistics', () => {
       const selector1 = '.options_group input[type="radio"]';
       const selector2 = '.options_group select[name*="option"]';
-      
+
       PerformanceResilience.getCachedElements(dom, selector1);
       PerformanceResilience.getCachedElements(dom, selector2);
-      
+
       const stats = PerformanceResilience.getCacheStats();
       expect(stats.size).toBe(2);
       expect(stats.keys).toContain(selector1);
@@ -222,7 +222,7 @@ describe('Phase 8: Performance & Resilience', () => {
           maxAttempts: 2,
           baseDelay: 10,
           maxDelay: 100,
-        })
+        }),
       ).rejects.toThrow('Always fails');
     });
 
@@ -280,7 +280,7 @@ describe('Phase 8: Performance & Resilience', () => {
 
       const { result, duration } = await PerformanceResilience.measureSelectorPerformance(
         operation,
-        'test-selector'
+        'test-selector',
       );
 
       expect(result).toBe('result');
@@ -299,7 +299,7 @@ describe('Phase 8: Performance & Resilience', () => {
       await PerformanceResilience.measureSelectorPerformance(operation, 'slow-selector');
 
       expect(consoleSpy).toHaveBeenCalledWith(
-        expect.stringContaining('Slow selector \'slow-selector\' took')
+        expect.stringContaining('Slow selector \'slow-selector\' took'),
       );
 
       consoleSpy.mockRestore();
@@ -309,7 +309,7 @@ describe('Phase 8: Performance & Resilience', () => {
   describe('Cache Management', () => {
     it('should clear cache', () => {
       const selector = '.options_group input[type="radio"]';
-      
+
       PerformanceResilience.getCachedElements(dom, selector);
       expect(PerformanceResilience.getCacheStats().size).toBe(1);
 

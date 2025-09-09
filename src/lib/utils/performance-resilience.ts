@@ -50,7 +50,7 @@ export class PerformanceResilience {
         throw new Error('Operation returned null/undefined');
       } catch (error) {
         lastError = error instanceof Error ? error : new Error(String(error));
-        
+
         if (attempt === retryConfig.maxAttempts) {
           throw lastError;
         }
@@ -59,7 +59,7 @@ export class PerformanceResilience {
           retryConfig.baseDelay * Math.pow(retryConfig.backoffMultiplier, attempt - 1),
           retryConfig.maxDelay,
         );
-        
+
         await this.delay(delay);
       }
     }
@@ -78,7 +78,7 @@ export class PerformanceResilience {
   ): Element[] {
     const cacheKey = `${selector}${scope ? `::${scope.tagName}.${scope.className}` : ''}`;
     const now = Date.now();
-    
+
     // Check cache
     if (this.elementCache[cacheKey]) {
       const cached = this.elementCache[cacheKey];
@@ -91,7 +91,7 @@ export class PerformanceResilience {
 
     // Query elements
     const elements = this.queryElements(dom, selector, scope);
-    
+
     // Cache the result
     this.elementCache[cacheKey] = {
       elements,
@@ -122,7 +122,7 @@ export class PerformanceResilience {
    */
   static createTightenedSelectors(baseSelectors: string[]): string[] {
     const tightenedSelectors: string[] = [];
-    
+
     for (const selector of baseSelectors) {
       // If selector already scoped to .options_group, keep it
       if (selector.includes('.options_group')) {
@@ -133,7 +133,7 @@ export class PerformanceResilience {
       // Create scoped versions
       const scopedSelector = `.options_group ${selector}`;
       tightenedSelectors.push(scopedSelector);
-      
+
       // Keep original as fallback
       tightenedSelectors.push(selector);
     }
