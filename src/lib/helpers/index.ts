@@ -16,5 +16,6 @@ export * from './naming';
 export * from './retry';
 export * from './errors';
 export * from './recipe-schema';
+export * from './recipe-utils';
 
 
