@@ -34,7 +34,9 @@
     "quality-gate:full": "npm run test:ci && npm run mutation:ci && npm run lint && npm run type-check",
     "rollout:validate": "ts-node src/cli/rollout-validation.ts",
     "rollout:validate:debug": "ts-node src/cli/rollout-validation.ts --debug",
-    "rollout:test": "ts-node src/cli/simple-rollout-test.ts"
+    "rollout:test": "ts-node src/cli/simple-rollout-test.ts",
+    "smoke:fixtures": "ts-node src/cli/smoke-scrape.ts --recipe 'Shuk Rehut Furniture' --max 2",
+    "smoke:live": "ts-node src/cli/smoke-scrape.ts --recipe 'Shuk Rehut Furniture' --archive https://shukrehut.co.il/he/%D7%9B%D7%99%D7%A1%D7%90%D7%95%D7%AA --max 2"
   },
   "keywords": [
     "web-scraper",

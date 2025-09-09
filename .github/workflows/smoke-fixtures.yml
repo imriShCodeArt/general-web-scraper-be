@@ -1,0 +1,38 @@
+name: Smoke (Fixtures)
+
+on:
+  pull_request:
+    branches: [ development ]
+  push:
+    branches: [ development ]
+
+jobs:
+  smoke-fixtures:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Use Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Type check
+        run: npm run type-check
+
+      - name: Build (tsc)
+        run: npm run build --if-present || echo "skip build"
+
+      - name: Run unit tests
+        run: npm run test:unit
+
+      - name: Run smoke (fixtures)
+        env:
+          SCRAPER_DEBUG: '0'
+        run: npm run smoke:fixtures
+
