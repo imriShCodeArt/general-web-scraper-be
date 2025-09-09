@@ -1,4 +1,6 @@
 import { BaseAdapter } from './base-adapter';
+import { extractWithFallbacks as extractWithFallbacksHelper } from '../../helpers/dom';
+import { applyTransforms as applyTransformsHelper, applyAttributeTransforms } from '../../helpers/transforms';
 import { RecipeConfig, RawProduct, RawVariation, ValidationError } from '../../domain/types';
 import { ValidationErrorImpl } from '../../utils/error-handler';
 import { JSDOM } from 'jsdom';
@@ -195,61 +197,7 @@ export class GenericAdapter extends BaseAdapter {
     selectors: string | string[],
     fallbacks?: string[],
   ): string {
-    const selectorArray = Array.isArray(selectors) ? selectors : [selectors];
-
-    // Try primary selectors first
-    for (const selector of selectorArray) {
-      const result = this.extractText(dom, selector);
-      if (result) {
-        // Filter out price-like content for description fields
-        if (this.isPriceLike(result)) {
-          if (process.env.SCRAPER_DEBUG === '1')
-            console.log(
-              `Skipping price-like content for selector: ${selector} ->`,
-              result.substring(0, 50),
-            );
-          continue;
-        }
-        if (process.env.SCRAPER_DEBUG === '1')
-          console.log(`Found content with selector: ${selector}`, result.substring(0, 100));
-        return result;
-      } else {
-        if (process.env.SCRAPER_DEBUG === '1')
-          console.log(`No content found with selector: ${selector}`);
-      }
-    }
-
-    // Try fallback selectors if available
-    if (fallbacks) {
-      if (process.env.SCRAPER_DEBUG === '1') console.log('Trying fallback selectors:', fallbacks);
-      for (const fallback of fallbacks) {
-        const result = this.extractText(dom, fallback);
-        if (result) {
-          // Filter out price-like content for fallback selectors too
-          if (this.isPriceLike(result)) {
-            if (process.env.SCRAPER_DEBUG === '1')
-              console.log(
-                `Skipping price-like content for fallback selector: ${fallback} ->`,
-                result.substring(0, 50),
-              );
-            continue;
-          }
-          if (process.env.SCRAPER_DEBUG === '1')
-            console.log(
-              `Found content with fallback selector: ${fallback}`,
-              result.substring(0, 100),
-            );
-          return result;
-        } else {
-          if (process.env.SCRAPER_DEBUG === '1')
-            console.log(`No content found with fallback selector: ${fallback}`);
-        }
-      }
-    }
-
-    if (process.env.SCRAPER_DEBUG === '1')
-      console.log('No content found with any selector or fallback');
-    return '';
+    return extractWithFallbacksHelper(dom as any, selectors, fallbacks, (t) => this.isPriceLike(t));
   }
 
   /**
@@ -1584,34 +1532,7 @@ export class GenericAdapter extends BaseAdapter {
    * Apply transformations to text
    */
   protected override applyTransformations(text: string, transformations: string[]): string {
-    let result = text;
-
-    for (const transform of transformations) {
-      try {
-        if (transform.includes('->')) {
-          const [pattern, replacement] = transform.split('->').map((s) => s.trim());
-          if (pattern && replacement) {
-            const regex = new RegExp(pattern, 'g');
-            result = result.replace(regex, replacement);
-          }
-        } else if (transform.startsWith('trim:')) {
-          const chars = transform.substring(5);
-          result = result.trim();
-          if (chars) {
-            result = result.replace(new RegExp(`^[${chars}]+|[${chars}]+$`, 'g'), '');
-          }
-        } else if (transform.startsWith('replace:')) {
-          const [search, replace] = transform.substring(8).split('|');
-          if (search && replace) {
-            result = result.replace(new RegExp(search, 'g'), replace);
-          }
-        }
-      } catch (error) {
-        console.warn(`Failed to apply transformation: ${transform}`, error);
-      }
-    }
-
-    return result;
+    return applyTransformsHelper(text, transformations);
   }
 
   /**
@@ -1621,18 +1542,7 @@ export class GenericAdapter extends BaseAdapter {
     attributes: Record<string, string[]>,
     transformations: Record<string, string[]>,
   ): Record<string, string[]> {
-    const result: Record<string, string[]> = {};
-
-    for (const [attrName, attrValues] of Object.entries(attributes)) {
-      const transforms = transformations[attrName];
-      if (transforms) {
-        result[attrName] = attrValues.map((value) => this.applyTransformations(value, transforms));
-      } else {
-        result[attrName] = attrValues;
-      }
-    }
-
-    return result;
+    return applyAttributeTransforms(attributes, transformations);
   }
 
   /**
