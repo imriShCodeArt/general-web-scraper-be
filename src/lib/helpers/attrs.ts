@@ -28,4 +28,19 @@ export function isPlaceholderValue(text: string): boolean {
   return PLACEHOLDER_PATTERNS.some((p) => lower.includes(p.toLowerCase()));
 }
 
+// Phase 2: naming utilities for CSV header display
+export function attributeDisplayName(rawKey: string): string {
+  const withoutPrefix = (rawKey || '').replace(/^pa_/i, '');
+  const cleaned = withoutPrefix.replace(/[_-]+/g, ' ').trim().toLowerCase();
+  return cleaned.replace(/\b\w/g, (c) => c.toUpperCase());
+}
+
+export function cleanAttributeName(rawKey: string): string {
+  return (rawKey || '')
+    .trim()
+    .replace(/[^a-zA-Z0-9\s]/g, '')
+    .replace(/\s+/g, '_')
+    .toLowerCase();
+}
+
 

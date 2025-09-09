@@ -1,4 +1,4 @@
-import { ensurePaPrefixed, normalizeAttrKey, isPlaceholderValue } from '../helpers/attrs';
+import { ensurePaPrefixed, normalizeAttrKey, isPlaceholderValue, attributeDisplayName, cleanAttributeName } from '../helpers/attrs';
 
 describe('attrs helpers', () => {
   test('ensurePaPrefixed', () => {
@@ -14,6 +14,12 @@ describe('attrs helpers', () => {
   test('isPlaceholderValue', () => {
     expect(isPlaceholderValue('בחר אפשרות')).toBe(true);
     expect(isPlaceholderValue('שחור')).toBe(false);
+  });
+
+  test('attributeDisplayName and cleanAttributeName', () => {
+    expect(attributeDisplayName('pa_color')).toBe('Color');
+    expect(attributeDisplayName('pa_size')).toBe('Size');
+    expect(cleanAttributeName('Color Name!')).toBe('color_name');
   });
 });
 
