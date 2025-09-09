@@ -1,0 +1,47 @@
+[
+  {
+    "testName": "Shuk Rehut Samba Product",
+    "success": false,
+    "errors": [
+      "Job did not complete: running"
+    ],
+    "warnings": [],
+    "metrics": {
+      "productsScraped": 0,
+      "variationsFound": 0,
+      "attributesFound": 0,
+      "csvSize": 0,
+      "processingTime": 30149
+    }
+  },
+  {
+    "testName": "Shuk Rehut Archive Sample",
+    "success": false,
+    "errors": [
+      "Job did not complete: pending"
+    ],
+    "warnings": [],
+    "metrics": {
+      "productsScraped": 0,
+      "variationsFound": 0,
+      "attributesFound": 0,
+      "csvSize": 0,
+      "processingTime": 1000
+    }
+  },
+  {
+    "testName": "Feature Flag Comparison",
+    "success": false,
+    "errors": [
+      "Unexpected error: TypeError: Cannot read properties of undefined (reading '0')"
+    ],
+    "warnings": [],
+    "metrics": {
+      "productsScraped": 0,
+      "variationsFound": 0,
+      "attributesFound": 0,
+      "csvSize": 0,
+      "processingTime": 11
+    }
+  }
+]

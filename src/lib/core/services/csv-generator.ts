@@ -2,6 +2,7 @@ import { NormalizedProduct } from '../../domain/types';
 import { debug, warn } from '../../infrastructure/logging/logger';
 import { writeToBuffer } from 'fast-csv';
 import { Transform } from 'stream';
+import { getFeatureFlags } from '../../config/feature-flags';
 
 /**
  * Interface for CSV writing operations
@@ -55,7 +56,14 @@ export class FastCsvWriter implements CsvWriter {
  * - Validates attribute data flags and naming conventions
  */
 export class CsvGenerator {
-  constructor(private csvWriter: CsvWriter = new FastCsvWriter()) {}
+  private featureFlags = getFeatureFlags();
+
+  constructor(private csvWriter: CsvWriter = new FastCsvWriter()) {
+    // Log feature flags status for debugging
+    if (this.featureFlags.rolloutDebugMode) {
+      debug('CsvGenerator initialized with feature flags', this.featureFlags);
+    }
+  }
 
   /**
    * Clean up any resources used by the CSV generator
@@ -64,6 +72,22 @@ export class CsvGenerator {
     if (this.csvWriter.cleanup) {
       this.csvWriter.cleanup();
     }
+  }
+
+  /**
+   * Legacy method to get attribute keys (pre-Phase 4 behavior)
+   * Used when batch-wide attribute union feature flag is disabled
+   */
+  private getLegacyAttributeKeys(products: NormalizedProduct[]): string[] {
+    const keys = new Set<string>();
+    for (const product of products) {
+      if (product.attributes) {
+        for (const key of Object.keys(product.attributes)) {
+          keys.add(key);
+        }
+      }
+    }
+    return Array.from(keys);
   }
 
   /**
@@ -88,8 +112,19 @@ export class CsvGenerator {
     });
 
     // Phase 4: Build batch-wide attribute union for parent CSV headers
-    const unionKeys = Array.from(this.aggregateAttributesAcrossProducts(uniqueProducts));
+    // Feature flag: batchWideAttributeUnion
+    const unionKeys = this.featureFlags.batchWideAttributeUnion
+      ? Array.from(this.aggregateAttributesAcrossProducts(uniqueProducts))
+      : this.getLegacyAttributeKeys(uniqueProducts);
     const attributeHeaderNames = unionKeys.map((raw) => this.attributeDisplayName(raw));
+
+    if (this.featureFlags.rolloutDebugMode) {
+      debug('Batch-wide attribute union', {
+        enabled: this.featureFlags.batchWideAttributeUnion,
+        unionKeys: unionKeys.length,
+        attributeHeaderNames: attributeHeaderNames.length,
+      });
+    }
     // Determine which attributes have defaults (only for variable products)
     const defaultEligibleRawKeys = new Set<string>();
     for (const p of uniqueProducts) {

@@ -6,6 +6,7 @@ import {
 } from '../../domain/types';
 import { debug } from '../../infrastructure/logging/logger';
 import { normalizeAttrKey } from '../../helpers/attrs';
+import { getFeatureFlags } from '../../config/feature-flags';
 
 /**
  * Normalizes raw product data into WooCommerce-compatible format.
@@ -238,9 +239,19 @@ export class NormalizationToolkit {
       }
 
       // Runtime guardrails: warn for suspicious attribute keys
-      const cleanKey = normalizeAttrKey(key);
+      // Feature flag: normalizedAttributeKeys
+      const featureFlags = getFeatureFlags();
+      const cleanKey = featureFlags.normalizedAttributeKeys ? normalizeAttrKey(key) : key;
       if (cleanKey !== key) {
         debug('🔍 DEBUG: normalizeAttrKey changed key', { from: key, to: cleanKey });
+      }
+
+      if (featureFlags.rolloutDebugMode) {
+        debug('Attribute normalization', {
+          enabled: featureFlags.normalizedAttributeKeys,
+          originalKey: key,
+          normalizedKey: cleanKey,
+        });
       }
       const cleanValues = values
         .filter((value): value is string => value !== undefined)
@@ -469,9 +480,11 @@ export class NormalizationToolkit {
    */
   static cleanAttributeAssignments(assignments: Record<string, string>): Record<string, string> {
     const cleaned: Record<string, string> = {};
+    const featureFlags = getFeatureFlags();
 
     for (const [key, value] of Object.entries(assignments)) {
-      const cleanKey = normalizeAttrKey(key);
+      // Feature flag: normalizedAttributeKeys
+      const cleanKey = featureFlags.normalizedAttributeKeys ? normalizeAttrKey(key) : key;
       const cleanValue = this.cleanText(value);
 
       if (cleanValue && !this.isPlaceholder(cleanValue)) {
