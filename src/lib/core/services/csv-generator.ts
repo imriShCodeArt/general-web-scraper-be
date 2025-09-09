@@ -38,6 +38,22 @@ export class FastCsvWriter implements CsvWriter {
   }
 }
 
+/**
+ * Generates WooCommerce-compatible CSV files for product imports.
+ * 
+ * This class handles the creation of parent and variation CSV files that conform to
+ * WooCommerce's CSV import specification. For detailed information about the CSV format,
+ * column requirements, and validation rules, see:
+ * 
+ * @see {@link ../../../woocommerce_csv_spec.md WooCommerce CSV Import Specification}
+ * 
+ * Key features:
+ * - Generates parent CSV with attribute definitions and metadata
+ * - Creates variation CSV with proper attribute mappings
+ * - Ensures column name consistency between parent and variations
+ * - Handles both custom and taxonomy attributes (pa_ prefixed)
+ * - Validates attribute data flags and naming conventions
+ */
 export class CsvGenerator {
   constructor(private csvWriter: CsvWriter = new FastCsvWriter()) {}
 
@@ -52,6 +68,14 @@ export class CsvGenerator {
 
   /**
    * Generate Parent CSV for WooCommerce import
+   * 
+   * Creates a parent CSV file that defines the product structure and attribute sets.
+   * Each row represents a variable product with its attribute definitions.
+   * 
+   * @see {@link ../../../woocommerce_csv_spec.md#2-parent-csv-variable-products Parent CSV Format}
+   * 
+   * @param products Array of normalized products
+   * @returns CSV data as string
    */
   async generateParentCsv(products: NormalizedProduct[]): Promise<string> {
     debug('generateParentCsv called with products', { count: products.length });
@@ -226,6 +250,15 @@ export class CsvGenerator {
 
   /**
    * Generate Variation CSV for WooCommerce import
+   * 
+   * Creates a variation CSV file that defines individual product variations.
+   * Each row represents a specific combination of attribute values with its own
+   * SKU, price, and inventory data.
+   * 
+   * @see {@link ../../../woocommerce_csv_spec.md#3-variation-csv-child-rows Variation CSV Format}
+   * 
+   * @param products Array of normalized products
+   * @returns CSV data as string
    */
   async generateVariationCsv(products: NormalizedProduct[]): Promise<string> {
     const variationRows: Record<string, string>[] = [];

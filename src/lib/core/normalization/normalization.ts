@@ -7,9 +7,28 @@ import {
 import { debug } from '../../infrastructure/logging/logger';
 import { normalizeAttrKey } from '../../helpers/attrs';
 
+/**
+ * Normalizes raw product data into WooCommerce-compatible format.
+ * 
+ * This toolkit handles the conversion of scraped product data into a standardized
+ * format that can be used to generate WooCommerce CSV imports. It ensures proper
+ * attribute key normalization, SKU generation, and data validation.
+ * 
+ * @see {@link ../../../woocommerce_csv_spec.md WooCommerce CSV Import Specification}
+ * 
+ * Key features:
+ * - Normalizes attribute keys (adds pa_ prefix for taxonomy attributes)
+ * - Generates consistent SKUs and slugs
+ * - Validates and cleans product data
+ * - Handles variation data normalization
+ */
 export class NormalizationToolkit {
   /**
    * Normalize raw product data into standardized format with proper generic constraints
+   * 
+   * @param raw Raw product data from scraping
+   * @param url Source URL of the product
+   * @returns Normalized product data ready for CSV generation
    */
   static normalizeProduct<T extends NormalizableProductData>(
     raw: T,

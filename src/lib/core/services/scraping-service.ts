@@ -19,6 +19,26 @@ import { RecipeManager } from './recipe-manager';
 import { ErrorFactory, ErrorCodes } from '../../utils/error-handler';
 import pino from 'pino';
 
+/**
+ * Main scraping service that orchestrates the web scraping process.
+ * 
+ * This service handles the complete scraping workflow from URL processing
+ * to CSV generation, including job management, error handling, and performance
+ * monitoring. It integrates with adapters, normalization, and CSV generation
+ * to produce WooCommerce-compatible output.
+ * 
+ * @see {@link ../../../woocommerce_csv_spec.md WooCommerce CSV Import Specification}
+ * @see {@link ../adapters/README.md Site Adapters}
+ * @see {@link ../normalization/normalization.ts Normalization Toolkit}
+ * 
+ * Key features:
+ * - Job queue management with concurrency control
+ * - Site-specific adapter selection and execution
+ * - Product data normalization and validation
+ * - CSV generation for WooCommerce import
+ * - Performance monitoring and metrics collection
+ * - Error handling and retry logic
+ */
 export class ScrapingService {
   private logger: pino.Logger;
   private storage: StorageService;

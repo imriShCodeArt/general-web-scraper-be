@@ -1,5 +1,20 @@
 /**
- * Performance and resilience utilities for web scraping
+ * Performance and resilience utilities for web scraping.
+ * 
+ * This module provides utilities to improve scraping performance and reliability
+ * through element caching, retry mechanisms, and selector optimization. It's
+ * designed to handle dynamic content loading and network instability.
+ * 
+ * @see {@link ../core/adapters/base-adapter.ts BaseAdapter}
+ * @see {@link ../../test/performance/phase8-performance-resilience.test.ts Performance Tests}
+ * 
+ * Key features:
+ * - Element caching with TTL support
+ * - Retry mechanisms with exponential backoff
+ * - Selector optimization and tightening
+ * - Performance monitoring and metrics
+ * - Scope-based element discovery
+ * 
  * Phase 8: Performance & Resilience improvements
  */
 
