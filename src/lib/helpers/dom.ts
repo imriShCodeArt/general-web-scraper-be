@@ -46,3 +46,75 @@ export function getAttributeNameFor(el: Element, scope?: Element | Document): st
 }
 
 
+// New DOM selection helpers per Phase 1
+export function selectText(dom: Document | { window: { document: Document } }, selector: string): string {
+  const doc = (dom as any).window?.document || (dom as Document);
+  try {
+    const element = doc.querySelector(selector);
+    if (!element) return '';
+    if (selector.includes('description') || selector.includes('content') || selector.includes('p')) {
+      const textContent = element.textContent?.trim() || '';
+      const innerHTML = (element as HTMLElement).innerHTML || '';
+      if (innerHTML.includes('<p>') || innerHTML.includes('<br>')) {
+        const paragraphs = element.querySelectorAll('p, br + *, div');
+        if (paragraphs.length > 0) {
+          const paragraphTexts = Array.from(paragraphs as unknown as Element[])
+            .map((p: Element) => p.textContent?.trim())
+            .filter((text) => text && text.length > 10)
+            .join('\n\n');
+          if (paragraphTexts) return paragraphTexts;
+        }
+      }
+      return textContent;
+    }
+    return element.textContent?.trim() || '';
+  } catch {
+    return '';
+  }
+}
+
+export function selectAllText(dom: Document | { window: { document: Document } }, selector: string): string[] {
+  const doc = (dom as any).window?.document || (dom as Document);
+  try {
+    return Array.from(doc.querySelectorAll(selector) as unknown as Element[])
+      .map((el: Element) => el.textContent?.trim())
+      .filter((t): t is string => !!t);
+  } catch {
+    return [];
+  }
+}
+
+export function selectAttr(dom: Document | { window: { document: Document } }, selector: string, attr: string): string {
+  const doc = (dom as any).window?.document || (dom as Document);
+  try {
+    const element = doc.querySelector(selector);
+    return element?.getAttribute(attr) || '';
+  } catch {
+    return '';
+  }
+}
+
+export function extractWithFallbacks(
+  dom: Document | { window: { document: Document } },
+  primary: string | string[],
+  fallbacks?: string[],
+  isPriceLike?: (text: string) => boolean,
+): string {
+  const selectors = Array.isArray(primary) ? primary : [primary];
+  for (const sel of selectors) {
+    const result = selectText(dom as any, sel);
+    if (result) {
+      if (isPriceLike && isPriceLike(result)) continue;
+      return result;
+    }
+  }
+  for (const fb of fallbacks || []) {
+    const result = selectText(dom as any, fb);
+    if (result) {
+      if (isPriceLike && isPriceLike(result)) continue;
+      return result;
+    }
+  }
+  return '';
+}
+
