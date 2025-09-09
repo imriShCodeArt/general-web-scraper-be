@@ -1,5 +1,44 @@
 import { JSDOM } from 'jsdom';
-import { collectRadioGroups, extractLabelText, getAttributeNameFor } from '../helpers/dom';
+import { selectText, selectAllText, selectAttr, extractWithFallbacks, collectRadioGroups, extractLabelText, getAttributeNameFor } from '../helpers/dom';
+
+describe('helpers/dom', () => {
+  const html = `
+    <html>
+      <body>
+        <h1 class="title">Title</h1>
+        <div class="desc"><p>First para</p><p>Second para</p></div>
+        <a class="link" href="/p/1">link</a>
+      </body>
+    </html>
+  `;
+  const dom = new JSDOM(html);
+
+  test('selectText basic', () => {
+    expect(selectText(dom as any, '.title')).toBe('Title');
+  });
+
+  test('selectText description paragraphs', () => {
+    const t = selectText(dom as any, '.desc');
+    expect(t.includes('First para')).toBe(true);
+    expect(t.includes('Second para')).toBe(true);
+  });
+
+  test('selectAllText', () => {
+    expect(selectAllText(dom as any, 'p')).toEqual(['First para', 'Second para']);
+  });
+
+  test('selectAttr', () => {
+    expect(selectAttr(dom as any, '.link', 'href')).toBe('/p/1');
+  });
+
+  test('extractWithFallbacks uses primary then fallback and filters price-like when provided', () => {
+    const html2 = new JSDOM('<div class="a">199₪</div><div class="b">ok</div>');
+    const res = extractWithFallbacks(html2 as any, '.a', ['.b'], (t) => /₪|\d/.test(t));
+    expect(res).toBe('ok');
+  });
+});
+
+// (duplicate imports removed)
 
 describe('DOM helpers', () => {
   test('collectRadioGroups groups radios by name', () => {

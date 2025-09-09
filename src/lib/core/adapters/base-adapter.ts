@@ -2,6 +2,8 @@ import { SiteAdapter, RawProduct, RecipeConfig, ValidationError, RawProductData,
 import { HttpClient } from '../../infrastructure/http/http-client';
 import { PuppeteerHttpClient } from '../../infrastructure/http/puppeteer-http-client';
 import { JSDOM } from 'jsdom';
+import { applyTransforms } from '../../helpers/transforms';
+import { resolveUrl as resolveUrlHelper } from '../../helpers/url';
 import { ErrorFactory, ErrorCodes } from '../../utils/error-handler';
 import { isDebugEnabled } from '../../infrastructure/logging/logger';
 import { PerformanceResilience } from '../../utils/performance-resilience';
@@ -471,25 +473,7 @@ export abstract class BaseAdapter implements SiteAdapter<RawProduct> {
    * Resolve relative URLs to absolute URLs
    */
   protected resolveUrl(url: string): string {
-    try {
-      if (url.startsWith('http')) {
-        return url;
-      }
-
-      if (url.startsWith('//')) {
-        return `https:${url}`;
-      }
-
-      if (url.startsWith('/')) {
-        const baseUrl = new URL(this.baseUrl);
-        return `${baseUrl.protocol}//${baseUrl.host}${url}`;
-      }
-
-      return `${this.baseUrl}/${url}`;
-    } catch (error) {
-      console.warn(`Failed to resolve URL '${url}':`, error);
-      return url;
-    }
+    return resolveUrlHelper(this.baseUrl, url);
   }
 
   /**
@@ -607,25 +591,7 @@ export abstract class BaseAdapter implements SiteAdapter<RawProduct> {
    * Apply text transformations with error handling
    */
   protected applyTransformations(text: string, transformations: string[]): string {
-    let result = text;
-
-    for (const transform of transformations) {
-      try {
-        // Simple regex replacement for now
-        // In a real implementation, this could be more sophisticated
-        if (transform.includes('->')) {
-          const [pattern, replacement] = transform.split('->').map((s) => s.trim());
-          if (pattern && replacement) {
-            const regex = new RegExp(pattern, 'g');
-            result = result.replace(regex, replacement);
-          }
-        }
-      } catch (error) {
-        console.warn(`Failed to apply transformation: ${transform}`, error);
-      }
-    }
-
-    return result;
+    return applyTransforms(text, transformations);
   }
 
   /**
