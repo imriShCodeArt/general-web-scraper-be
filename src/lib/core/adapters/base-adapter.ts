@@ -4,6 +4,7 @@ import { PuppeteerHttpClient } from '../../infrastructure/http/puppeteer-http-cl
 import { JSDOM } from 'jsdom';
 import { ErrorFactory, ErrorCodes } from '../../utils/error-handler';
 import { isDebugEnabled } from '../../infrastructure/logging/logger';
+import { PerformanceResilience } from '../../utils/performance-resilience';
 
 /**
  * Base adapter class that provides common functionality for all site adapters
@@ -186,9 +187,35 @@ export abstract class BaseAdapter implements SiteAdapter<RawProduct> {
   }
 
   /**
-   * Common method to extract multiple elements with error handling
+   * Common method to extract multiple elements with error handling and performance optimization
+   * Phase 8: Enhanced with retry, caching, and tightened selectors
    */
-  protected extractElements(dom: JSDOM, selector: string): Element[] {
+  protected async extractElements(dom: JSDOM, selector: string | string[], scope?: Element): Promise<Element[]> {
+    try {
+      const selectors = Array.isArray(selector) ? selector : [selector];
+      
+      // Use performance resilience utilities for element discovery
+      const elements = await PerformanceResilience.discoverElements(dom, selectors, scope, {
+        maxAttempts: 2,
+        baseDelay: 50,
+        maxDelay: 500,
+      });
+
+      if (isDebugEnabled() && elements.length > 0) {
+        console.log(`🔍 DEBUG[BaseAdapter]: extractElements found ${elements.length} elements with selectors:`, selectors);
+      }
+
+      return elements;
+    } catch (error) {
+      console.warn(`Failed to extract elements from selector '${selector}':`, error);
+      return [];
+    }
+  }
+
+  /**
+   * Synchronous version for backward compatibility
+   */
+  protected extractElementsSync(dom: JSDOM, selector: string): Element[] {
     try {
       return Array.from(dom.window.document.querySelectorAll(selector));
     } catch (error) {
@@ -198,11 +225,33 @@ export abstract class BaseAdapter implements SiteAdapter<RawProduct> {
   }
 
   /**
-   * Common method to extract image URLs with error handling
+   * Common method to extract image URLs with error handling and performance optimization
+   * Phase 8: Enhanced with retry, caching, and tightened selectors
    */
-  protected extractImages(dom: JSDOM, selector: string): string[] {
+  protected async extractImages(dom: JSDOM, selector: string | string[], scope?: Element): Promise<string[]> {
     try {
-      const images = this.extractElements(dom, selector);
+      const images = await this.extractElements(dom, selector, scope);
+      return images
+        .map((img) => {
+          const src = img.getAttribute('src') || img.getAttribute('data-src');
+          if (src) {
+            return this.resolveUrl(src);
+          }
+          return null;
+        })
+        .filter((src): src is string => src !== null);
+    } catch (error) {
+      console.warn(`Failed to extract images from selector '${selector}':`, error);
+      return [];
+    }
+  }
+
+  /**
+   * Synchronous version for backward compatibility
+   */
+  protected extractImagesSync(dom: JSDOM, selector: string): string[] {
+    try {
+      const images = this.extractElementsSync(dom, selector);
       return images
         .map((img) => {
           const src = img.getAttribute('src') || img.getAttribute('data-src');
@@ -245,20 +294,21 @@ export abstract class BaseAdapter implements SiteAdapter<RawProduct> {
   }
 
   /**
-   * Common method to extract attributes with error handling
+   * Common method to extract attributes with error handling and performance optimization
+   * Phase 8: Enhanced with retry, caching, and tightened selectors
    */
-  protected extractAttributes(dom: JSDOM, selector: string): Record<string, string[]> {
+  protected async extractAttributes(dom: JSDOM, selector: string | string[], scope?: Element): Promise<Record<string, string[]>> {
     try {
       const attributes: Record<string, string[]> = {};
 
-      const attributeElements = this.extractElements(dom, selector);
+      const attributeElements = await this.extractElements(dom, selector, scope);
 
       for (const element of attributeElements) {
         const nameElement = element.querySelector(
-          '[data-attribute-name], .attribute-name, .attr-name',
+          '[data-attribute-name], .attribute-name, .attr-name, .option-name',
         );
         const valueElements = element.querySelectorAll(
-          '[data-attribute-value], .attribute-value, .attr-value, option',
+          '[data-attribute-value], .attribute-value, .attr-value, .option-value, option',
         );
 
         if (nameElement && valueElements.length > 0) {
@@ -281,12 +331,89 @@ export abstract class BaseAdapter implements SiteAdapter<RawProduct> {
   }
 
   /**
-   * Common method to extract variations with error handling and proper typing
+   * Synchronous version for backward compatibility
    */
-  protected extractVariations(dom: JSDOM, selector: string): RawProductData['variations'] {
+  protected extractAttributesSync(dom: JSDOM, selector: string): Record<string, string[]> {
+    try {
+      const attributes: Record<string, string[]> = {};
+      const attributeElements = this.extractElementsSync(dom, selector);
+
+      for (const element of attributeElements) {
+        const nameElement = element.querySelector(
+          '[data-attribute-name], .attribute-name, .attr-name, .option-name',
+        );
+        const valueElements = element.querySelectorAll(
+          '[data-attribute-value], .attribute-value, .attr-value, .option-value, option',
+        );
+
+        if (nameElement && valueElements.length > 0) {
+          const name = nameElement.textContent?.trim() || '';
+          const values = Array.from(valueElements)
+            .map((val) => val.textContent?.trim())
+            .filter((val) => val && val !== 'בחר אפשרות' && val !== 'Select option');
+
+          if (name && values.length > 0) {
+            attributes[name] = values;
+          }
+        }
+      }
+
+      return attributes;
+    } catch (error) {
+      console.warn(`Failed to extract attributes from selector '${selector}':`, error);
+      return {};
+    }
+  }
+
+  /**
+   * Common method to extract variations with error handling and performance optimization
+   * Phase 8: Enhanced with retry, caching, and tightened selectors
+   */
+  protected async extractVariations(dom: JSDOM, selector: string | string[], scope?: Element): Promise<RawProductData['variations']> {
     try {
       const variations: RawProductData['variations'] = [];
-      const variationElements = this.extractElements(dom, selector);
+      const variationElements = await this.extractElements(dom, selector, scope);
+      
+      if (isDebugEnabled()) {
+        console.log('🔍 DEBUG[BaseAdapter]: extractVariations elements count', variationElements.length);
+      }
+
+      for (const element of variationElements) {
+        const sku = element.querySelector('[data-sku], .sku, .product-sku')?.textContent?.trim();
+        const price = element
+          .querySelector('[data-price], .price, .product-price')
+          ?.textContent?.trim();
+
+        if (sku) {
+          variations.push({
+            sku,
+            regularPrice: this.cleanPrice(price || ''),
+            taxClass: '',
+            stockStatus: 'instock',
+            images: [],
+            attributeAssignments: {},
+          });
+        }
+      }
+
+      if (isDebugEnabled()) {
+        console.log('🔍 DEBUG[BaseAdapter]: extracted variations', variations.length);
+      }
+      return variations;
+    } catch (error) {
+      console.warn(`Failed to extract variations from selector '${selector}':`, error);
+      return [];
+    }
+  }
+
+  /**
+   * Synchronous version for backward compatibility
+   */
+  protected extractVariationsSync(dom: JSDOM, selector: string): RawProductData['variations'] {
+    try {
+      const variations: RawProductData['variations'] = [];
+      const variationElements = this.extractElementsSync(dom, selector);
+      
       if (isDebugEnabled()) {
         console.log('🔍 DEBUG[BaseAdapter]: extractVariations elements count', variationElements.length);
       }

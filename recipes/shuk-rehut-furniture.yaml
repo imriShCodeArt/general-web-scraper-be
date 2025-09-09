@@ -88,6 +88,7 @@ selectors:
     - '.description_pr p'
 
   # Variations and attributes (Shuk Rehut specific selectors)
+  # Phase 8: Tightened selectors with .options_group scoping for better performance
   variations:
     # Prioritize scoped controls inside the options group/form
     - '.options_group select[name*="option"]'
@@ -96,6 +97,14 @@ selectors:
     - '#input-option386 input[type="radio"]'
     - '#input-option386 input[type="checkbox"]'
     - '#input-option386 select'
+    - '.options_group .optstyle[type="radio"]'
+    - '.options_group .optstyle[type="checkbox"]'
+    - '.options_group select[name*="variation"]'
+    - '.options_group select[name*="attribute"]'
+    - '.options_group .variation select'
+    - '.options_group .option select'
+    - '.options_group .attribute select'
+    # Fallback selectors (less performant but broader coverage)
     - 'input[name*="option"][type="radio"]'
     - 'input[name*="option"][type="checkbox"]'
     - '.optstyle[type="radio"]'
@@ -149,7 +158,21 @@ selectors:
     - '.breadcrumb a'
 
   # Additional selectors for furniture-specific data
+  # Phase 8: Tightened selectors with .options_group scoping for better performance
   attributes:
+    # Prioritize scoped selectors for better performance
+    - '.options_group [class^="input-option"]'
+    - '.options_group .product-attributes'
+    - '.options_group .attributes'
+    - '.options_group .specifications'
+    - '.options_group .product-specs'
+    - '.options_group .product-info'
+    - '.options_group .product-details'
+    - '.options_group .product-features'
+    - '.options_group .chair-specs'
+    - '.options_group .furniture-specs'
+    - '.options_group'
+    # Fallback selectors (less performant but broader coverage)
     - '.product-attributes'
     - '.attributes'
     - '.specifications'
@@ -159,8 +182,6 @@ selectors:
     - '.product-features'
     - '.chair-specs'
     - '.furniture-specs'
-    - '.options_group [class^="input-option"]'
-    - '.options_group'
 
   # Hebrew-specific selectors
   model:

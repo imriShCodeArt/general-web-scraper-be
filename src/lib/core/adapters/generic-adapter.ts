@@ -123,14 +123,14 @@ export class GenericAdapter extends BaseAdapter {
       sku: this.extractWithFallbacks(dom, selectors.sku, fallbacks?.sku),
       stockStatus: this.extractStockStatusFromSelector(dom, selectors.stock),
       images: fastMode
-        ? this.extractImagesFromSelector(dom, selectors.images).slice(0, 3)
-        : this.extractImagesFromSelector(dom, selectors.images), // Limit images in fast mode
+        ? (await this.extractImagesFromSelector(dom, selectors.images)).slice(0, 3)
+        : await this.extractImagesFromSelector(dom, selectors.images), // Limit images in fast mode
       category: selectors.category ? this.extractWithFallbacks(dom, selectors.category) : undefined,
       productType: 'simple', // Default; will switch to 'variable' if variations are found
-      attributes: fastMode ? {} : this.extractAttributesFromSelector(dom, selectors.attributes), // Skip attributes in fast mode
+      attributes: fastMode ? {} : await this.extractAttributesFromSelector(dom, selectors.attributes), // Skip attributes in fast mode
       variations: fastMode
         ? []
-        : this.extractVariationsFromSelector(dom, selectors.variations || []), // Skip variations in fast mode
+        : await this.extractVariationsFromSelector(dom, selectors.variations || []), // Skip variations in fast mode
       price: this.extractPriceFromSelector(dom, selectors.price),
       salePrice: this.extractSalePrice(dom, selectors.price),
     };
@@ -329,7 +329,7 @@ export class GenericAdapter extends BaseAdapter {
   /**
    * Extract images using the configured selector
    */
-  protected override extractImages(dom: JSDOM, selector: string | string[]): string[] {
+  protected override async extractImages(dom: JSDOM, selector: string | string[], scope?: Element): Promise<string[]> {
     const selectorArray = Array.isArray(selector) ? selector : [selector];
 
     // Shopify-focused gallery detection
@@ -489,7 +489,7 @@ export class GenericAdapter extends BaseAdapter {
 
     // 1) Try configured selectors FIRST (these are more reliable than gallery scopes)
     for (const sel of selectorArray) {
-      const nodes = this.extractElements(dom, sel);
+      const nodes = this.extractElementsSync(dom, sel);
       if (nodes.length > 0) {
         const urls = nodes
           .map((img) => {
@@ -553,7 +553,7 @@ export class GenericAdapter extends BaseAdapter {
 
     // 2) Fallback to configured selectors but apply strict filtering
     for (const sel of selectorArray) {
-      const nodes = this.extractElements(dom, sel);
+      const nodes = this.extractElementsSync(dom, sel);
       if (nodes.length > 0) {
         const urls = nodes
           .map((img) => {
@@ -622,52 +622,52 @@ export class GenericAdapter extends BaseAdapter {
   /**
    * Extract images from a selector that can be either a string or array of strings
    */
-  private extractImagesFromSelector(dom: JSDOM, selector: string | string[]): string[] {
+  private async extractImagesFromSelector(dom: JSDOM, selector: string | string[]): Promise<string[]> {
     if (Array.isArray(selector)) {
       // Try each selector until one works
       for (const sel of selector) {
-        const images = this.extractImages(dom, sel);
+        const images = await this.extractImages(dom, sel);
         if (images && images.length > 0) {
           return images;
         }
       }
       return [];
     }
-    return this.extractImages(dom, selector);
+    return await this.extractImages(dom, selector);
   }
 
   /**
    * Extract attributes from a selector that can be either a string or array of strings
    */
-  private extractAttributesFromSelector(dom: JSDOM, selector: string | string[]): Record<string, string[]> {
+  private async extractAttributesFromSelector(dom: JSDOM, selector: string | string[]): Promise<Record<string, string[]>> {
     if (Array.isArray(selector)) {
       // Try each selector until one works
       for (const sel of selector) {
-        const attrs = this.extractAttributes(dom, sel);
+        const attrs = await this.extractAttributes(dom, sel);
         if (attrs && Object.keys(attrs).length > 0) {
           return attrs;
         }
       }
       return {};
     }
-    return this.extractAttributes(dom, selector);
+    return await this.extractAttributes(dom, selector);
   }
 
   /**
    * Extract variations from a selector that can be either a string or array of strings
    */
-  private extractVariationsFromSelector(dom: JSDOM, selector: string | string[]): RawProduct['variations'] {
+  private async extractVariationsFromSelector(dom: JSDOM, selector: string | string[]): Promise<RawProduct['variations']> {
     if (Array.isArray(selector)) {
       // Try each selector until one works
       for (const sel of selector) {
-        const variations = this.extractVariations(dom, sel);
+        const variations = await this.extractVariations(dom, sel);
         if (variations && variations.length > 0) {
           return variations;
         }
       }
       return [];
     }
-    return this.extractVariations(dom, selector);
+    return await this.extractVariations(dom, selector) || [];
   }
 
   /**
@@ -690,15 +690,16 @@ export class GenericAdapter extends BaseAdapter {
   /**
    * Extract attributes using the configured selector
    */
-  protected override extractAttributes(
+  protected override async extractAttributes(
     dom: JSDOM,
     selector: string | string[],
-  ): Record<string, string[]> {
+    scope?: Element,
+  ): Promise<Record<string, string[]>> {
     const selectorArray = Array.isArray(selector) ? selector : [selector];
     const attributes: Record<string, string[]> = {};
 
     for (const sel of selectorArray) {
-      const attributeElements = this.extractElements(dom, sel);
+      const attributeElements = this.extractElementsSync(dom, sel);
 
       if (attributeElements.length > 0) {
         for (const element of attributeElements) {
@@ -755,7 +756,7 @@ export class GenericAdapter extends BaseAdapter {
   /**
    * Extract variations using the configured selector - improved for WooCommerce
    */
-  protected override extractVariations(dom: JSDOM, selector?: string | string[]): RawVariation[] {
+  protected override async extractVariations(dom: JSDOM, selector: string | string[], scope?: Element): Promise<RawVariation[] | undefined> {
     if (!selector) return [];
 
     const selectorArray = Array.isArray(selector) ? selector : [selector];
@@ -1004,7 +1005,7 @@ export class GenericAdapter extends BaseAdapter {
     // 2) Fallback: extract from DOM selects/prices as before
     // First, try to extract variations from variation forms (WooCommerce style)
     for (const sel of selectorArray) {
-      const variationElements = this.extractElements(dom, sel);
+      const variationElements = this.extractElementsSync(dom, sel);
 
       if (variationElements.length > 0) {
         if (process.env.SCRAPER_DEBUG === '1')
