@@ -9,5 +9,9 @@ export * from './sku';
 export * from './dom-loader';
 export * from './parse';
 export * from './json';
+export * from './concurrency';
+export * from './metrics';
+export * from './api';
+export * from './naming';
 
 
