@@ -1,10 +1,12 @@
-import { buildVariationSku, createAssignments, mergeVariationSources, dedupeBySku } from '../helpers/variations';
+import { createAssignments, mergeVariationSources, dedupeBySku } from '../helpers/variations';
+import { buildVariationSku } from '../helpers/sku';
 
 type VariationWithAssignments = { sku: string; attributeAssignments?: Record<string, string> };
 
 describe('variations helpers', () => {
-  test('buildVariationSku combines base and token', () => {
-    expect(buildVariationSku('ABC', 'RED')).toBe('ABC-RED');
+  test('buildVariationSku combines base and assignments', () => {
+    expect(buildVariationSku('ABC', { color: 'RED' })).toBe('ABC-RED');
+    expect(buildVariationSku('ABC', { color: 'RED', size: 'L' })).toBe('ABC-RED-L');
   });
 
   test('createAssignments builds key-value object', () => {
