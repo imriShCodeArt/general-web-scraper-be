@@ -2,7 +2,7 @@
 
 /**
  * Simple Phase 10 Rollout Test
- * 
+ *
  * This script tests the feature flags without complex scraping operations.
  */
 
@@ -72,7 +72,7 @@ class SimpleRolloutTester {
       // Test environment variable override
       process.env.SCRAPER_BATCH_WIDE_ATTRIBUTE_UNION = 'true';
       process.env.SCRAPER_NORMALIZED_ATTRIBUTE_KEYS = 'true';
-      
+
       const overriddenFlags = getFeatureFlags();
       if (overriddenFlags.batchWideAttributeUnion !== true) {
         errors.push('Environment variable override failed for batchWideAttributeUnion');
@@ -131,7 +131,7 @@ class SimpleRolloutTester {
       // Test with feature flags disabled
       process.env.SCRAPER_BATCH_WIDE_ATTRIBUTE_UNION = 'false';
       process.env.SCRAPER_NORMALIZED_ATTRIBUTE_KEYS = 'false';
-      
+
       const legacyGenerator = new CsvGenerator();
       let legacyResult;
       try {
@@ -146,7 +146,7 @@ class SimpleRolloutTester {
       // Test with feature flags enabled
       process.env.SCRAPER_BATCH_WIDE_ATTRIBUTE_UNION = 'true';
       process.env.SCRAPER_NORMALIZED_ATTRIBUTE_KEYS = 'true';
-      
+
       const newGenerator = new CsvGenerator();
       let newResult;
       try {
@@ -196,7 +196,7 @@ class SimpleRolloutTester {
     try {
       // Test that feature flags are working correctly
       // This is a simplified test that focuses on the core functionality
-      
+
       // Test 1: Verify feature flags can be toggled
       const originalFlags = getFeatureFlags();
       info('Original feature flags:', originalFlags);
@@ -204,7 +204,7 @@ class SimpleRolloutTester {
       // Test 2: Verify environment variable override works
       process.env.SCRAPER_BATCH_WIDE_ATTRIBUTE_UNION = 'true';
       process.env.SCRAPER_NORMALIZED_ATTRIBUTE_KEYS = 'true';
-      
+
       const overriddenFlags = getFeatureFlags();
       if (!overriddenFlags.batchWideAttributeUnion) {
         errors.push('Batch-wide attribute union flag not enabled');
@@ -253,10 +253,10 @@ class SimpleRolloutTester {
    * Add test result
    */
   private addResult(
-    testName: string, 
-    success: boolean, 
-    errors: string[], 
-    warnings: string[]
+    testName: string,
+    success: boolean,
+    errors: string[],
+    warnings: string[],
   ): void {
     this.results.push({
       testName,
@@ -271,7 +271,7 @@ class SimpleRolloutTester {
       error(`❌ ${testName} - FAILED`);
       errors.forEach(err => error(`  Error: ${err}`));
     }
-    
+
     warnings.forEach(warning => info(`  Warning: ${warning}`));
   }
 

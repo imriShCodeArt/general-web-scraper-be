@@ -17,7 +17,7 @@ describe('Phase 10 Feature Flags', () => {
   describe('getFeatureFlags', () => {
     it('should return default feature flags when no environment variables are set', () => {
       const flags = getFeatureFlags();
-      
+
       expect(flags.batchWideAttributeUnion).toBe(true); // Enabled by default after Phase 10
       expect(flags.normalizedAttributeKeys).toBe(true); // Enabled by default after Phase 10
       expect(flags.performanceOptimizations).toBe(true);
@@ -29,9 +29,9 @@ describe('Phase 10 Feature Flags', () => {
       process.env.SCRAPER_BATCH_WIDE_ATTRIBUTE_UNION = 'true';
       process.env.SCRAPER_NORMALIZED_ATTRIBUTE_KEYS = 'true';
       process.env.SCRAPER_ROLLOUT_DEBUG_MODE = 'true';
-      
+
       const flags = getFeatureFlags();
-      
+
       expect(flags.batchWideAttributeUnion).toBe(true);
       expect(flags.normalizedAttributeKeys).toBe(true);
       expect(flags.rolloutDebugMode).toBe(true);
@@ -62,7 +62,7 @@ describe('Phase 10 Feature Flags', () => {
     it('should check individual feature flags', () => {
       process.env.SCRAPER_BATCH_WIDE_ATTRIBUTE_UNION = 'true';
       process.env.SCRAPER_NORMALIZED_ATTRIBUTE_KEYS = 'false';
-      
+
       expect(isFeatureEnabled('batchWideAttributeUnion')).toBe(true);
       expect(isFeatureEnabled('normalizedAttributeKeys')).toBe(false);
       expect(isFeatureEnabled('performanceOptimizations')).toBe(true); // default
@@ -73,9 +73,9 @@ describe('Phase 10 Feature Flags', () => {
     it('should return a summary of all feature flags', () => {
       process.env.SCRAPER_BATCH_WIDE_ATTRIBUTE_UNION = 'true';
       process.env.SCRAPER_NORMALIZED_ATTRIBUTE_KEYS = 'true';
-      
+
       const summary = getFeatureFlagsSummary();
-      
+
       expect(summary).toHaveProperty('batch-wide-attribute-union', true);
       expect(summary).toHaveProperty('normalized-attribute-keys', true);
       expect(summary).toHaveProperty('performance-optimizations', true);
@@ -87,7 +87,7 @@ describe('Phase 10 Feature Flags', () => {
   describe('validateFeatureFlags', () => {
     it('should validate feature flags configuration', () => {
       const validation = validateFeatureFlags();
-      
+
       expect(validation.valid).toBe(true);
       expect(validation.errors).toHaveLength(0);
     });
@@ -104,7 +104,7 @@ describe('Phase 10 Feature Flags', () => {
       combinations.forEach(({ batchWide, normalized }) => {
         process.env.SCRAPER_BATCH_WIDE_ATTRIBUTE_UNION = batchWide;
         process.env.SCRAPER_NORMALIZED_ATTRIBUTE_KEYS = normalized;
-        
+
         const validation = validateFeatureFlags();
         expect(validation.valid).toBe(true);
         expect(validation.errors).toHaveLength(0);

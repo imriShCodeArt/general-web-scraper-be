@@ -2,7 +2,7 @@ import { NormalizedProduct } from '../../domain/types';
 import { debug, warn } from '../../infrastructure/logging/logger';
 import { writeToBuffer } from 'fast-csv';
 import { Transform } from 'stream';
-import { getFeatureFlags, isFeatureEnabled } from '../../config/feature-flags';
+import { getFeatureFlags } from '../../config/feature-flags';
 
 /**
  * Interface for CSV writing operations
@@ -113,11 +113,11 @@ export class CsvGenerator {
 
     // Phase 4: Build batch-wide attribute union for parent CSV headers
     // Feature flag: batchWideAttributeUnion
-    const unionKeys = this.featureFlags.batchWideAttributeUnion 
+    const unionKeys = this.featureFlags.batchWideAttributeUnion
       ? Array.from(this.aggregateAttributesAcrossProducts(uniqueProducts))
       : this.getLegacyAttributeKeys(uniqueProducts);
     const attributeHeaderNames = unionKeys.map((raw) => this.attributeDisplayName(raw));
-    
+
     if (this.featureFlags.rolloutDebugMode) {
       debug('Batch-wide attribute union', {
         enabled: this.featureFlags.batchWideAttributeUnion,

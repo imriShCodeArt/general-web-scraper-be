@@ -6,7 +6,7 @@ import {
 } from '../../domain/types';
 import { debug } from '../../infrastructure/logging/logger';
 import { normalizeAttrKey } from '../../helpers/attrs';
-import { getFeatureFlags, isFeatureEnabled } from '../../config/feature-flags';
+import { getFeatureFlags } from '../../config/feature-flags';
 
 /**
  * Normalizes raw product data into WooCommerce-compatible format.
@@ -245,7 +245,7 @@ export class NormalizationToolkit {
       if (cleanKey !== key) {
         debug('🔍 DEBUG: normalizeAttrKey changed key', { from: key, to: cleanKey });
       }
-      
+
       if (featureFlags.rolloutDebugMode) {
         debug('Attribute normalization', {
           enabled: featureFlags.normalizedAttributeKeys,

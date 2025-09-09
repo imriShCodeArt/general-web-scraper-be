@@ -2,7 +2,7 @@
 
 /**
  * Phase 10 Rollout Validation Script
- * 
+ *
  * This script validates the rollout by testing on real Shuk Rehut pages
  * and verifying CSV output quality and WooCommerce compliance.
  */
@@ -11,8 +11,8 @@ import { Command } from 'commander';
 import { ScrapingService } from '../lib/core/services/scraping-service';
 import { RecipeManager } from '../lib/core/services/recipe-manager';
 import { CsvGenerator } from '../lib/core/services/csv-generator';
-import { getFeatureFlags, getFeatureFlagsSummary } from '../lib/config/feature-flags';
-import { debug, info, warn, error } from '../lib/infrastructure/logging/logger';
+import { getFeatureFlagsSummary } from '../lib/config/feature-flags';
+import { info, warn, error } from '../lib/infrastructure/logging/logger';
 import * as fs from 'fs';
 import * as path from 'path';
 
@@ -91,7 +91,7 @@ class RolloutValidator {
 
     try {
       const sambaUrl = 'https://shukrehut.co.il/he/כיסאות/כיסא-למשרד-samba';
-      
+
       // Initialize scraping job
       const job = await this.scrapingService.startScraping({
         siteUrl: sambaUrl,
@@ -131,29 +131,29 @@ class RolloutValidator {
         errors.push('No products scraped');
       } else {
         const product = products[0];
-        
+
         // Check required fields
         if (!product.title) errors.push('Missing product title');
         if (!product.price) errors.push('Missing product price');
         if (!product.images || product.images.length === 0) warnings.push('No product images found');
-        
+
         // Check variations
         const variations = product.variations || [];
         if (variations.length === 0) warnings.push('No variations found (expected for Samba chair)');
-        
+
         // Check attributes
         const attributes = product.attributes || {};
         const attributeCount = Object.keys(attributes).length;
         if (attributeCount === 0) warnings.push('No attributes found');
-        
+
         // Generate CSV and validate
         const csvResult = await this.csvGenerator.generateBothCsvs(products);
         const csvSize = csvResult.parentCsv.length + csvResult.variationCsv.length;
-        
+
         // Validate CSV content
         this.validateCsvContent(csvResult.parentCsv, csvResult.variationCsv, errors, warnings);
-        
-        this.addResult(testName, errors.length === 0, errors, warnings, startTime, 
+
+        this.addResult(testName, errors.length === 0, errors, warnings, startTime,
           products.length, variations.length, attributeCount, csvSize);
       }
 
@@ -176,7 +176,7 @@ class RolloutValidator {
 
     try {
       const archiveUrl = 'https://shukrehut.co.il/he/כיסאות';
-      
+
       // Initialize scraping job
       const job = await this.scrapingService.startScraping({
         siteUrl: archiveUrl,
@@ -218,7 +218,7 @@ class RolloutValidator {
         // Check batch-wide attribute union
         const allAttributes = new Set<string>();
         let totalVariations = 0;
-        
+
         for (const product of products) {
           if (product.attributes) {
             Object.keys(product.attributes).forEach(key => allAttributes.add(key));
@@ -231,9 +231,9 @@ class RolloutValidator {
         // Generate CSV and validate batch-wide union
         const csvResult = await this.csvGenerator.generateBothCsvs(products);
         this.validateBatchWideUnion(csvResult.parentCsv, allAttributes, errors, warnings);
-        
-        this.addResult(testName, errors.length === 0, errors, warnings, startTime, 
-          products.length, totalVariations, allAttributes.size, 
+
+        this.addResult(testName, errors.length === 0, errors, warnings, startTime,
+          products.length, totalVariations, allAttributes.size,
           csvResult.parentCsv.length + csvResult.variationCsv.length);
       }
 
@@ -307,14 +307,14 @@ class RolloutValidator {
       // Test with feature flags disabled (legacy behavior)
       process.env.SCRAPER_BATCH_WIDE_ATTRIBUTE_UNION = 'false';
       process.env.SCRAPER_NORMALIZED_ATTRIBUTE_KEYS = 'false';
-      
+
       const legacyGenerator = new CsvGenerator();
       const legacyResult = await legacyGenerator.generateBothCsvs(mockProducts as any);
 
       // Test with feature flags enabled (new behavior)
       process.env.SCRAPER_BATCH_WIDE_ATTRIBUTE_UNION = 'true';
       process.env.SCRAPER_NORMALIZED_ATTRIBUTE_KEYS = 'true';
-      
+
       const newGenerator = new CsvGenerator();
       const newResult = await newGenerator.generateBothCsvs(mockProducts as any);
 
@@ -336,8 +336,8 @@ class RolloutValidator {
       this.validateCsvContent(legacyResult.parentCsv, legacyResult.variationCsv, errors, warnings);
       this.validateCsvContent(newResult.parentCsv, newResult.variationCsv, errors, warnings);
 
-      this.addResult(testName, errors.length === 0, errors, warnings, startTime, 
-        mockProducts.length, 3, 4, 
+      this.addResult(testName, errors.length === 0, errors, warnings, startTime,
+        mockProducts.length, 3, 4,
         legacyResult.parentCsv.length + newResult.parentCsv.length);
 
     } catch (err) {
@@ -369,7 +369,7 @@ class RolloutValidator {
     // Check for attribute column pairs
     const attributePattern = /attribute:[^,]+/g;
     const attributeDataPattern = /attribute_data:[^,]+/g;
-    
+
     const parentAttributes = parentCsv.match(attributePattern) || [];
     const parentAttributeData = parentCsv.match(attributeDataPattern) || [];
 
@@ -392,7 +392,7 @@ class RolloutValidator {
   private validateBatchWideUnion(parentCsv: string, allAttributes: Set<string>, errors: string[], warnings: string[]): void {
     const attributePattern = /attribute:([^,]+)/g;
     const csvAttributes = new Set<string>();
-    
+
     let match;
     while ((match = attributePattern.exec(parentCsv)) !== null) {
       csvAttributes.add(match[1]);
@@ -418,18 +418,18 @@ class RolloutValidator {
    * Add validation result
    */
   private addResult(
-    testName: string, 
-    success: boolean, 
-    errors: string[], 
-    warnings: string[], 
+    testName: string,
+    success: boolean,
+    errors: string[],
+    warnings: string[],
     startTime: number,
     productsScraped: number,
     variationsFound: number,
     attributesFound: number,
-    csvSize: number
+    csvSize: number,
   ): void {
     const processingTime = Date.now() - startTime;
-    
+
     this.results.push({
       testName,
       success,
@@ -450,7 +450,7 @@ class RolloutValidator {
       error(`❌ ${testName} - FAILED`);
       errors.forEach(err => error(`  Error: ${err}`));
     }
-    
+
     warnings.forEach(warning => warn(`  Warning: ${warning}`));
   }
 
@@ -506,7 +506,7 @@ program
     if (options.debug) {
       process.env.SCRAPER_ROLLOUT_DEBUG_MODE = 'true';
     }
-    
+
     const validator = new RolloutValidator();
     await validator.runValidation();
   });

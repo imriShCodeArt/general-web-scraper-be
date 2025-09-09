@@ -6,16 +6,16 @@
 export interface FeatureFlags {
   /** Enable batch-wide attribute union for parent CSV generation */
   batchWideAttributeUnion: boolean;
-  
+
   /** Enable normalized attribute keys (pa_ prefix) by default */
   normalizedAttributeKeys: boolean;
-  
+
   /** Enable performance optimizations (caching, retry, tightened selectors) */
   performanceOptimizations: boolean;
-  
+
   /** Enable debug logging for rollout validation */
   rolloutDebugMode: boolean;
-  
+
   /** Enable strict WooCommerce validation */
   strictWooCommerceValidation: boolean;
 }
@@ -62,23 +62,23 @@ export function getFeatureFlags(): FeatureFlags {
   return {
     batchWideAttributeUnion: parseBooleanEnv(
       process.env[FEATURE_FLAG_ENV_VARS.batchWideAttributeUnion],
-      DEFAULT_FEATURE_FLAGS.batchWideAttributeUnion
+      DEFAULT_FEATURE_FLAGS.batchWideAttributeUnion,
     ),
     normalizedAttributeKeys: parseBooleanEnv(
       process.env[FEATURE_FLAG_ENV_VARS.normalizedAttributeKeys],
-      DEFAULT_FEATURE_FLAGS.normalizedAttributeKeys
+      DEFAULT_FEATURE_FLAGS.normalizedAttributeKeys,
     ),
     performanceOptimizations: parseBooleanEnv(
       process.env[FEATURE_FLAG_ENV_VARS.performanceOptimizations],
-      DEFAULT_FEATURE_FLAGS.performanceOptimizations
+      DEFAULT_FEATURE_FLAGS.performanceOptimizations,
     ),
     rolloutDebugMode: parseBooleanEnv(
       process.env[FEATURE_FLAG_ENV_VARS.rolloutDebugMode],
-      DEFAULT_FEATURE_FLAGS.rolloutDebugMode
+      DEFAULT_FEATURE_FLAGS.rolloutDebugMode,
     ),
     strictWooCommerceValidation: parseBooleanEnv(
       process.env[FEATURE_FLAG_ENV_VARS.strictWooCommerceValidation],
-      DEFAULT_FEATURE_FLAGS.strictWooCommerceValidation
+      DEFAULT_FEATURE_FLAGS.strictWooCommerceValidation,
     ),
   };
 }
@@ -109,7 +109,6 @@ export function getFeatureFlagsSummary(): Record<string, boolean> {
  * Validate feature flags configuration
  */
 export function validateFeatureFlags(): { valid: boolean; errors: string[] } {
-  const flags = getFeatureFlags();
   const errors: string[] = [];
 
   // Add validation rules here if needed
