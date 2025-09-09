@@ -31,7 +31,10 @@
     "mutation:ci": "stryker run",
     "mutation:comprehensive": "stryker run",
     "quality-gate": "npm run test:ci && npm run lint && npm run type-check",
-    "quality-gate:full": "npm run test:ci && npm run mutation:ci && npm run lint && npm run type-check"
+    "quality-gate:full": "npm run test:ci && npm run mutation:ci && npm run lint && npm run type-check",
+    "rollout:validate": "ts-node src/cli/rollout-validation.ts",
+    "rollout:validate:debug": "ts-node src/cli/rollout-validation.ts --debug",
+    "rollout:test": "ts-node src/cli/simple-rollout-test.ts"
   },
   "keywords": [
     "web-scraper",
