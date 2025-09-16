@@ -1,0 +1,71 @@
+[
+  {
+    "title": "Simple Product",
+    "price": "19.99",
+    "url": "https://example.com/simple",
+    "description": "A simple product",
+    "image": "https://example.com/images/simple.jpg",
+    "sku": "SIMPLE001",
+    "stock": "in-stock",
+    "category": "Accessories",
+    "tags": ["simple"],
+    "attributes": {
+      "color": "Black"
+    }
+  },
+  {
+    "title": "Variable Product",
+    "price": "79.99",
+    "url": "https://example.com/variable",
+    "description": "A variable product",
+    "image": "https://example.com/images/variable.jpg",
+    "sku": "VAR001",
+    "stock": "in-stock",
+    "category": "Electronics",
+    "tags": ["variable"],
+    "attributes": {
+      "color": "Silver",
+      "size": "Medium"
+    },
+    "variations": [
+      {
+        "title": "Variable Product - Silver Small",
+        "price": "69.99",
+        "url": "https://example.com/variable-silver-small",
+        "sku": "VAR001-SS",
+        "stock": "in-stock",
+        "attributes": {
+          "color": "Silver",
+          "size": "Small"
+        }
+      },
+      {
+        "title": "Variable Product - Silver Large",
+        "price": "89.99",
+        "url": "https://example.com/variable-silver-large",
+        "sku": "VAR001-SL",
+        "stock": "in-stock",
+        "attributes": {
+          "color": "Silver",
+          "size": "Large"
+        }
+      }
+    ]
+  },
+  {
+    "title": "Another Simple Product",
+    "price": "39.99",
+    "url": "https://example.com/simple2",
+    "description": "Another simple product",
+    "image": "https://example.com/images/simple2.jpg",
+    "sku": "SIMPLE002",
+    "stock": "out-of-stock",
+    "category": "Clothing",
+    "tags": ["simple", "clothing"],
+    "attributes": {
+      "color": "White",
+      "size": "Medium",
+      "material": "Polyester"
+    }
+  }
+]

@@ -1,0 +1,34 @@
+[
+  {
+    "title": "Simple Product 1",
+    "price": "29.99",
+    "url": "https://example.com/product1",
+    "description": "A simple product with basic information",
+    "image": "https://example.com/images/product1.jpg",
+    "sku": "SP001",
+    "stock": "in-stock",
+    "category": "Electronics",
+    "tags": ["simple", "basic"],
+    "attributes": {
+      "color": "Red",
+      "size": "Medium",
+      "weight": "1.5kg"
+    }
+  },
+  {
+    "title": "Simple Product 2",
+    "price": "49.99",
+    "url": "https://example.com/product2",
+    "description": "Another simple product",
+    "image": "https://example.com/images/product2.jpg",
+    "sku": "SP002",
+    "stock": "in-stock",
+    "category": "Clothing",
+    "tags": ["simple", "casual"],
+    "attributes": {
+      "color": "Blue",
+      "size": "Large",
+      "material": "Cotton"
+    }
+  }
+]

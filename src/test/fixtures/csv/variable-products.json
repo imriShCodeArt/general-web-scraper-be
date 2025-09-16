@@ -1,0 +1,53 @@
+[
+  {
+    "title": "Variable Product 1",
+    "price": "99.99",
+    "url": "https://example.com/variable1",
+    "description": "A variable product with multiple variations",
+    "image": "https://example.com/images/variable1.jpg",
+    "sku": "VP001",
+    "stock": "in-stock",
+    "category": "Electronics",
+    "tags": ["variable", "electronics"],
+    "attributes": {
+      "color": "Red",
+      "size": "Medium",
+      "weight": "2.0kg"
+    },
+    "variations": [
+      {
+        "title": "Variable Product 1 - Red Small",
+        "price": "89.99",
+        "url": "https://example.com/variable1-red-small",
+        "sku": "VP001-RS",
+        "stock": "in-stock",
+        "attributes": {
+          "color": "Red",
+          "size": "Small"
+        }
+      },
+      {
+        "title": "Variable Product 1 - Red Large",
+        "price": "109.99",
+        "url": "https://example.com/variable1-red-large",
+        "sku": "VP001-RL",
+        "stock": "in-stock",
+        "attributes": {
+          "color": "Red",
+          "size": "Large"
+        }
+      },
+      {
+        "title": "Variable Product 1 - Blue Medium",
+        "price": "99.99",
+        "url": "https://example.com/variable1-blue-medium",
+        "sku": "VP001-BM",
+        "stock": "out-of-stock",
+        "attributes": {
+          "color": "Blue",
+          "size": "Medium"
+        }
+      }
+    ]
+  }
+]
