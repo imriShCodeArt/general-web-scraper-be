@@ -7,14 +7,14 @@ describe('Extended JSON Extraction Pattern Tests', () => {
       const html = `
         <script>
           window.data = ${JSON.stringify({
-            id: 123,
-            name: 'Test Product',
-            price: 29.99,
-            variants: [
-              { id: 1, name: 'Red', price: 29.99 },
-              { id: 2, name: 'Blue', price: 34.99 },
-            ],
-          })};
+    id: 123,
+    name: 'Test Product',
+    price: 29.99,
+    variants: [
+      { id: 1, name: 'Red', price: 29.99 },
+      { id: 2, name: 'Blue', price: 34.99 },
+    ],
+  })};
         </script>
       `;
       const dom = new JSDOM(html);
@@ -34,21 +34,21 @@ describe('Extended JSON Extraction Pattern Tests', () => {
       const html = `
         <script>
           window.app = ${JSON.stringify({
-            config: {
-              api: {
-                baseUrl: 'https://api.example.com',
-                version: 'v1',
-              },
-            },
-            data: {
-              products: {
-                items: [
-                  { 'id': 1, 'name': 'Product 1' },
-                  { 'id': 2, 'name': 'Product 2' },
-                ],
-              },
-            },
-          })};
+    config: {
+      api: {
+        baseUrl: 'https://api.example.com',
+        version: 'v1',
+      },
+    },
+    data: {
+      products: {
+        items: [
+          { 'id': 1, 'name': 'Product 1' },
+          { 'id': 2, 'name': 'Product 2' },
+        ],
+      },
+    },
+  })};
         </script>
       `;
       const dom = new JSDOM(html);
@@ -167,10 +167,10 @@ describe('Extended JSON Extraction Pattern Tests', () => {
       const html = `
         <script>
           window.data = ${JSON.stringify({
-            id: 1,
-            name: 'Product with\nline breaks',
-            description: 'Description with\ttabs and\r\ncarriage returns',
-          })};
+    id: 1,
+    name: 'Product with\nline breaks',
+    description: 'Description with\ttabs and\r\ncarriage returns',
+  })};
         </script>
       `;
       const dom = new JSDOM(html);
@@ -242,18 +242,18 @@ describe('Extended JSON Extraction Pattern Tests', () => {
       const html = `
         <script>
           window.data = ${JSON.stringify({
-            level1: {
-              level2: {
-                level3: {
-                  level4: {
-                    level5: {
-                      value: 'deep value',
-                    },
-                  },
-                },
-              },
+    level1: {
+      level2: {
+        level3: {
+          level4: {
+            level5: {
+              value: 'deep value',
             },
-          })};
+          },
+        },
+      },
+    },
+  })};
         </script>
       `;
       const dom = new JSDOM(html);
@@ -277,24 +277,24 @@ describe('Extended JSON Extraction Pattern Tests', () => {
       const html = `
         <script>
           window.data = ${JSON.stringify({
-            products: [
-              {
-                id: 1,
-                name: 'Product 1',
-                variants: [
-                  { id: 1, name: 'Red', sizes: ['S', 'M', 'L'] },
-                  { id: 2, name: 'Blue', sizes: ['M', 'L', 'XL'] },
-                ],
-              },
-              {
-                id: 2,
-                name: 'Product 2',
-                variants: [
-                  { id: 3, name: 'Green', sizes: ['S', 'L'] },
-                ],
-              },
-            ],
-          })};
+    products: [
+      {
+        id: 1,
+        name: 'Product 1',
+        variants: [
+          { id: 1, name: 'Red', sizes: ['S', 'M', 'L'] },
+          { id: 2, name: 'Blue', sizes: ['M', 'L', 'XL'] },
+        ],
+      },
+      {
+        id: 2,
+        name: 'Product 2',
+        variants: [
+          { id: 3, name: 'Green', sizes: ['S', 'L'] },
+        ],
+      },
+    ],
+  })};
         </script>
       `;
       const dom = new JSDOM(html);
@@ -324,15 +324,15 @@ describe('Extended JSON Extraction Pattern Tests', () => {
       const html = `
         <script>
           window.data = ${JSON.stringify({
-            mixedArray: [
-              'string',
-              123,
-              true,
-              null,
-              { object: 'value' },
-              [1, 2, 3],
-            ],
-          })};
+    mixedArray: [
+      'string',
+      123,
+      true,
+      null,
+      { object: 'value' },
+      [1, 2, 3],
+    ],
+  })};
         </script>
       `;
       const dom = new JSDOM(html);
@@ -390,10 +390,10 @@ describe('Extended JSON Extraction Pattern Tests', () => {
       const html = `
         <script>
           window.data = ${JSON.stringify({
-            name: 'Produkt z polskimi znakami: ąęćłńóśźż',
-            description: 'Описание на русском языке',
-            price: '29.99€',
-          })};
+    name: 'Produkt z polskimi znakami: ąęćłńóśźż',
+    description: 'Описание на русском языке',
+    price: '29.99€',
+  })};
         </script>
       `;
       const dom = new JSDOM(html);
@@ -409,10 +409,10 @@ describe('Extended JSON Extraction Pattern Tests', () => {
       const html = `
         <script>
           window.data = ${JSON.stringify({
-            name: 'Product with "quotes" and \\backslashes',
-            description: 'Line 1\nLine 2\tTabbed',
-            path: 'C:\\Users\\Test',
-          })};
+    name: 'Product with "quotes" and \\backslashes',
+    description: 'Line 1\nLine 2\tTabbed',
+    path: 'C:\\Users\\Test',
+  })};
         </script>
       `;
       const dom = new JSDOM(html);
@@ -428,10 +428,10 @@ describe('Extended JSON Extraction Pattern Tests', () => {
       const html = `
         <script>
           window.data = ${JSON.stringify({
-            name: 'Product &amp; Company',
-            description: 'Price &lt; $100',
-            symbol: '&copy; 2024',
-          })};
+    name: 'Product &amp; Company',
+    description: 'Price &lt; $100',
+    symbol: '&copy; 2024',
+  })};
         </script>
       `;
       const dom = new JSDOM(html);
