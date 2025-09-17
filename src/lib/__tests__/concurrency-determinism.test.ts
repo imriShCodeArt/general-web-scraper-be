@@ -13,7 +13,7 @@ describe('Concurrency Determinism Tests', () => {
   describe('Deterministic Behavior with Fake Timers', () => {
     it('should process items in deterministic order with fake timers', async () => {
       const items = ['item1', 'item2', 'item3'];
-      const results: string[] = [];
+      // Results collected via returned promise
 
       const worker = async (item: string, index: number): Promise<string> => {
         await new Promise(resolve => setTimeout(resolve, 100));

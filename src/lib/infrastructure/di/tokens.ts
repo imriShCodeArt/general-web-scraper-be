@@ -15,6 +15,9 @@ export const TOKENS = {
   // Scraping services
   ScrapingService: Symbol('ScrapingService'),
   HttpClient: Symbol('HttpClient'),
+  AdapterFactory: Symbol('AdapterFactory'),
+  JobQueueService: Symbol('JobQueueService'),
+  JobLifecycleService: Symbol('JobLifecycleService'),
 
   // Request context (per-request)
   RequestContext: Symbol('RequestContext'),

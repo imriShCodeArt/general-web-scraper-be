@@ -28,14 +28,6 @@ export class StorageService {
    * Store job results in both memory and filesystem
    */
   async storeJobResult(jobId: string, result: JobResult): Promise<void> {
-    console.log('≡ƒöì DEBUG: storeJobResult called with:', {
-      jobId,
-      parentCsvLength: result.parentCsv.length,
-      variationCsvLength: result.variationCsv.length,
-      productCount: result.productCount,
-      variationCount: result.variationCount,
-    });
-
     const entry: StorageEntry = {
       jobId,
       parentCsv: result.parentCsv,
@@ -50,8 +42,6 @@ export class StorageService {
 
     // Store in filesystem
     await this.storeToFilesystem(jobId, entry);
-
-    console.log('≡ƒöì DEBUG: storeJobResult completed for jobId:', jobId);
   }
 
   /**
@@ -76,35 +66,13 @@ export class StorageService {
    * Retrieve job result from memory first, then filesystem
    */
   async getJobResult(jobId: string): Promise<StorageEntry | null> {
-    console.log('≡ƒöì DEBUG: getJobResult called for jobId:', jobId);
-
     // Check memory first
     const memoryEntry = this.inMemoryStorage.get(jobId);
     if (memoryEntry) {
-      console.log('≡ƒöì DEBUG: getJobResult found in memory:', {
-        hasParentCsv: !!memoryEntry.parentCsv,
-        parentCsvLength: memoryEntry.parentCsv.length,
-        hasVariationCsv: !!memoryEntry.variationCsv,
-        variationCsvLength: memoryEntry.variationCsv.length,
-      });
       return memoryEntry;
     }
-
-    console.log('≡ƒöì DEBUG: getJobResult not found in memory, checking filesystem');
     // Check filesystem
     const filesystemEntry = await this.loadFromFilesystem(jobId);
-
-    if (filesystemEntry) {
-      console.log('≡ƒöì DEBUG: getJobResult found in filesystem:', {
-        hasParentCsv: !!filesystemEntry.parentCsv,
-        parentCsvLength: filesystemEntry.parentCsv.length,
-        hasVariationCsv: !!filesystemEntry.variationCsv,
-        variationCsvLength: filesystemEntry.variationCsv.length,
-      });
-    } else {
-      console.log('≡ƒöì DEBUG: getJobResult not found anywhere');
-    }
-
     return filesystemEntry;
   }
 

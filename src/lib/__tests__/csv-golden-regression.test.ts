@@ -1,7 +1,7 @@
 import { CsvGenerator } from '../core/services/csv-generator';
 import { NormalizedProduct, ProductVariation } from '../domain/types';
-import { readFileSync } from 'fs';
-import { join } from 'path';
+// import { readFileSync } from 'fs';
+// import { join } from 'path';
 
 // No mocking needed for this test
 

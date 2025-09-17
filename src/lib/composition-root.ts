@@ -5,6 +5,9 @@ import { RecipeManager } from './core/services/recipe-manager';
 import { RecipeLoader } from './utils/recipe-loader';
 import { CsvGenerator } from './core/services/csv-generator';
 import { ScrapingService } from './core/services/scraping-service';
+import { AdapterFactory } from './core/services/adapter-factory';
+import { JobQueueService } from './core/services/job-queue-service';
+import { JobLifecycleService } from './core/services/job-lifecycle-service';
 import { HttpClient } from './infrastructure/http/http-client';
 import pino from 'pino';
 
@@ -94,6 +97,27 @@ rootContainer.register(TOKENS.HttpClient, {
   factory: () => new HttpClient(),
 });
 
+// Adapter factory
+rootContainer.register(TOKENS.AdapterFactory as any, {
+  lifetime: 'singleton',
+  factory: async (c) => new AdapterFactory(
+    await c.resolve(TOKENS.RecipeManager),
+    await c.resolve(TOKENS.Logger),
+  ),
+});
+
+// Job queue service
+rootContainer.register(TOKENS.JobQueueService as any, {
+  lifetime: 'singleton',
+  factory: () => new JobQueueService(),
+});
+
+// Job lifecycle service
+rootContainer.register(TOKENS.JobLifecycleService as any, {
+  lifetime: 'singleton',
+  factory: () => new JobLifecycleService(),
+});
+
 // Scraping service
 rootContainer.register(TOKENS.ScrapingService, {
   lifetime: 'singleton',
@@ -102,6 +126,9 @@ rootContainer.register(TOKENS.ScrapingService, {
     await c.resolve(TOKENS.RecipeManager),
     await c.resolve(TOKENS.CsvGenerator),
     await c.resolve(TOKENS.Logger),
+    await c.resolve(TOKENS.AdapterFactory as any),
+    await c.resolve(TOKENS.JobQueueService as any),
+    await c.resolve(TOKENS.JobLifecycleService as any),
   ),
 });
 
