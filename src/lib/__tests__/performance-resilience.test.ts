@@ -229,7 +229,7 @@ describe('Performance and Resilience Tests', () => {
         siteUrl: 'https://example.com',
         version: '1.0.0',
         selectors: { title: '.title', price: '.price', images: '.images', stock: '.stock', sku: '.sku', description: '.desc', productLinks: '.product a', attributes: '.attrs' },
-      });
+      } as any);
 
       mockAdapter.extractProduct.mockImplementation(async (_url: string) => {
         return {

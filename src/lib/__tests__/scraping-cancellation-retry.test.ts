@@ -110,8 +110,6 @@ describe('ScrapingService Cancellation and Retry Integration', () => {
 
       // Ensure the flow executed to completion
       expect(true).toBe(true);
-
-
     });
 
     it('should handle cancellation when no products are being processed', async () => {

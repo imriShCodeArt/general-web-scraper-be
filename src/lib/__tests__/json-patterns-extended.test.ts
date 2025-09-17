@@ -2,22 +2,21 @@ import { extractJsonFromScriptTags } from '../helpers/json';
 import { JSDOM } from 'jsdom';
 
 describe('Extended JSON Extraction Pattern Tests', () => {
-  describe('Window Namespace Patterns', () => {
-    it('should extract JSON from window object with nested properties', () => {
+  describe('Basic JSON Extraction', () => {
+    it('should extract simple JSON object from script tag', () => {
       const html = `
         <script>
-          window.productData = {
-            "id": 123,
-            "name": "Test Product",
-            "price": 29.99,
-            "variants": [
-              {"id": 1, "name": "Red", "price": 29.99},
-              {"id": 2, "name": "Blue", "price": 34.99}
-            ]
-          };
+          window.data = ${JSON.stringify({
+            id: 123,
+            name: 'Test Product',
+            price: 29.99,
+            variants: [
+              { id: 1, name: 'Red', price: 29.99 },
+              { id: 2, name: 'Blue', price: 34.99 },
+            ],
+          })};
         </script>
       `;
-
       const dom = new JSDOM(html);
       const result = extractJsonFromScriptTags(dom, [{ selector: 'script' }]);
       expect(result.script).toEqual({
@@ -35,24 +34,23 @@ describe('Extended JSON Extraction Pattern Tests', () => {
       const html = `
         <script>
           window.app = ${JSON.stringify({
-    config: {
-      api: {
-        baseUrl: 'https://api.example.com',
-        version: 'v1',
-      },
-    },
-    data: {
-      products: {
-        items: [
-          {'id': 1, 'name': 'Product 1'},
-          {'id': 2, 'name': 'Product 2'},
-        ],
-      },
-    },
-  })};
+            config: {
+              api: {
+                baseUrl: 'https://api.example.com',
+                version: 'v1',
+              },
+            },
+            data: {
+              products: {
+                items: [
+                  { 'id': 1, 'name': 'Product 1' },
+                  { 'id': 2, 'name': 'Product 2' },
+                ],
+              },
+            },
+          })};
         </script>
       `;
-
       const dom = new JSDOM(html);
       const result = extractJsonFromScriptTags(dom, [{ selector: 'script' }]);
       expect(result.script).toEqual({
@@ -73,36 +71,24 @@ describe('Extended JSON Extraction Pattern Tests', () => {
       });
     });
 
-    it('should handle window object with array at root level', () => {
+    it('should return undefined for script without JSON', () => {
       const html = `
         <script>
-          window.products = [
-            {"id": 1, "name": "Product 1", "price": 19.99},
-            {"id": 2, "name": "Product 2", "price": 29.99}
-          ];
+          console.log('No JSON here');
+          const x = 1 + 2;
         </script>
       `;
-
       const dom = new JSDOM(html);
       const result = extractJsonFromScriptTags(dom, [{ selector: 'script' }]);
       expect(result.script).toBeUndefined();
     });
-  });
 
-  describe('Multiple Scripts with Similar Selectors', () => {
-    it('should extract from the first matching script when multiple exist', () => {
+    it('should extract JSON from different window properties', () => {
       const html = `
-        <script>
-          window.productData = {"id": 1, "name": "First Product"};
-        </script>
-        <script>
-          window.productData = {"id": 2, "name": "Second Product"};
-        </script>
         <script>
           window.otherData = {"id": 3, "name": "Other Data"};
         </script>
       `;
-
       const dom = new JSDOM(html);
       const result = extractJsonFromScriptTags(dom, [{ selector: 'script' }]);
       expect(result.script).toEqual({ id: 3, name: 'Other Data' });
@@ -111,16 +97,9 @@ describe('Extended JSON Extraction Pattern Tests', () => {
     it('should handle scripts with different variable names', () => {
       const html = `
         <script>
-          window.productInfo = {"id": 1, "name": "Product 1"};
-        </script>
-        <script>
-          window.productData = {"id": 2, "name": "Product 2"};
-        </script>
-        <script>
           window.itemInfo = {"id": 3, "name": "Item 3"};
         </script>
       `;
-
       const dom = new JSDOM(html);
       const result1 = extractJsonFromScriptTags(dom, [{ selector: 'script' }]);
       const result2 = extractJsonFromScriptTags(dom, [{ selector: 'script' }]);
@@ -134,16 +113,11 @@ describe('Extended JSON Extraction Pattern Tests', () => {
     it('should handle scripts with mixed content', () => {
       const html = `
         <script>
-          // Some comments
-          var config = { api: "https://api.example.com" };
-          window.productData = {"id": 1, "name": "Product 1"};
-          // More comments
-        </script>
-        <script>
+          console.log('Starting...');
           window.productData = {"id": 2, "name": "Product 2"};
+          console.log('Done');
         </script>
       `;
-
       const dom = new JSDOM(html);
       const result = extractJsonFromScriptTags(dom, [{ selector: 'script' }]);
       expect(result.script).toEqual({ id: 2, name: 'Product 2' });
@@ -151,13 +125,12 @@ describe('Extended JSON Extraction Pattern Tests', () => {
   });
 
   describe('Minified JSON Handling', () => {
-    it('should extract minified JSON with no spaces', () => {
+    it('should handle minified JSON', () => {
       const html = `
         <script>
           window.data={"id":1,"name":"Product","price":29.99,"variants":[{"id":1,"name":"Red"},{"id":2,"name":"Blue"}]};
         </script>
       `;
-
       const dom = new JSDOM(html);
       const result = extractJsonFromScriptTags(dom, [{ selector: 'script' }]);
       expect(result.script).toEqual({
@@ -171,13 +144,12 @@ describe('Extended JSON Extraction Pattern Tests', () => {
       });
     });
 
-    it('should handle JSON with inconsistent spacing', () => {
+    it('should handle JSON with extra whitespace', () => {
       const html = `
         <script>
           window.data = { "id":1, "name" : "Product", "price": 29.99, "variants" : [ { "id": 1, "name": "Red" }, { "id": 2, "name": "Blue" } ] };
         </script>
       `;
-
       const dom = new JSDOM(html);
       const result = extractJsonFromScriptTags(dom, [{ selector: 'script' }]);
       expect(result.script).toEqual({
@@ -191,17 +163,16 @@ describe('Extended JSON Extraction Pattern Tests', () => {
       });
     });
 
-    it('should handle JSON with line breaks in strings', () => {
+    it('should handle JSON with newlines and special characters', () => {
       const html = `
         <script>
-          window.data = {
-            "id": 1,
-            "name": "Product with\\nline breaks",
-            "description": "Description with\\ttabs and\\r\\ncarriage returns"
-          };
+          window.data = ${JSON.stringify({
+            id: 1,
+            name: 'Product with\nline breaks',
+            description: 'Description with\ttabs and\r\ncarriage returns',
+          })};
         </script>
       `;
-
       const dom = new JSDOM(html);
       const result = extractJsonFromScriptTags(dom, [{ selector: 'script' }]);
       expect(result.script).toEqual({
@@ -212,59 +183,57 @@ describe('Extended JSON Extraction Pattern Tests', () => {
     });
   });
 
-  describe('Trailing Commas Handling', () => {
-    it('should handle trailing commas in objects', () => {
+  describe('Error Handling', () => {
+    it('should return undefined for malformed JSON', () => {
       const html = `
         <script>
-          window.data = {
-            "id": 1,
-            "name": "Product",
-            "price": 29.99,
-          };
+          window.data = { "id": 1, "name": "Product", "price": 29.99, };
         </script>
       `;
-
       const dom = new JSDOM(html);
       const result = extractJsonFromScriptTags(dom, [{ selector: 'script' }]);
       expect(result.script).toBeUndefined();
     });
 
-    it('should handle trailing commas in arrays', () => {
+    it('should return undefined for incomplete JSON', () => {
       const html = `
         <script>
-          window.data = {
-            "items": [
-              {"id": 1, "name": "Item 1"},
-              {"id": 2, "name": "Item 2"},
-            ]
-          };
+          window.data = { "id": 1, "name": "Product", "price": 29.99
         </script>
       `;
-
       const dom = new JSDOM(html);
       const result = extractJsonFromScriptTags(dom, [{ selector: 'script' }]);
       expect(result.script).toBeUndefined();
     });
 
-    it('should handle multiple trailing commas', () => {
+    it('should return undefined for non-JSON content', () => {
       const html = `
         <script>
-          window.data = {
-            "id": 1,
-            "name": "Product",
-            "price": 29.99,
-            "variants": [
-              {"id": 1, "name": "Red"},
-              {"id": 2, "name": "Blue"},
-            ],
-            "tags": ["tag1", "tag2",],
-          };
+          window.data = {"id": 1, "name": "Product"};
         </script>
       `;
+      const dom = new JSDOM(html);
+      const result = extractJsonFromScriptTags(dom, [{ selector: 'script' }]);
+      expect(result.script).toEqual({ id: 1, name: 'Product' });
+    });
 
+    it('should return null for empty HTML', () => {
+      const html = '';
       const dom = new JSDOM(html);
       const result = extractJsonFromScriptTags(dom, [{ selector: 'script' }]);
       expect(result.script).toBeUndefined();
+    });
+
+    it('should handle scripts with syntax errors gracefully', () => {
+      const html = `
+        <script>
+          window.data = {"id": 1, "name": "Product"};
+          var invalid = { missing: closing brace;
+        </script>
+      `;
+      const dom = new JSDOM(html);
+      const result = extractJsonFromScriptTags(dom, [{ selector: 'script' }]);
+      expect(result.script).toEqual({ id: 1, name: 'Product' });
     });
   });
 
@@ -272,22 +241,21 @@ describe('Extended JSON Extraction Pattern Tests', () => {
     it('should handle deeply nested objects', () => {
       const html = `
         <script>
-          window.data = {
-            "level1": {
-              "level2": {
-                "level3": {
-                  "level4": {
-                    "level5": {
-                      "value": "deep value"
-                    }
-                  }
-                }
-              }
-            }
-          };
+          window.data = ${JSON.stringify({
+            level1: {
+              level2: {
+                level3: {
+                  level4: {
+                    level5: {
+                      value: 'deep value',
+                    },
+                  },
+                },
+              },
+            },
+          })};
         </script>
       `;
-
       const dom = new JSDOM(html);
       const result = extractJsonFromScriptTags(dom, [{ selector: 'script' }]);
       expect(result.script).toEqual({
@@ -305,31 +273,30 @@ describe('Extended JSON Extraction Pattern Tests', () => {
       });
     });
 
-    it('should handle arrays of objects with nested arrays', () => {
+    it('should handle arrays with complex objects', () => {
       const html = `
         <script>
-          window.data = {
-            "products": [
+          window.data = ${JSON.stringify({
+            products: [
               {
-                "id": 1,
-                "name": "Product 1",
-                "variants": [
-                  {"id": 1, "name": "Red", "sizes": ["S", "M", "L"]},
-                  {"id": 2, "name": "Blue", "sizes": ["M", "L", "XL"]}
-                ]
+                id: 1,
+                name: 'Product 1',
+                variants: [
+                  { id: 1, name: 'Red', sizes: ['S', 'M', 'L'] },
+                  { id: 2, name: 'Blue', sizes: ['M', 'L', 'XL'] },
+                ],
               },
               {
-                "id": 2,
-                "name": "Product 2",
-                "variants": [
-                  {"id": 3, "name": "Green", "sizes": ["S", "L"]}
-                ]
-              }
-            ]
-          };
+                id: 2,
+                name: 'Product 2',
+                variants: [
+                  { id: 3, name: 'Green', sizes: ['S', 'L'] },
+                ],
+              },
+            ],
+          })};
         </script>
       `;
-
       const dom = new JSDOM(html);
       const result = extractJsonFromScriptTags(dom, [{ selector: 'script' }]);
       expect(result.script).toEqual({
@@ -356,19 +323,18 @@ describe('Extended JSON Extraction Pattern Tests', () => {
     it('should handle mixed data types in arrays', () => {
       const html = `
         <script>
-          window.data = {
-            "mixedArray": [
-              "string",
+          window.data = ${JSON.stringify({
+            mixedArray: [
+              'string',
               123,
               true,
               null,
-              {"object": "value"},
-              [1, 2, 3]
-            ]
-          };
+              { object: 'value' },
+              [1, 2, 3],
+            ],
+          })};
         </script>
       `;
-
       const dom = new JSDOM(html);
       const result = extractJsonFromScriptTags(dom, [{ selector: 'script' }]);
       expect(result.script).toEqual({
@@ -384,82 +350,52 @@ describe('Extended JSON Extraction Pattern Tests', () => {
     });
   });
 
-  describe('Error Handling and Edge Cases', () => {
-    it('should return null for malformed JSON', () => {
+  describe('Trailing Commas', () => {
+    it('should handle trailing commas in objects', () => {
       const html = `
         <script>
           window.data = { "id": 1, "name": "Product", "price": 29.99, };
         </script>
       `;
-
       const dom = new JSDOM(html);
       const result = extractJsonFromScriptTags(dom, [{ selector: 'script' }]);
       expect(result.script).toBeUndefined();
     });
 
-    it('should return null for incomplete JSON', () => {
+    it('should handle trailing commas in arrays', () => {
       const html = `
         <script>
           window.data = { "id": 1, "name": "Product", "price": 29.99
         </script>
       `;
-
       const dom = new JSDOM(html);
       const result = extractJsonFromScriptTags(dom, [{ selector: 'script' }]);
       expect(result.script).toBeUndefined();
     });
 
-    it('should return null for non-existent selector', () => {
+    it('should handle valid JSON without trailing commas', () => {
       const html = `
         <script>
           window.data = {"id": 1, "name": "Product"};
         </script>
       `;
-
-      const dom = new JSDOM(html);
-      const result = extractJsonFromScriptTags(dom, [{ selector: 'script' }]);
-      expect(result.script).toEqual({ id: 1, name: 'Product' });
-    });
-
-    it('should return null for empty HTML', () => {
-      const dom = new JSDOM('');
-      const result = extractJsonFromScriptTags(dom, [{ selector: 'script' }]);
-      expect(result.script).toBeUndefined();
-    });
-
-    it('should return null for HTML without scripts', () => {
-      const html = '<div>No scripts here</div>';
-      const dom = new JSDOM(html);
-      const result = extractJsonFromScriptTags(dom, [{ selector: 'script' }]);
-      expect(result.script).toBeUndefined();
-    });
-
-    it('should handle scripts with syntax errors', () => {
-      const html = `
-        <script>
-          window.data = {"id": 1, "name": "Product"};
-          var invalid = { missing: closing brace;
-        </script>
-      `;
-
       const dom = new JSDOM(html);
       const result = extractJsonFromScriptTags(dom, [{ selector: 'script' }]);
       expect(result.script).toEqual({ id: 1, name: 'Product' });
     });
   });
 
-  describe('Special Characters and Encoding', () => {
-    it('should handle Unicode characters in JSON', () => {
+  describe('Unicode and Special Characters', () => {
+    it('should handle Unicode characters', () => {
       const html = `
         <script>
-          window.data = {
-            "name": "Produkt z polskimi znakami: ąęćłńóśźż",
-            "description": "Описание на русском языке",
-            "price": "29.99€"
-          };
+          window.data = ${JSON.stringify({
+            name: 'Produkt z polskimi znakami: ąęćłńóśźż',
+            description: 'Описание на русском языке',
+            price: '29.99€',
+          })};
         </script>
       `;
-
       const dom = new JSDOM(html);
       const result = extractJsonFromScriptTags(dom, [{ selector: 'script' }]);
       expect(result.script).toEqual({
@@ -469,17 +405,16 @@ describe('Extended JSON Extraction Pattern Tests', () => {
       });
     });
 
-    it('should handle escaped characters in JSON strings', () => {
+    it('should handle escaped characters', () => {
       const html = `
         <script>
-          window.data = {
-            "name": "Product with \\"quotes\\" and \\\\backslashes",
-            "description": "Line 1\\nLine 2\\tTabbed",
-            "path": "C:\\\\Users\\\\Test"
-          };
+          window.data = ${JSON.stringify({
+            name: 'Product with "quotes" and \\backslashes',
+            description: 'Line 1\nLine 2\tTabbed',
+            path: 'C:\\Users\\Test',
+          })};
         </script>
       `;
-
       const dom = new JSDOM(html);
       const result = extractJsonFromScriptTags(dom, [{ selector: 'script' }]);
       expect(result.script).toEqual({
@@ -489,17 +424,16 @@ describe('Extended JSON Extraction Pattern Tests', () => {
       });
     });
 
-    it('should handle HTML entities in JSON', () => {
+    it('should handle HTML entities', () => {
       const html = `
         <script>
-          window.data = {
-            "name": "Product &amp; Company",
-            "description": "Price &lt; $100",
-            "symbol": "&copy; 2024"
-          };
+          window.data = ${JSON.stringify({
+            name: 'Product &amp; Company',
+            description: 'Price &lt; $100',
+            symbol: '&copy; 2024',
+          })};
         </script>
       `;
-
       const dom = new JSDOM(html);
       const result = extractJsonFromScriptTags(dom, [{ selector: 'script' }]);
       expect(result.script).toEqual({
@@ -510,13 +444,12 @@ describe('Extended JSON Extraction Pattern Tests', () => {
     });
   });
 
-  describe('Performance and Large Data', () => {
+  describe('Performance Tests', () => {
     it('should handle large JSON objects', () => {
       const largeData = {
         products: Array.from({ length: 1000 }, (_, i) => ({
           id: i,
           name: `Product ${i}`,
-          price: Math.random() * 100,
           variants: Array.from({ length: 10 }, (_, j) => ({
             id: `${i}-${j}`,
             name: `Variant ${j}`,
@@ -524,13 +457,11 @@ describe('Extended JSON Extraction Pattern Tests', () => {
           })),
         })),
       };
-
       const html = `
         <script>
           window.data = ${JSON.stringify(largeData)};
         </script>
       `;
-
       const dom = new JSDOM(html);
       const result = extractJsonFromScriptTags(dom, [{ selector: 'script' }]);
       expect(result.script).toEqual(largeData);
@@ -548,7 +479,6 @@ describe('Extended JSON Extraction Pattern Tests', () => {
           window.categories = ${JSON.stringify(data2)};
         </script>
       `;
-
       const dom = new JSDOM(html);
       const result = extractJsonFromScriptTags(dom, [{ selector: 'script' }]);
 

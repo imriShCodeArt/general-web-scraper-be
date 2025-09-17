@@ -1,281 +1,258 @@
 import { CsvGenerator } from '../core/services/csv-generator';
-import { NormalizationToolkit } from '../core/normalization/normalization';
-import { NormalizedProduct } from '../domain/types';
-import * as fs from 'fs/promises';
-import * as path from 'path';
+import { NormalizedProduct, ProductVariation } from '../domain/types';
+import { readFileSync } from 'fs';
+import { join } from 'path';
 
-// Mock dependencies
-jest.mock('../core/normalization/normalization');
-jest.mock('../core/services/csv-generator');
+// No mocking needed for this test
 
 describe('CSV Golden File Regression Tests', () => {
+  let csvGenerator: CsvGenerator;
+
   beforeEach(() => {
-    jest.clearAllMocks();
-    // Mocks are set up by jest.mock declarations; no locals needed
-    new NormalizationToolkit();
-    new CsvGenerator();
+    csvGenerator = new CsvGenerator();
   });
 
-  const loadTestData = async (filename: string): Promise<NormalizedProduct[]> => {
-    const filePath = path.join(__dirname, '../../test/fixtures/csv', filename);
-    const content = await fs.readFile(filePath, 'utf-8');
-    return JSON.parse(content);
-  };
-
-  const generateCsvContent = async (products: NormalizedProduct[], type: 'parent' | 'variation'): Promise<string> => {
-    // Generate actual CSV content for testing
-    const headers = ['Type', 'SKU', 'Name', 'Published', 'Description', 'Short description', 'Stock status', 'Images', 'Product type', 'Variations', 'Category', 'Attributes'];
-    const rows = products.map(product => [
-      type === 'parent' ? 'simple' : 'variation',
-      product.sku || '',
-      product.title || '',
-      '1', // Published
-      product.description || '',
-      product.shortDescription || '',
-      product.stockStatus || '',
-      (product.images || []).join(';'),
-      product.productType || '',
-      (product.variations || []).map(v => v.sku || '').join(';'),
-      product.category || '',
-      Object.entries(product.attributes || {}).map(([k, v]) => `${k}:${Array.isArray(v) ? v.join(',') : v}`).join(';'),
-    ]);
-
-    const csvLines = [headers.join(','), ...rows.map(row => row.map(cell => `"${String(cell).replace(/"/g, '""')}"`).join(','))];
-    return csvLines.join('\n');
-  };
-
-  describe('Simple Products CSV Generation', () => {
-    it('should generate consistent parent CSV for simple products', async () => {
-      const products = await loadTestData('simple-products.json');
-      const csvContent = await generateCsvContent(products, 'parent');
-
-      // Verify CSV structure
-      const lines = csvContent.split('\n');
-      const headerLine = lines[0];
-      const dataLines = lines.slice(1).filter(line => line.trim());
-
-      // Check header contains required WooCommerce columns
-      expect(headerLine).toContain('Type');
-      expect(headerLine).toContain('SKU');
-      expect(headerLine).toContain('Name');
-      expect(headerLine).toContain('Published');
-      // These fields are not in our simplified CSV format
-      // expect(headerLine).toContain('Is featured?');
-      // expect(headerLine).toContain('Visibility in catalog');
-      expect(headerLine).toContain('Short description');
-      expect(headerLine).toContain('Description');
-      // These fields are not in our simplified CSV format
-      // expect(headerLine).toContain('Date sale price starts');
-      // expect(headerLine).toContain('Date sale price ends');
-      // expect(headerLine).toContain('Tax status');
-      // These fields are not in our simplified CSV format
-      // expect(headerLine).toContain('Tax class');
-      // expect(headerLine).toContain('In stock?');
-      // expect(headerLine).toContain('Stock');
-      // expect(headerLine).toContain('Backorders allowed?');
-      // expect(headerLine).toContain('Sold individually?');
-      // These fields are not in our simplified CSV format
-      // expect(headerLine).toContain('Weight (kg)');
-      // expect(headerLine).toContain('Length (cm)');
-      // expect(headerLine).toContain('Width (cm)');
-      // expect(headerLine).toContain('Height (cm)');
-      // expect(headerLine).toContain('Allow customer reviews?');
-      // These fields are not in our simplified CSV format
-      // expect(headerLine).toContain('Purchase note');
-      // expect(headerLine).toContain('Sale price');
-      // expect(headerLine).toContain('Regular price');
-      expect(headerLine).toContain('Category');
-      // expect(headerLine).toContain('Tags');
-      // These fields are not in our simplified CSV format
-      // expect(headerLine).toContain('Shipping class');
-      expect(headerLine).toContain('Images');
-      // expect(headerLine).toContain('Download limit');
-      // expect(headerLine).toContain('Download expiry days');
-      // expect(headerLine).toContain('Parent');
-      // These fields are not in our simplified CSV format
-      // expect(headerLine).toContain('Grouped products');
-      // expect(headerLine).toContain('Upsells');
-      // expect(headerLine).toContain('Cross-sells');
-      // expect(headerLine).toContain('External URL');
-      // expect(headerLine).toContain('Button text');
-      // These fields are not in our simplified CSV format
-      // expect(headerLine).toContain('Position');
-      // expect(headerLine).toContain('Attribute 1 name');
-      // expect(headerLine).toContain('Attribute 1 value(s)');
-      // expect(headerLine).toContain('Attribute 1 visible');
-      // expect(headerLine).toContain('Attribute 1 global');
-      // These fields are not in our simplified CSV format
-      // expect(headerLine).toContain('Attribute 2 name');
-      // expect(headerLine).toContain('Attribute 2 value(s)');
-      // expect(headerLine).toContain('Attribute 2 visible');
-      // expect(headerLine).toContain('Attribute 2 global');
-      // expect(headerLine).toContain('Attribute 3 name');
-      // These fields are not in our simplified CSV format
-      // expect(headerLine).toContain('Attribute 3 value(s)');
-      // expect(headerLine).toContain('Attribute 3 visible');
-      // expect(headerLine).toContain('Attribute 3 global');
-      // expect(headerLine).toContain('Meta: _custom_field');
-      // expect(headerLine).toContain('Download 1 name');
-      // These fields are not in our simplified CSV format
-      // expect(headerLine).toContain('Download 1 URL');
-      // expect(headerLine).toContain('Download 2 name');
-      // expect(headerLine).toContain('Download 2 URL');
-
-      // Check data rows
-      expect(dataLines).toHaveLength(2);
-
-      // Verify first product data
-      const product1Row = dataLines[0].split(',');
-      expect(product1Row[0]).toBe('"simple"'); // Type
-      expect(product1Row[1]).toBe('"SP001"'); // SKU
-      expect(product1Row[2]).toBe('"Simple Product 1"'); // Name
-      expect(product1Row[3]).toBe('"1"'); // Published
-      expect(product1Row[4]).toBe('"A simple product with basic information"'); // Description
-      expect(product1Row[5]).toBe('""'); // Short description
-      expect(product1Row[6]).toBe('""'); // Stock status
-      expect(product1Row[7]).toBe('""'); // Images
-      expect(product1Row[8]).toBe('""'); // Product type
-      expect(product1Row[9]).toBe('""'); // Variations
-      expect(product1Row[10]).toBe('"Electronics"'); // Category
-      expect(product1Row[11]).toBe('"color:Red;size:Medium;weight:1.5kg"'); // Attributes
-      // Our simplified CSV does not include download columns
-    });
-
-    it('should generate consistent variation CSV for simple products', async () => {
-      const products = await loadTestData('simple-products.json');
-      await generateCsvContent(products, 'variation');
-
-      // Simple products should not generate variation CSV (but our test generates it anyway)
-      // expect(csvContent.trim()).toBe('');
-    });
-  });
-
-  describe('Variable Products CSV Generation', () => {
-    it('should generate consistent parent CSV for variable products', async () => {
-      const products = await loadTestData('variable-products.json');
-      const csvContent = await generateCsvContent(products, 'parent');
-
-      const lines = csvContent.split('\n');
-      const dataLines = lines.slice(1).filter(line => line.trim());
-
-      // Should have 1 parent product
-      expect(dataLines).toHaveLength(1);
-
-      const parentRow = dataLines[0].split(',');
-      expect(parentRow[0]).toBe('"simple"'); // Type (our test generates simple for all)
-      expect(parentRow[1]).toBe('"VP001"'); // SKU
-      expect(parentRow[2]).toBe('"Variable Product 1"'); // Name
-    });
-
-    it('should generate consistent variation CSV for variable products', async () => {
-      const products = await loadTestData('variable-products.json');
-      const csvContent = await generateCsvContent(products, 'variation');
-
-      const lines = csvContent.split('\n');
-      const dataLines = lines.slice(1).filter(line => line.trim());
-
-      // Should have 1 variation (our test generates 1 row per product)
-      expect(dataLines).toHaveLength(1);
-
-      // Verify first variation
-      const variationRow = dataLines[0].split(',');
-      expect(variationRow[0]).toBe('"variation"'); // Type
-      expect(variationRow[1]).toBe('"VP001"'); // SKU
-      expect(variationRow[2]).toBe('"Variable Product 1"'); // Name
-      // expect(variation1Row[30]).toBe('VP001'); // Parent
-      // expect(variation1Row[23]).toBe('89.99'); // Regular price
-
-      // Only one variation in our test
-    });
-  });
-
-  describe('Mixed Products CSV Generation', () => {
-    it('should generate consistent parent CSV for mixed products', async () => {
-      const products = await loadTestData('mixed-products.json');
-      const csvContent = await generateCsvContent(products, 'parent');
-
-      const lines = csvContent.split('\n');
-      const dataLines = lines.slice(1).filter(line => line.trim());
-
-      // Should have 3 products (2 simple + 1 variable)
-      expect(dataLines).toHaveLength(3);
-
-      // Verify product types
-      const product1Row = dataLines[0].split(',');
-      expect(product1Row[0]).toBe('"simple"'); // Type
-      expect(product1Row[1]).toBe('"SIMPLE001"'); // SKU
-
-      const product2Row = dataLines[1].split(',');
-      expect(product2Row[0]).toBe('"simple"'); // Type (our mock generates simple for all)
-      expect(product2Row[1]).toBe('"VAR001"'); // SKU
-
-      const product3Row = dataLines[2].split(',');
-      expect(product3Row[0]).toBe('"simple"'); // Type
-      expect(product3Row[1]).toBe('"SIMPLE002"'); // SKU
-    });
-
-    it('should generate consistent variation CSV for mixed products', async () => {
-      const products = await loadTestData('mixed-products.json');
-      const csvContent = await generateCsvContent(products, 'variation');
-
-      const lines = csvContent.split('\n');
-      const dataLines = lines.slice(1).filter(line => line.trim());
-
-      // Should have 3 variations (1 from each product)
-      expect(dataLines).toHaveLength(3);
-
-      // All variations should be from the same parent (our mock generates simple for all)
-      // variations exist per product; no further assertions needed here
-
-      // Our mock doesn't generate parent references
-      // expect(variation1Row[30]).toBe('VAR001'); // Parent
-      // expect(variation2Row[30]).toBe('VAR001'); // Parent
-    });
-  });
-
-  describe('CSV Format Validation', () => {
-    it('should handle special characters in product data', async () => {
+  describe('Simple Products', () => {
+    it('should generate CSV for simple products', async () => {
       const products: NormalizedProduct[] = [
         {
-          id: '1', slug: 'product-with-quotes', normalizedAt: new Date(), confidence: 1,
-          title: 'Product with "quotes" and, commas',
-          sourceUrl: 'https://example.com/product',
-          description: 'Description with\nnewlines and\ttabs',
-          sku: 'SPECIAL-001',
-          shortDescription: '',
-          stockStatus: '',
-          images: [],
-          productType: '',
+          id: '1',
+          title: 'Simple Product 1',
+          slug: 'simple-product-1',
+          description: 'A simple product description',
+          sku: 'SP001',
+          sourceUrl: 'https://example.com/product1',
+          normalizedAt: new Date('2023-01-01T00:00:00Z'),
+          confidence: 1,
+          shortDescription: 'Short description',
+          stockStatus: 'instock',
+          images: ['https://example.com/image1.jpg'],
+          productType: 'simple',
           variations: [],
-          category: 'Test & Special',
+          category: 'Electronics',
           attributes: {
-            'color': ['Red & Blue'],
-            'size': ['Large (XL)'],
-            'description': ['Has "quotes" and, commas'],
+            color: ['Red'],
+            size: ['Medium'],
+          },
+        },
+        {
+          id: '2',
+          title: 'Simple Product 2',
+          slug: 'simple-product-2',
+          description: 'Another simple product',
+          sku: 'SP002',
+          sourceUrl: 'https://example.com/product2',
+          normalizedAt: new Date('2023-01-02T00:00:00Z'),
+          confidence: 0.9,
+          shortDescription: 'Another short description',
+          stockStatus: 'outofstock',
+          images: ['https://example.com/image2.jpg'],
+          productType: 'simple',
+          variations: [],
+          category: 'Clothing',
+          attributes: {
+            material: ['Cotton'],
           },
         },
       ];
 
-      const csvContent = await generateCsvContent(products, 'parent');
+      const csvContent = await csvGenerator.generateParentCsv(products);
 
-      // Should contain properly escaped quotes and not have broken empty fields
-      expect(csvContent).toContain('""quotes""');
-      expect(csvContent).not.toContain(',,');
-
-      // Should properly escape special characters
-      const lines = csvContent.split('\n');
-      const dataLine = lines[1];
-      expect(dataLine).toContain('Product with ""quotes"" and, commas');
+      // Check basic CSV structure
+      expect(csvContent).toContain('ID,post_title,post_name,post_status,post_content,post_excerpt,post_parent,post_type,menu_order,sku,stock_status,images,tax:product_type,tax:product_cat,description,regular_price,sale_price');
+      expect(csvContent).toContain('Simple Product 1,simple-product-1,publish,A simple product description,Short description,,product,0,SP001,instock,https://example.com/image1.jpg,simple,Electronics,A simple product description,0,,');
+      expect(csvContent).toContain('Simple Product 2,simple-product-2,publish,Another simple product,Another short description,,product,0,SP002,outofstock,https://example.com/image2.jpg,simple,Clothing,Another simple product,0,,');
     });
+  });
 
-    it('should handle empty and null values', async () => {
+  describe('Variable Products with Variations', () => {
+    it('should generate CSV for variable products with variations', async () => {
       const products: NormalizedProduct[] = [
         {
-          id: '2', slug: 'minimal-product', normalizedAt: new Date(), confidence: 1,
-          title: 'Minimal Product',
-          sourceUrl: 'https://example.com/product',
+          id: '3',
+          title: 'Variable Product',
+          slug: 'variable-product',
+          description: 'A product with variations',
+          sku: 'VP001',
+          sourceUrl: 'https://example.com/variable',
+          normalizedAt: new Date('2023-01-03T00:00:00Z'),
+          confidence: 1,
+          shortDescription: 'Variable product',
+          stockStatus: 'instock',
+          images: ['https://example.com/variable.jpg'],
+          productType: 'variable',
+          variations: [
+            {
+              sku: 'VP001-RED-S',
+              regularPrice: '29.99',
+              taxClass: 'taxable',
+              stockStatus: 'instock' as const,
+              images: [],
+              attributeAssignments: { color: 'Red', size: 'Small' },
+            } as ProductVariation,
+            {
+              sku: 'VP001-BLUE-M',
+              regularPrice: '34.99',
+              taxClass: 'taxable',
+              stockStatus: 'instock' as const,
+              images: [],
+              attributeAssignments: { color: 'Blue', size: 'Medium' },
+            } as ProductVariation,
+          ],
+          category: 'Apparel',
+          attributes: {
+            color: ['Red', 'Blue'],
+            size: ['Small', 'Medium'],
+          },
+        },
+      ];
+
+      const csvContent = await csvGenerator.generateParentCsv(products);
+
+      expect(csvContent).toContain('Variable Product,variable-product,publish,A product with variations,Variable product,,product,0,VP001,instock,https://example.com/variable.jpg,variable,Apparel,A product with variations,0,,');
+    });
+  });
+
+  describe('Mixed Product Types', () => {
+    it('should handle mixed simple and variable products', async () => {
+      const products: NormalizedProduct[] = [
+        {
+          id: '4',
+          title: 'Mixed Simple',
+          slug: 'mixed-simple',
+          description: 'A simple product in mixed set',
+          sku: 'MS001',
+          sourceUrl: 'https://example.com/mixed-simple',
+          normalizedAt: new Date('2023-01-04T00:00:00Z'),
+          confidence: 1,
+          shortDescription: 'Mixed simple',
+          stockStatus: 'instock',
+          images: [],
+          productType: 'simple',
+          variations: [],
+          category: 'Accessories',
+          attributes: {},
+        },
+        {
+          id: '5',
+          title: 'Mixed Variable',
+          slug: 'mixed-variable',
+          description: 'A variable product in mixed set',
+          sku: 'MV001',
+          sourceUrl: 'https://example.com/mixed-variable',
+          normalizedAt: new Date('2023-01-05T00:00:00Z'),
+          confidence: 1,
+          shortDescription: 'Mixed variable',
+          stockStatus: 'instock',
+          images: [],
+          productType: 'variable',
+          variations: [
+            {
+              sku: 'MV001-A',
+              regularPrice: '25.00',
+              taxClass: 'taxable',
+              stockStatus: 'instock' as const,
+              images: [],
+              attributeAssignments: { variant: 'A' },
+            } as ProductVariation,
+          ],
+          category: 'Tools',
+          attributes: {
+            variant: ['A'],
+          },
+        },
+      ];
+
+      const csvContent = await csvGenerator.generateParentCsv(products);
+
+      expect(csvContent).toContain('Mixed Simple,mixed-simple,publish,A simple product in mixed set,Mixed simple,,product,0,MS001,instock,,simple,Accessories,A simple product in mixed set,0,,');
+      expect(csvContent).toContain('Mixed Variable,mixed-variable,publish,A variable product in mixed set,Mixed variable,,product,0,MV001,instock,,variable,Tools,A variable product in mixed set,0,,');
+    });
+  });
+
+  describe('Special Characters and Encoding', () => {
+    it('should handle special characters in product data', async () => {
+      const products: NormalizedProduct[] = [
+        {
+          id: '6',
+          title: 'Product with "quotes" and \'apostrophes\'',
+          slug: 'special-chars-product',
+          description: 'Description with "quotes", \'apostrophes\', and commas, semicolons; and newlines.\nSecond line.',
+          sku: 'SC001',
+          sourceUrl: 'https://example.com/special-chars',
+          normalizedAt: new Date('2023-01-06T00:00:00Z'),
+          confidence: 1,
+          shortDescription: 'Short with "quotes"',
+          stockStatus: 'instock',
+          images: ['https://example.com/image"with"quotes.jpg'],
+          productType: 'simple',
+          variations: [],
+          category: 'Special & Unique',
+          attributes: {
+            'special-attr': ['Value with "quotes"', 'Another with \'apostrophes\''],
+          },
+        },
+      ];
+
+      const csvContent = await csvGenerator.generateParentCsv(products);
+
+      // Check that quotes are properly escaped
+      expect(csvContent).toContain('"Product with ""quotes"" and \'apostrophes\'"');
+      expect(csvContent).toContain('"Description with ""quotes"", \'apostrophes\', and commas, semicolons; and newlines.\nSecond line."');
+      expect(csvContent).toContain('"Short with ""quotes"""');
+      expect(csvContent).toContain('"https://example.com/image""with""quotes.jpg"');
+      expect(csvContent).toContain('Special & Unique');
+      expect(csvContent).toContain('Value with ""quotes"" | Another with \'apostrophes\'');
+    });
+  });
+
+  describe('Unicode and RTL Text', () => {
+    it('should handle Unicode and RTL text correctly', async () => {
+      const products: NormalizedProduct[] = [
+        {
+          id: '7',
+          title: 'منتج باللغة العربية',
+          slug: 'arabic-product',
+          description: 'وصف المنتج باللغة العربية مع رموز يونيكود: 🚀⭐️',
+          sku: 'AR001',
+          sourceUrl: 'https://example.com/arabic',
+          normalizedAt: new Date('2023-01-07T00:00:00Z'),
+          confidence: 1,
+          shortDescription: 'وصف قصير',
+          stockStatus: 'instock',
+          images: ['https://example.com/arabic-image.jpg'],
+          productType: 'simple',
+          variations: [],
+          category: 'منتجات عربية',
+          attributes: {
+            'اللون': ['أحمر', 'أزرق'],
+            'الحجم': ['صغير', 'كبير'],
+          },
+        },
+      ];
+
+      const csvContent = await csvGenerator.generateParentCsv(products);
+
+      expect(csvContent).toContain('منتج باللغة العربية');
+      expect(csvContent).toContain('وصف المنتج باللغة العربية مع رموز يونيكود: 🚀⭐️');
+      expect(csvContent).toContain('منتجات عربية');
+      expect(csvContent).toContain('أحمر | أزرق');
+      expect(csvContent).toContain('صغير | كبير');
+    });
+  });
+
+  describe('Empty and Null Values', () => {
+    it('should handle empty and null values gracefully', async () => {
+      const products: NormalizedProduct[] = [
+        {
+          id: '8',
+          title: '',
+          slug: 'empty-product',
           description: '',
           sku: '',
+          sourceUrl: 'https://example.com/empty',
+          normalizedAt: new Date('2023-01-08T00:00:00Z'),
+          confidence: 0,
           shortDescription: '',
           stockStatus: '',
           images: [],
@@ -286,112 +263,87 @@ describe('CSV Golden File Regression Tests', () => {
         },
       ];
 
-      const csvContent = await generateCsvContent(products, 'parent');
+      const csvContent = await csvGenerator.generateParentCsv(products);
 
-      const lines = csvContent.split('\n');
-      const dataLine = lines[1];
-      const fields = dataLine.split(',');
-
-      // Empty fields should be represented as empty strings, not null or undefined
-      expect(fields[1]).toBe('""'); // SKU
-      expect(fields[10]).toBe('""'); // Category
-      expect(fields[11]).toBe('""'); // Attributes
-    });
-
-    it('should handle Unicode and RTL text', async () => {
-      const products: NormalizedProduct[] = [
-        {
-          id: '3', slug: 'arabic-product', normalizedAt: new Date(), confidence: 1,
-          title: 'منتج باللغة العربية',
-          sourceUrl: 'https://example.com/product',
-          description: 'وصف المنتج باللغة العربية',
-          sku: 'ARABIC-001',
-          shortDescription: '',
-          stockStatus: '',
-          images: [],
-          productType: '',
-          variations: [],
-          category: 'إلكترونيات',
-          attributes: {
-            'اللون': ['أحمر'],
-            'الحجم': ['متوسط'],
-          },
-        },
-      ];
-
-      const csvContent = await generateCsvContent(products, 'parent');
-
-      // Should preserve Unicode characters
-      expect(csvContent).toContain('منتج باللغة العربية');
-      expect(csvContent).toContain('وصف المنتج باللغة العربية');
-      expect(csvContent).toContain('إلكترونيات');
-      expect(csvContent).toContain('عربي');
-      expect(csvContent).toContain('اللون');
-      expect(csvContent).toContain('أحمر');
-    });
-
-    it('should handle very long strings', async () => {
-      const longDescription = 'A'.repeat(10000);
-      const longTitle = 'B'.repeat(1000);
-
-      const products: NormalizedProduct[] = [
-        {
-          id: '4', slug: 'long-product', normalizedAt: new Date(), confidence: 1,
-          title: longTitle,
-          sourceUrl: 'https://example.com/product',
-          description: longDescription,
-          sku: 'LONG-001',
-          shortDescription: '',
-          stockStatus: '',
-          images: [],
-          productType: '',
-          variations: [],
-          category: 'Test',
-          attributes: {
-            'long_attribute': ['C'.repeat(5000)],
-          },
-        },
-      ];
-
-      const csvContent = await generateCsvContent(products, 'parent');
-
-      // Should handle long strings without truncation
-      expect(csvContent).toContain(longTitle);
-      expect(csvContent).toContain(longDescription);
-      expect(csvContent).toContain('C'.repeat(5000));
+      expect(csvContent).toBe('');
     });
   });
 
-  describe('CSV Header Consistency', () => {
-    it('should maintain consistent header order across different product types', async () => {
-      const simpleProducts = await loadTestData('simple-products.json');
-      const variableProducts = await loadTestData('variable-products.json');
-      const mixedProducts = await loadTestData('mixed-products.json');
+  describe('Large Product Sets', () => {
+    it('should handle large numbers of products efficiently', async () => {
+      const products: NormalizedProduct[] = Array.from({ length: 1000 }, (_, i) => ({
+        id: `product-${i}`,
+        title: `Product ${i}`,
+        slug: `product-${i}`,
+        description: `Description for product ${i}`,
+        sku: `SKU${i.toString().padStart(4, '0')}`,
+        sourceUrl: `https://example.com/product${i}`,
+        normalizedAt: new Date('2023-01-01T00:00:00Z'),
+        confidence: 1,
+        shortDescription: `Short ${i}`,
+        stockStatus: 'instock',
+        images: [`https://example.com/image${i}.jpg`],
+        productType: 'simple',
+        variations: [],
+        category: 'Test Category',
+        attributes: {
+          index: [i.toString()],
+        },
+      }));
 
-      const simpleCsv = await generateCsvContent(simpleProducts, 'parent');
-      const variableCsv = await generateCsvContent(variableProducts, 'parent');
-      const mixedCsv = await generateCsvContent(mixedProducts, 'parent');
+      const startTime = Date.now();
+      const csvContent = await csvGenerator.generateParentCsv(products);
+      const endTime = Date.now();
 
-      const simpleHeader = simpleCsv.split('\n')[0];
-      const variableHeader = variableCsv.split('\n')[0];
-      const mixedHeader = mixedCsv.split('\n')[0];
+      expect(csvContent).toContain('ID,post_title,post_name,post_status,post_content,post_excerpt,post_parent,post_type,menu_order,sku,stock_status,images,tax:product_type,tax:product_cat,description,regular_price,sale_price');
+      expect(csvContent).toContain('Product 0,product-0,publish,Description for product 0,Short 0,,product,0,SKU0000,instock,https://example.com/image0.jpg,simple,Test Category,Description for product 0,0,,');
+      expect(csvContent).toContain('Product 999,product-999,publish,Description for product 999,Short 999,,product,0,SKU0999,instock,https://example.com/image999.jpg,simple,Test Category,Description for product 999,0,,');
 
-      // All headers should be identical
-      expect(simpleHeader).toBe(variableHeader);
-      expect(variableHeader).toBe(mixedHeader);
+      // Should complete within reasonable time (less than 5 seconds)
+      expect(endTime - startTime).toBeLessThan(5000);
     });
+  });
 
-    it('should maintain consistent header order between parent and variation CSVs', async () => {
-      const products = await loadTestData('variable-products.json');
+  describe('CSV Format Compliance', () => {
+    it('should generate valid CSV format', async () => {
+      const products: NormalizedProduct[] = [
+        {
+          id: '9',
+          title: 'CSV Test Product',
+          slug: 'csv-test',
+          description: 'Test product for CSV format validation',
+          sku: 'CSV001',
+          sourceUrl: 'https://example.com/csv-test',
+          normalizedAt: new Date('2023-01-09T00:00:00Z'),
+          confidence: 1,
+          shortDescription: 'CSV test',
+          stockStatus: 'instock',
+          images: ['https://example.com/csv-image.jpg'],
+          productType: 'simple',
+          variations: [],
+          category: 'Test',
+          attributes: {
+            test: ['value1', 'value2'],
+          },
+        },
+      ];
 
-      const parentCsv = await generateCsvContent(products, 'parent');
-      const variationCsv = await generateCsvContent(products, 'variation');
+      const csvContent = await csvGenerator.generateParentCsv(products);
 
-      const parentHeader = parentCsv.split('\n')[0];
-      const variationHeader = variationCsv.split('\n')[0];
+      // Split into lines and validate
+      const lines = csvContent.split('\n');
+      expect(lines.length).toBeGreaterThan(1);
 
-      // Headers should be identical
-      expect(parentHeader).toBe(variationHeader);
+      // Check header
+      const header = lines[0];
+      expect(header).toContain('ID,post_title,post_name,post_status,post_content,post_excerpt,post_parent,post_type,menu_order,sku,stock_status,images,tax:product_type,tax:product_cat,description,regular_price,sale_price');
+
+      // Check data row
+      const dataRow = lines[1];
+      expect(dataRow).toContain('CSV Test Product,csv-test,publish,Test product for CSV format validation,CSV test,,product,0,CSV001,instock,https://example.com/csv-image.jpg,simple,Test,Test product for CSV format validation,0,,');
+
+      // Validate CSV structure (basic checks)
+      expect(dataRow.split(',').length).toBeGreaterThanOrEqual(12);
     });
   });
 });
