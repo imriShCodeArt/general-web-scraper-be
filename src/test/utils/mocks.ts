@@ -1,6 +1,6 @@
 import { ScrapingService } from '../../lib/core/services/scraping-service';
 import { RecipeManager } from '../../lib/core/services/recipe-manager';
-import { StorageService } from '../../lib/infrastructure/storage/storage';
+import { IStorageService } from '../../lib/infrastructure/storage/IStorageService';
 
 export const mockInstances = {
   scrapingService(): jest.Mocked<ScrapingService> {
@@ -37,13 +37,16 @@ export const mockInstances = {
     } as unknown as jest.Mocked<RecipeManager>;
   },
 
-  storageService(): jest.Mocked<StorageService> {
+  storageService(): jest.Mocked<IStorageService> {
     return {
       storeJobResult: jest.fn(),
       getJobResult: jest.fn(),
       getStorageStats: jest.fn(),
+      getAllJobIds: jest.fn(),
+      deleteJobResult: jest.fn(),
+      stopCleanupInterval: jest.fn(),
       clearAll: jest.fn(),
-    } as unknown as jest.Mocked<StorageService>;
+    } as unknown as jest.Mocked<IStorageService>;
   },
 };
 

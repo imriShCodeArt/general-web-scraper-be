@@ -3,14 +3,14 @@ import { CsvGenerator } from '../../lib/core/services/csv-generator';
 import { rootContainer, TOKENS } from '../../lib/composition-root';
 import type { Container } from '../../lib/infrastructure/di/container';
 import { RecipeManager } from '../../lib/core/services/recipe-manager';
-import { StorageService } from '../../lib/infrastructure/storage/storage';
+import { IStorageService } from '../../lib/infrastructure/storage/IStorageService';
 import { testUtils } from '../setup';
 
 describe('Scraping Workflow Integration Tests', () => {
   let scrapingService: ScrapingService;
   let scope: Container;
   let mockRecipeManager: jest.Mocked<RecipeManager>;
-  let mockStorageService: jest.Mocked<StorageService>;
+  let mockStorageService: jest.Mocked<IStorageService>;
   let mockCsvGenerator: jest.Mocked<CsvGenerator>;
 
   beforeEach(async () => {

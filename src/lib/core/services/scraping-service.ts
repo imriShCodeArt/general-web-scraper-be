@@ -14,7 +14,7 @@ import {
 } from '../../domain/types';
 import { NormalizationToolkit } from '../normalization/normalization';
 import { CsvGenerator } from './csv-generator';
-import { StorageService } from '../../infrastructure/storage/storage';
+import { IStorageService } from '../../infrastructure/storage/IStorageService';
 import { RecipeManager } from './recipe-manager';
 import { ErrorFactory, ErrorCodes } from '../../utils/error-handler';
 import { pMapWithRateLimit } from '../../helpers/concurrency';
@@ -49,7 +49,7 @@ import { DefaultProviders } from './default-providers';
  */
 export class ScrapingService {
   private logger: pino.Logger;
-  private storage: StorageService;
+  private storage: IStorageService;
   private recipeManager: RecipeManager;
   private csvGenerator: CsvGenerator;
   private activeJobs = new Map<string, ScrapingJob<ProductOptions>>();
@@ -86,7 +86,7 @@ export class ScrapingService {
   }
 
   constructor(
-    storage?: StorageService,
+    storage?: IStorageService,
     recipeManager?: RecipeManager,
     csvGenerator?: CsvGenerator,
     logger?: pino.Logger,
