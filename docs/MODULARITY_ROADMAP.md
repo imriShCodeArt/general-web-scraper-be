@@ -136,9 +136,9 @@ Configuration Notes
 ## Phase 6 — Error Taxonomy & Mapping
 
 Tasks
-- [ ] Define domain error classes/enums (e.g., `RecipeNotFound`, `ExtractionFailed`)
-- [ ] Services throw/return domain errors; controllers map to HTTP codes
-- [ ] Centralize error-to-HTTP mapping in error middleware
+- [*] Define domain error classes/enums (e.g., `RecipeNotFound`, `ExtractionFailed`)
+- [*] Services throw/return domain errors; controllers map to HTTP codes
+- [*] Centralize error-to-HTTP mapping in error middleware
 
 Edits
 - `src/lib/domain/errors.ts` (new)
@@ -147,16 +147,16 @@ Edits
 
 Acceptance Criteria
 - Consistent error responses; tests cover mapping for common cases
- - Services throw/return domain errors only; controllers map to HTTP
+- Services throw/return domain errors only; controllers map to HTTP
 
 ---
 
 ## Phase 7 — Logging & Config Standardization
 
 Tasks
-- [ ] Provide `LoggerFactory` via DI; remove `pino-pretty` in prod
-- [ ] Add `pino-http` in server for request logs with `requestId`
-- [ ] Central `config` module validated by `zod` (env-only)
+- [*] Provide `LoggerFactory` via DI; remove `pino-pretty` in prod
+- [*] Add `pino-http` in server for request logs with `requestId`
+- [*] Central `config` module validated by `zod` (env-only)
 
 Edits
 - `src/lib/infrastructure/logging/logger-factory.ts` (new)
@@ -166,15 +166,15 @@ Edits
 Acceptance Criteria
 - No direct `new pino()` scattered; consistent JSON logs in prod
 - Config access is typed/validated; no hardcoded env fallbacks in services
- - Request logs include `requestId`, method, route, latency
+- Request logs include `requestId`, method, route, latency
 
 ---
 
 ## Phase 8 — OpenAPI & Versioning
 
 Tasks
-- [ ] Introduce `/v1` route prefix
-- [ ] Document auth header, error schemas, and all responses
+- [*] Introduce `/v1` route prefix
+- [*] Document auth header, error schemas, and all responses
 - [ ] Optionally derive OpenAPI from `zod` schemas
 
 Edits
@@ -183,7 +183,7 @@ Edits
 
 Acceptance Criteria
 - OpenAPI matches runtime validation and auth requirements
- - API remains backward compatible until `/v1` is formally adopted
+- API remains backward compatible until `/v1` is formally adopted
 
 ---
 
@@ -191,7 +191,7 @@ Acceptance Criteria
 - [ ] Remove console debug statements from prod paths
 - [ ] Increase coverage thresholds; add tests for extracted helpers/services
 - [ ] Eliminate unused deps; ensure services depend on interfaces only
- - [ ] Add ADRs (architecture decision records) for each major boundary
+- [ ] Add ADRs (architecture decision records) for each major boundary
 
 ---
 

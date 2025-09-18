@@ -401,7 +401,7 @@ app.get('/api/scrape/download/:jobId/:type', async (req, res, next) => {
     }
     const { jobId, type } = parsed.data;
 
-    console.log('🔍 DEBUG: Download CSV request:', { jobId, type });
+    // debug removed
 
     if (!['parent', 'variation'].includes(type)) {
       return res.status(400).json({
@@ -420,16 +420,11 @@ app.get('/api/scrape/download/:jobId/:type', async (req, res, next) => {
     const storageService = await scope.resolve(TOKENS.StorageService) as IStorageService;
     const storageEntry = await storageService.getJobResult(jobId);
     if (!storageEntry) {
-      console.log('❌ DEBUG: Storage entry not found for jobId:', jobId);
+      // debug removed
       throw new (await import('./lib/domain/errors')).StorageEntryNotFoundError(jobId);
     }
 
-    console.log('🔍 DEBUG: Storage entry found:', {
-      hasParentCsv: !!storageEntry.parentCsv,
-      parentCsvLength: storageEntry.parentCsv?.length || 0,
-      hasVariationCsv: !!storageEntry.variationCsv,
-      variationCsvLength: storageEntry.variationCsv?.length || 0,
-    });
+    // debug removed
 
     let csvContent: string;
     let filename: string;
@@ -442,20 +437,13 @@ app.get('/api/scrape/download/:jobId/:type', async (req, res, next) => {
         type,
       );
       filename = `parent-${cleanFilename}`;
-      console.log('🔍 DEBUG: Parent CSV processing:', {
-        csvContentLength: csvContent?.length || 0,
-        cleanFilename,
-        hasContent: !!csvContent && csvContent.trim() !== '',
-      });
+      // debug removed
     } else {
       csvContent = storageEntry.variationCsv;
-      console.log('🔍 DEBUG: Variation CSV processing:', {
-        csvContentLength: csvContent?.length || 0,
-        hasContent: !!csvContent && csvContent.trim() !== '',
-      });
+      // debug removed
 
       if (!csvContent || csvContent.trim() === '') {
-        console.log('❌ DEBUG: Variation CSV is empty, returning 404');
+        // debug removed
         return res.status(404).json({
           success: false,
           error: `${type} CSV not found for this job`,
@@ -475,12 +463,7 @@ app.get('/api/scrape/download/:jobId/:type', async (req, res, next) => {
       });
     }
 
-    console.log('🔍 DEBUG: Sending CSV response:', {
-      type,
-      filename,
-      contentLength: Buffer.byteLength(csvContent, 'utf8'),
-      hasContent: !!csvContent,
-    });
+    // debug removed
 
     // Set headers for CSV download
     res.setHeader('Content-Type', 'text/csv; charset=utf-8');
@@ -579,7 +562,7 @@ app.get('/api/storage/job/:jobId', async (req, res, next) => {
       throw new DomainValidationError('Invalid jobId', parsed.error.errors.map(e => ({ path: e.path.join('.') || '(root)', message: e.message })));
     }
     const { jobId } = parsed.data;
-    console.log('🔍 DEBUG: Storage job request for jobId:', jobId);
+    // debug removed
 
     const scope = (req as unknown as { containerScope?: Container }).containerScope;
     if (!scope) {
@@ -592,16 +575,11 @@ app.get('/api/storage/job/:jobId', async (req, res, next) => {
     const storageEntry = await storageService.getJobResult(jobId);
 
     if (!storageEntry) {
-      console.log('❌ DEBUG: Storage entry not found for jobId:', jobId);
+      // debug removed
       throw new (await import('./lib/domain/errors')).StorageEntryNotFoundError(jobId);
     }
 
-    console.log('🔍 DEBUG: Storage entry returned:', {
-      hasParentCsv: !!storageEntry.parentCsv,
-      parentCsvLength: storageEntry.parentCsv?.length || 0,
-      hasVariationCsv: !!storageEntry.variationCsv,
-      variationCsvLength: storageEntry.variationCsv?.length || 0,
-    });
+    // debug removed
 
     return res.json({
       success: true,
