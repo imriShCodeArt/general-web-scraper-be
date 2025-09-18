@@ -9,6 +9,7 @@ import { TOKENS } from './lib/infrastructure/di/tokens';
 import { IStorageService } from './lib/infrastructure/storage/IStorageService';
 import pino from 'pino';
 import recipeRoutes from './app/api/recipes/route';
+import { ScrapeInitSchema } from './lib/helpers/validation';
 import swaggerUi from 'swagger-ui-express';
 import { swaggerSpec } from './app/openapi';
 
@@ -125,14 +126,15 @@ app.use('/docs', swaggerUi.serve, swaggerUi.setup(swaggerSpec));
 // Start scraping job
 app.post('/api/scrape/init', async (req, res) => {
   try {
-    const { siteUrl, recipe, options } = req.body;
-
-    if (!siteUrl || !recipe) {
+    const parse = ScrapeInitSchema.safeParse(req.body);
+    if (!parse.success) {
       return res.status(400).json({
         success: false,
-        error: 'Missing required fields: siteUrl and recipe',
+        error: 'Invalid request body',
+        details: parse.error.errors.map(e => ({ path: e.path.join('.') || '(root)', message: e.message })),
       });
     }
+    const { siteUrl, recipe, options } = parse.data;
 
     const scope = (req as unknown as { containerScope?: Container }).containerScope;
     if (!scope) {
