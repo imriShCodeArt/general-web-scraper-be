@@ -35,12 +35,12 @@ describe('Scraping Workflow Integration Tests', () => {
       removeCachedAdapter: jest.fn(),
       getRecipeLoader: jest.fn(),
       getRecipeDetails: jest.fn(),
-      // Add missing properties
-      recipesDir: './recipes',
-      recipeLoader: {} as unknown,
-      adapterCache: new Map(),
       validateSiteUrl: jest.fn(),
-    } as jest.Mocked<RecipeManager>;
+      // Add missing WooCommerce validation methods
+      validateRecipeWooCommerce: jest.fn(),
+      validateAllRecipesWooCommerce: jest.fn(),
+      getValidationReport: jest.fn(),
+    } as unknown as jest.Mocked<RecipeManager>;
 
     mockStorageService = {
       storeJobResult: jest.fn(),
@@ -68,7 +68,7 @@ describe('Scraping Workflow Integration Tests', () => {
       attributeDisplayName: jest.fn(),
       deduplicateProducts: jest.fn(),
       cleanup: jest.fn(),
-    } as jest.Mocked<CsvGenerator>;
+    } as unknown as jest.Mocked<CsvGenerator>;
 
     scope.register(TOKENS.RecipeManager, {
       lifetime: 'scoped',
