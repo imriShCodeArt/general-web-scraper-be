@@ -19,6 +19,23 @@ const options: Options = {
     ],
     components: {
       schemas: {
+        ValidationError: {
+          type: 'object',
+          properties: {
+            success: { type: 'boolean', example: false },
+            error: { type: 'string', example: 'Invalid request body' },
+            details: {
+              type: 'array',
+              items: {
+                type: 'object',
+                properties: {
+                  path: { type: 'string', example: 'siteUrl' },
+                  message: { type: 'string', example: 'siteUrl is required' },
+                },
+              },
+            },
+          },
+        },
         StartScrapeRequest: {
           type: 'object',
           required: ['siteUrl', 'recipe'],
@@ -60,7 +77,14 @@ const options: Options = {
           },
           responses: {
             '201': { description: 'Job created' },
-            '400': { description: 'Bad request' },
+            '400': {
+              description: 'Validation error',
+              content: {
+                'application/json': {
+                  schema: { $ref: '#/components/schemas/ValidationError' },
+                },
+              },
+            },
           },
         },
       },
@@ -72,6 +96,7 @@ const options: Options = {
           ],
           responses: {
             '200': { description: 'Status' },
+            '400': { description: 'Validation error', content: { 'application/json': { schema: { $ref: '#/components/schemas/ValidationError' } } } },
             '404': { description: 'Not found' },
           },
         },
@@ -94,7 +119,10 @@ const options: Options = {
           parameters: [
             { name: 'jobId', in: 'path', required: true, schema: { type: 'string' } },
           ],
-          responses: { '200': { description: 'Cancelled' }, '400': { description: 'Bad request' } },
+          responses: {
+            '200': { description: 'Cancelled' },
+            '400': { description: 'Validation error', content: { 'application/json': { schema: { $ref: '#/components/schemas/ValidationError' } } } },
+          },
         },
       },
       '/api/scrape/download/{jobId}/{type}': {
@@ -104,7 +132,11 @@ const options: Options = {
             { name: 'jobId', in: 'path', required: true, schema: { type: 'string' } },
             { name: 'type', in: 'path', required: true, schema: { type: 'string', enum: ['parent', 'variation'] } },
           ],
-          responses: { '200': { description: 'CSV file' }, '404': { description: 'Not found' } },
+          responses: {
+            '200': { description: 'CSV file' },
+            '400': { description: 'Validation error', content: { 'application/json': { schema: { $ref: '#/components/schemas/ValidationError' } } } },
+            '404': { description: 'Not found' },
+          },
         },
       },
       '/api/storage/stats': {
@@ -116,7 +148,11 @@ const options: Options = {
           parameters: [
             { name: 'jobId', in: 'path', required: true, schema: { type: 'string' } },
           ],
-          responses: { '200': { description: 'OK' }, '404': { description: 'Not found' } },
+          responses: {
+            '200': { description: 'OK' },
+            '400': { description: 'Validation error', content: { 'application/json': { schema: { $ref: '#/components/schemas/ValidationError' } } } },
+            '404': { description: 'Not found' },
+          },
         },
       },
       '/api/storage/clear': {

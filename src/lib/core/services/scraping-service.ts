@@ -23,6 +23,7 @@ import { makePerformanceResponse } from '../../helpers/api';
 import { makeCsvFilenames, generateJobId } from '../../helpers/naming';
 import pino from 'pino';
 import { AdapterFactory } from './adapter-factory';
+import { Result, ok, err } from '../../domain/results';
 import { JobQueueService } from './job-queue-service';
 import { JobLifecycleService } from './job-lifecycle-service';
 import { DefaultProviders } from './default-providers';
@@ -71,6 +72,50 @@ export class ScrapingService {
       timestamp: new Date(),
       requestId: randomUUID(),
     } as unknown as ApiResponse<T, string>;
+  }
+
+  /**
+   * Domain-first Result-returning variants for controllers
+   * These avoid HTTP-specific ApiResponse wrappers.
+   */
+  async startScrapingResult(request: ScrapingRequest<ProductOptions>): Promise<Result<{ jobId: string }>> {
+    const resp = await this.startScraping(request as unknown as ScrapingRequest<ProductOptions>);
+    return resp.success && resp.data?.jobId ? ok({ jobId: resp.data.jobId }) : err(String(resp.error ?? 'Failed to start job'));
+  }
+
+  async getJobStatusResult(jobId: string): Promise<Result<{ status: string; processedProducts?: number; totalProducts?: number; errors?: Array<{ message: string }> }>> {
+    const resp = await this.getJobStatus(jobId);
+    return resp.success && resp.data ? ok(resp.data as any) : err(String(resp.error ?? 'Not found'));
+  }
+
+  async getAllJobsResult(): Promise<Result<Array<{ id: string; status: string }>>> {
+    const resp = await this.getAllJobs();
+    return resp.success && resp.data ? ok(resp.data as any) : err(String(resp.error ?? 'Failed to list jobs'));
+  }
+
+  async getPerformanceMetricsResult(): Promise<Result<Metrics>> {
+    const resp = await this.getPerformanceMetrics();
+    return resp.success && resp.data ? ok(resp.data as any) : err(String(resp.error ?? 'Failed to fetch metrics'));
+  }
+
+  async getLivePerformanceMetricsResult(): Promise<Result<unknown>> {
+    const resp = await this.getLivePerformanceMetrics();
+    return resp.success && resp.data ? ok(resp.data as any) : err(String(resp.error ?? 'Failed to fetch live metrics'));
+  }
+
+  async getPerformanceRecommendationsResult(): Promise<Result<unknown>> {
+    const resp = await this.getPerformanceRecommendations();
+    return resp.success && resp.data ? ok(resp.data as any) : err(String(resp.error ?? 'Failed to fetch recommendations'));
+  }
+
+  async cancelJobResult(jobId: string): Promise<Result<{ cancelled: boolean }>> {
+    const resp = await this.cancelJob(jobId);
+    return resp.success && resp.data ? ok(resp.data as any) : err(String(resp.error ?? 'Failed to cancel job'));
+  }
+
+  async getStorageStatsResult(): Promise<Result<unknown>> {
+    const resp = await this.getStorageStats();
+    return resp.success && resp.data ? ok(resp.data as any) : err(String(resp.error ?? 'Failed to get storage stats'));
   }
 
   /**
