@@ -4,7 +4,6 @@ import {
   ProductVariation,
   NormalizableProductData,
 } from '../../domain/types';
-import { debug } from '../../infrastructure/logging/logger';
 import { normalizeAttrKey, normalizeAttributes as normalizeAttributesHelper } from '../../helpers/attrs';
 import { cleanText as cleanTextHelper, isPlaceholder as isPlaceholderHelper } from '../../helpers/text';
 import { generateSku as generateSkuHelper } from '../../helpers/sku';
@@ -37,14 +36,7 @@ export class NormalizationToolkit {
     raw: T,
     url: string,
   ): NormalizedProduct {
-    debug('🔍 DEBUG: normalizeProduct called with:', {
-      url,
-      rawTitle: raw.title,
-      rawSku: raw.sku,
-      rawDescription: raw.description,
-      rawAttributes: raw.attributes,
-      rawVariations: raw.variations,
-    });
+    // Purity: removed logging side-effects
 
     const result: NormalizedProduct = {
       id: raw.id || generateSkuHelper(url),
@@ -80,12 +72,7 @@ export class NormalizationToolkit {
       }
     }
 
-    debug('🔍 DEBUG: normalizeProduct result:', {
-      title: result.title,
-      productType: result.productType,
-      attributesCount: Object.keys(result.attributes).length,
-      variationsCount: result.variations.length,
-    });
+    // Purity: removed logging side-effects
 
     return result;
   }
@@ -199,27 +186,21 @@ export class NormalizationToolkit {
    * Detect product type (simple vs variable) with proper generic constraints
    */
   static detectProductType<T extends NormalizableProductData>(raw: T): 'simple' | 'variable' {
-    debug('🔍 DEBUG: detectProductType called with raw product:', {
-      hasVariations: !!raw.variations,
-      variationsLength: raw.variations?.length || 0,
-      hasAttributes: !!raw.attributes,
-      attributesKeys: raw.attributes ? Object.keys(raw.attributes) : [],
-      attributesValues: raw.attributes ? Object.values(raw.attributes) : [],
-    });
+    // Purity: removed logging side-effects
 
     // If we already have parsed variations (e.g., from WooCommerce JSON), treat as variable
     if (raw.variations && raw.variations.length > 0) {
-      debug('✅ DEBUG: Product type = variable (has parsed variations)');
+      // Purity: removed logging side-effects
       return 'variable';
     }
 
     // Don't mark as variable just because of multiple attribute values
     if (raw.attributes && Object.keys(raw.attributes).length > 0) {
-      debug('ℹ️ DEBUG: Product has attributes but no variations - treating as simple');
+      // Purity: removed logging side-effects
       return 'simple';
     }
 
-    debug('❌ DEBUG: Product type = simple (no variations or attributes)');
+    // Purity: removed logging side-effects
     return 'simple';
   }
 
@@ -229,14 +210,14 @@ export class NormalizationToolkit {
   static normalizeAttributes(
     attributes: Record<string, (string | undefined)[]>,
   ): Record<string, string[]> {
-    debug('🔍 DEBUG: normalizeAttributes called with:', attributes);
+    // Purity: removed logging side-effects
     const normalized: Record<string, string[]> = {};
 
     for (const [key, values] of Object.entries(attributes)) {
-      debug('🔍 DEBUG: Processing attribute:', key, 'values:', values);
+      // Purity: removed logging side-effects
 
       if (!values || values.length === 0) {
-        debug('❌ DEBUG: Skipping empty attribute:', key);
+        // Purity: removed logging side-effects
         continue;
       }
 
@@ -244,33 +225,23 @@ export class NormalizationToolkit {
       // Feature flag: normalizedAttributeKeys
       const featureFlags = getFeatureFlags();
       const cleanKey = featureFlags.normalizedAttributeKeys ? normalizeAttrKey(key) : key;
-      if (cleanKey !== key) {
-        debug('🔍 DEBUG: normalizeAttrKey changed key', { from: key, to: cleanKey });
-      }
-
-      if (featureFlags.rolloutDebugMode) {
-        debug('Attribute normalization', {
-          enabled: featureFlags.normalizedAttributeKeys,
-          originalKey: key,
-          normalizedKey: cleanKey,
-        });
-      }
+      // Purity: removed logging side-effects
       const cleanValues = values
         .filter((value): value is string => value !== undefined)
         .map((value) => cleanTextHelper(value))
         .filter((value) => value && !isPlaceholderHelper(value));
 
-      debug('🔍 DEBUG: Cleaned attribute:', cleanKey, 'cleanValues:', cleanValues);
+      // Purity: removed logging side-effects
 
       if (cleanValues.length > 0) {
         normalized[cleanKey] = cleanValues;
-        debug('✅ DEBUG: Added normalized attribute:', cleanKey, '=', cleanValues);
+        // Purity: removed logging side-effects
       } else {
-        debug('❌ DEBUG: No clean values for attribute:', cleanKey);
+        // Purity: removed logging side-effects
       }
     }
 
-    debug('🔍 DEBUG: Final normalized attributes:', normalized);
+    // Purity: removed logging side-effects
     return normalized;
   }
 
@@ -296,7 +267,7 @@ export class NormalizationToolkit {
    * Check if text is a placeholder
    */
   static isPlaceholder(text: string): boolean {
-    debug('🔍 DEBUG: Checking if text is placeholder:', text);
+    // Purity: removed logging side-effects
     const placeholders = [
       'בחר אפשרות',
       'בחירת אפשרות',
@@ -454,9 +425,7 @@ export class NormalizationToolkit {
       text.toLowerCase().includes(placeholder.toLowerCase()),
     );
 
-    if (isPlaceholder) {
-      debug('🔍 DEBUG: Detected placeholder text:', text);
-    }
+    // Purity: removed logging side-effects
 
     return isPlaceholder;
   }

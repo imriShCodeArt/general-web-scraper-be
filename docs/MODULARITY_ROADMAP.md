@@ -52,10 +52,10 @@ Acceptance Criteria
 ## Phase 2 — Storage Abstraction & Durability
 
 Tasks
-- [ ] Define `IStorageService` interface (store/get/delete/stats/clear)
-- [ ] Move current FS implementation to `FsStorageService`
-- [ ] Add `S3StorageService` with pluggable provider choice via config/DI
-- [ ] Update composition root to bind storage by environment
+- [*] Define `IStorageService` interface (store/get/delete/stats/clear)
+- [*] Move current FS implementation to `FsStorageService`
+- [*] Add `S3StorageService` with pluggable provider choice via config/DI
+- [*] Update composition root to bind storage by environment
 
 Edits
 - `src/lib/infrastructure/storage/IStorageService.ts` (new)
@@ -74,9 +74,9 @@ Acceptance Criteria
 ## Phase 3 — HTTP Controllers & Validation Separation
 
 Tasks
-- [ ] Add `zod` schemas for all request bodies/params
-- [ ] Validate at route layer; services accept typed domain arguments
-- [ ] Map domain results/errors to HTTP in controllers only
+- [*] Add `zod` schemas for all request bodies/params
+- [*] Validate at route layer; services accept typed domain arguments
+- [*] Map domain results/errors to HTTP in controllers only
 
 Edits
 - `src/app/api/**` (route handlers + validation)
@@ -86,16 +86,16 @@ Edits
 Acceptance Criteria
 - Services contain no HTTP concerns or response wrappers
 - Invalid requests are rejected with 400 and structured error details
- - OpenAPI updated to include validation/error schema alignment
+- [*] OpenAPI updated to include validation/error schema alignment
 
 ---
 
 ## Phase 4 — Adapter Factory & Normalization Purity
 
 Tasks
-- [ ] Introduce `AdapterFactory` to encapsulate recipe/detection logic
-- [ ] Ensure adapters expose `cleanup()` and are cleaned in one place
-- [ ] Keep `NormalizationToolkit` purely functional; no I/O or logging
+- [*] Introduce `AdapterFactory` to encapsulate recipe/detection logic
+- [*] Ensure adapters expose `cleanup()` and are cleaned in one place
+- [*] Keep `NormalizationToolkit` purely functional; no I/O or logging
 
 Edits
 - `src/lib/core/services/adapter-factory.ts` (new)
