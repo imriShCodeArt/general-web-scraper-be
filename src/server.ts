@@ -12,6 +12,8 @@ import recipeRoutes from './app/api/recipes/route';
 import { ScrapeInitSchema, JobIdParamSchema, DownloadParamsSchema } from './lib/helpers/validation';
 import swaggerUi from 'swagger-ui-express';
 import { swaggerSpec } from './app/openapi';
+import { errorHandler } from './app/middleware/error-handler';
+import { DomainValidationError } from './lib/domain/errors';
 
 /**
  * Create a clean filename for CSV downloads
@@ -124,15 +126,11 @@ app.get('/openapi.json', (req, res) => {
 app.use('/docs', swaggerUi.serve, swaggerUi.setup(swaggerSpec));
 
 // Start scraping job
-app.post('/api/scrape/init', async (req, res) => {
+app.post('/api/scrape/init', async (req, res, next) => {
   try {
     const parse = ScrapeInitSchema.safeParse(req.body);
     if (!parse.success) {
-      return res.status(400).json({
-        success: false,
-        error: 'Invalid request body',
-        details: parse.error.errors.map(e => ({ path: e.path.join('.') || '(root)', message: e.message })),
-      });
+      throw new DomainValidationError('Invalid request body', parse.error.errors.map(e => ({ path: e.path.join('.') || '(root)', message: e.message })));
     }
     const { siteUrl, recipe, options } = parse.data;
 
@@ -157,19 +155,16 @@ app.post('/api/scrape/init', async (req, res) => {
     }
   } catch (error) {
     logger.error('Failed to start scraping:', error);
-    return res.status(500).json({
-      success: false,
-      error: 'Internal server error',
-    });
+    return next(error as Error);
   }
 });
 
 // Get job status
-app.get('/api/scrape/status/:jobId', async (req, res) => {
+app.get('/api/scrape/status/:jobId', async (req, res, next) => {
   try {
     const parsed = JobIdParamSchema.safeParse(req.params);
     if (!parsed.success) {
-      return res.status(400).json({ success: false, error: 'Invalid jobId', details: parsed.error.errors.map(e => ({ path: e.path.join('.') || '(root)', message: e.message })) });
+      throw new DomainValidationError('Invalid jobId', parsed.error.errors.map(e => ({ path: e.path.join('.') || '(root)', message: e.message })));
     }
     const { jobId } = parsed.data;
     const scope = (req as unknown as { containerScope?: Container }).containerScope;
@@ -189,15 +184,12 @@ app.get('/api/scrape/status/:jobId', async (req, res) => {
     }
   } catch (error) {
     logger.error('Failed to get job status:', error);
-    return res.status(500).json({
-      success: false,
-      error: 'Internal server error',
-    });
+    return next(error as Error);
   }
 });
 
 // Get all jobs
-app.get('/api/scrape/jobs', async (req, res) => {
+app.get('/api/scrape/jobs', async (req, res, next) => {
   try {
     const scope = (req as unknown as { containerScope?: Container }).containerScope;
     if (!scope) {
@@ -211,15 +203,12 @@ app.get('/api/scrape/jobs', async (req, res) => {
     return res.json(result);
   } catch (error) {
     logger.error('Failed to get jobs:', error);
-    return res.status(500).json({
-      success: false,
-      error: 'Internal server error',
-    });
+    return next(error as Error);
   }
 });
 
 // Get performance metrics
-app.get('/api/scrape/performance', async (req, res) => {
+app.get('/api/scrape/performance', async (req, res, next) => {
   try {
     const scope = (req as unknown as { containerScope?: Container }).containerScope;
     if (!scope) {
@@ -233,15 +222,12 @@ app.get('/api/scrape/performance', async (req, res) => {
     return res.json(result);
   } catch (error) {
     logger.error('Failed to get performance metrics:', error);
-    return res.status(500).json({
-      success: false,
-      error: 'Internal server error',
-    });
+    return next(error as Error);
   }
 });
 
 // Get real-time performance monitoring
-app.get('/api/scrape/performance/live', async (req, res) => {
+app.get('/api/scrape/performance/live', async (req, res, next) => {
   try {
     const scope = (req as unknown as { containerScope?: Container }).containerScope;
     if (!scope) {
@@ -255,15 +241,12 @@ app.get('/api/scrape/performance/live', async (req, res) => {
     return res.json(result);
   } catch (error) {
     logger.error('Failed to get live performance metrics:', error);
-    return res.status(500).json({
-      success: false,
-      error: 'Internal server error',
-    });
+    return next(error as Error);
   }
 });
 
 // Get performance recommendations
-app.get('/api/scrape/performance/recommendations', async (req, res) => {
+app.get('/api/scrape/performance/recommendations', async (req, res, next) => {
   try {
     const scope = (req as unknown as { containerScope?: Container }).containerScope;
     if (!scope) {
@@ -277,19 +260,16 @@ app.get('/api/scrape/performance/recommendations', async (req, res) => {
     return res.json(result);
   } catch (error) {
     logger.error('Failed to get performance recommendations:', error);
-    return res.status(500).json({
-      success: false,
-      error: 'Internal server error',
-    });
+    return next(error as Error);
   }
 });
 
 // Cancel job
-app.post('/api/scrape/cancel/:jobId', async (req, res) => {
+app.post('/api/scrape/cancel/:jobId', async (req, res, next) => {
   try {
     const parsed = JobIdParamSchema.safeParse(req.params);
     if (!parsed.success) {
-      return res.status(400).json({ success: false, error: 'Invalid jobId', details: parsed.error.errors.map(e => ({ path: e.path.join('.') || '(root)', message: e.message })) });
+      throw new DomainValidationError('Invalid jobId', parsed.error.errors.map(e => ({ path: e.path.join('.') || '(root)', message: e.message })));
     }
     const { jobId } = parsed.data;
     const scope = (req as unknown as { containerScope?: Container }).containerScope;
@@ -309,19 +289,16 @@ app.post('/api/scrape/cancel/:jobId', async (req, res) => {
     }
   } catch (error) {
     logger.error('Failed to cancel job:', error);
-    return res.status(500).json({
-      success: false,
-      error: 'Internal server error',
-    });
+    return next(error as Error);
   }
 });
 
 // Download CSV files
-app.get('/api/scrape/download/:jobId/:type', async (req, res) => {
+app.get('/api/scrape/download/:jobId/:type', async (req, res, next) => {
   try {
     const parsed = DownloadParamsSchema.safeParse(req.params);
     if (!parsed.success) {
-      return res.status(400).json({ success: false, error: 'Invalid params', details: parsed.error.errors.map(e => ({ path: e.path.join('.') || '(root)', message: e.message })) });
+      throw new DomainValidationError('Invalid params', parsed.error.errors.map(e => ({ path: e.path.join('.') || '(root)', message: e.message })));
     }
     const { jobId, type } = parsed.data;
 
@@ -345,10 +322,7 @@ app.get('/api/scrape/download/:jobId/:type', async (req, res) => {
     const storageEntry = await storageService.getJobResult(jobId);
     if (!storageEntry) {
       console.log('❌ DEBUG: Storage entry not found for jobId:', jobId);
-      return res.status(404).json({
-        success: false,
-        error: 'Job result not found',
-      });
+      throw new (await import('./lib/domain/errors')).StorageEntryNotFoundError(jobId);
     }
 
     console.log('🔍 DEBUG: Storage entry found:', {
@@ -422,15 +396,12 @@ app.get('/api/scrape/download/:jobId/:type', async (req, res) => {
     return;
   } catch (error) {
     logger.error('Failed to download CSV:', error);
-    return res.status(500).json({
-      success: false,
-      error: 'Internal server error',
-    });
+    return next(error as Error);
   }
 });
 
 // Get storage statistics
-app.get('/api/storage/stats', async (req, res) => {
+app.get('/api/storage/stats', async (req, res, next) => {
   try {
     const scope = (req as unknown as { containerScope?: Container }).containerScope;
     if (!scope) {
@@ -444,19 +415,16 @@ app.get('/api/storage/stats', async (req, res) => {
     res.json(result);
   } catch (error) {
     logger.error('Failed to get storage stats:', error);
-    res.status(500).json({
-      success: false,
-      error: 'Internal server error',
-    });
+    return next(error as Error);
   }
 });
 
 // Get job result from storage
-app.get('/api/storage/job/:jobId', async (req, res) => {
+app.get('/api/storage/job/:jobId', async (req, res, next) => {
   try {
     const parsed = JobIdParamSchema.safeParse(req.params);
     if (!parsed.success) {
-      return res.status(400).json({ success: false, error: 'Invalid jobId', details: parsed.error.errors.map(e => ({ path: e.path.join('.') || '(root)', message: e.message })) });
+      throw new DomainValidationError('Invalid jobId', parsed.error.errors.map(e => ({ path: e.path.join('.') || '(root)', message: e.message })));
     }
     const { jobId } = parsed.data;
     console.log('🔍 DEBUG: Storage job request for jobId:', jobId);
@@ -473,10 +441,7 @@ app.get('/api/storage/job/:jobId', async (req, res) => {
 
     if (!storageEntry) {
       console.log('❌ DEBUG: Storage entry not found for jobId:', jobId);
-      return res.status(404).json({
-        success: false,
-        error: 'Job result not found',
-      });
+      throw new (await import('./lib/domain/errors')).StorageEntryNotFoundError(jobId);
     }
 
     console.log('🔍 DEBUG: Storage entry returned:', {
@@ -492,15 +457,12 @@ app.get('/api/storage/job/:jobId', async (req, res) => {
     });
   } catch (error) {
     logger.error('Failed to get job result:', error);
-    return res.status(500).json({
-      success: false,
-      error: 'Internal server error',
-    });
+    return next(error as Error);
   }
 });
 
 // Clear all storage
-app.delete('/api/storage/clear', async (req, res) => {
+app.delete('/api/storage/clear', async (req, res, next) => {
   try {
     const scope = (req as unknown as { containerScope?: Container }).containerScope;
     if (!scope) {
@@ -517,21 +479,12 @@ app.delete('/api/storage/clear', async (req, res) => {
     });
   } catch (error) {
     logger.error('Failed to clear storage:', error);
-    res.status(500).json({
-      success: false,
-      error: 'Internal server error',
-    });
+    return next(error as Error);
   }
 });
 
 // Error handling middleware
-app.use((error: Error, req: express.Request, res: express.Response, _next: express.NextFunction) => {
-  logger.error('Unhandled error:', error);
-  res.status(500).json({
-    success: false,
-    error: 'Internal server error',
-  });
-});
+app.use(errorHandler());
 
 // 404 handler
 app.use('*', (req, res) => {
