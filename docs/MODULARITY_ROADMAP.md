@@ -111,9 +111,9 @@ Acceptance Criteria
 ## Phase 5 — Concurrency & Resilience Helpers
 
 Tasks
-- [ ] Standardize on `pMapWithRateLimit` for batch work
-- [ ] Add `withRetry` helper (exponential backoff + jitter) for IO
-- [ ] Apply retry policy to extraction/HTTP operations
+- [*] Standardize on `pMapWithRateLimit` for batch work
+- [*] Add `withRetry` helper (exponential backoff + jitter) for IO
+- [*] Apply retry policy to extraction/HTTP operations
 
 Edits
 - `src/lib/helpers/concurrency.ts` (ensure coverage)
@@ -123,7 +123,13 @@ Edits
 Acceptance Criteria
 - No ad-hoc `for`/`setTimeout` concurrency loops in services
 - Retries configurable and covered by unit tests with fake timers
- - Concurrency/retry policies passed via config/DI; no hardcoded timings in services
+- Concurrency/retry policies passed via config/DI; no hardcoded timings in services
+
+Configuration Notes
+- Concurrency comes from recipe behavior (e.g., `behavior.maxConcurrent`) and is passed via DI.
+- Rate limiting comes from recipe behavior (e.g., `behavior.rateLimit`).
+- Retry policy comes from recipe behavior (e.g., `behavior.retryAttempts`, `behavior.retryDelay`).
+- When an adapter provides `extractProductWithRetry`, it is preferred; otherwise a generic `withRetry` policy is applied from behavior.
 
 ---
 
