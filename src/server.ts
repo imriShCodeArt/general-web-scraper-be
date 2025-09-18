@@ -8,6 +8,8 @@ import { Container } from './lib/infrastructure/di/container';
 import { TOKENS } from './lib/infrastructure/di/tokens';
 import { IStorageService } from './lib/infrastructure/storage/IStorageService';
 import pino from 'pino';
+import pinoHttp from 'pino-http';
+import type { IncomingMessage, ServerResponse } from 'http';
 import recipeRoutes from './app/api/recipes/route';
 import { ScrapeInitSchema, JobIdParamSchema, DownloadParamsSchema } from './lib/helpers/validation';
 import swaggerUi from 'swagger-ui-express';
@@ -40,16 +42,12 @@ const app = express();
 // Services are now managed by DI container
 
 // Logger
-const logger = pino({
-  level: process.env.SCRAPER_DEBUG === '1' ? 'debug' : 'info',
-  transport: {
-    target: 'pino-pretty',
-    options: {
-      colorize: true,
-      translateTime: 'SYS:standard',
-    },
-  },
-});
+const logger = pino({ level: process.env.SCRAPER_DEBUG === '1' ? 'debug' : 'info' });
+
+// HTTP request logger with requestId
+app.use(pinoHttp({
+  genReqId: (_req: IncomingMessage, _res: ServerResponse) => (Math.random() + 1).toString(36).substring(2),
+}));
 
 // Middleware
 app.use(helmet());
@@ -58,12 +56,8 @@ app.use(compression());
 app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true, limit: '10mb' }));
 
-// Request logging middleware
+// Request-scoped DI container & logger binding
 app.use((req, res, next) => {
-  logger.info(`${req.method} ${req.path}`, {
-    ip: req.ip,
-    userAgent: req.get('User-Agent'),
-  });
   // attach a scope per request with RequestContext and scoped logger
   const scope = rootContainer.createScope();
   const requestId = (Math.random() + 1).toString(36).substring(2);
