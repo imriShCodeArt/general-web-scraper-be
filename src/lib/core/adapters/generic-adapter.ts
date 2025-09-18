@@ -198,7 +198,7 @@ export class GenericAdapter extends BaseAdapter {
     selectors: string | string[],
     fallbacks?: string[],
   ): string {
-    return extractWithFallbacksHelper(dom as any, selectors, fallbacks, (t) => this.isPriceLike(t));
+    return extractWithFallbacksHelper(dom, selectors, fallbacks, (t) => this.isPriceLike(t));
   }
 
   /**

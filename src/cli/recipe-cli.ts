@@ -444,7 +444,7 @@ program
   });
 
 // Helper functions for report generation
-function generateHtmlReport(recipeName: string, result: any): string {
+function generateHtmlReport(recipeName: string, result: { isValid: boolean; issues?: unknown[]; warnings?: unknown[] }): string {
   const statusIcon = result.isValid ? '✅' : '❌';
   const statusText = result.isValid ? 'VALID' : 'INVALID';
   const statusColor = result.isValid ? '#28a745' : '#dc3545';
@@ -477,7 +477,7 @@ function generateHtmlReport(recipeName: string, result: any): string {
     ${result.errors.length > 0 ? `
     <div class="section">
         <h3>🚨 Errors (${result.errors.length})</h3>
-        ${result.errors.map((error: any, index: number) => `
+        ${result.errors.map((error: { category: string; message: string; field?: string; suggestion?: string }, index: number) => `
             <div class="error">
                 <strong>${index + 1}. [${error.category.toUpperCase()}] ${error.message}</strong>
                 ${error.field ? `<br><small>Field: ${error.field}</small>` : ''}
@@ -490,7 +490,7 @@ function generateHtmlReport(recipeName: string, result: any): string {
     ${result.warnings.length > 0 ? `
     <div class="section">
         <h3>⚠️ Warnings (${result.warnings.length})</h3>
-        ${result.warnings.map((warning: any, index: number) => `
+        ${result.warnings.map((warning: { category: string; message: string; field?: string; suggestion?: string }, index: number) => `
             <div class="warning">
                 <strong>${index + 1}. [${warning.category.toUpperCase()}] ${warning.message}</strong>
                 ${warning.field ? `<br><small>Field: ${warning.field}</small>` : ''}
@@ -510,7 +510,7 @@ function generateHtmlReport(recipeName: string, result: any): string {
 </html>`;
 }
 
-function generateHtmlReportAll(validationResults: any): string {
+function generateHtmlReportAll(validationResults: { results: unknown[]; summary: { validRecipes: number; invalidRecipes: number; totalRecipes: number } }): string {
   const { results, summary } = validationResults;
   const validCount = summary.validRecipes;
   const invalidCount = summary.invalidRecipes;
@@ -559,7 +559,7 @@ function generateHtmlReportAll(validationResults: any): string {
         </div>
     </div>
 
-    ${results.map((item: any) => `
+    ${results.map((item: { recipeName: string; result: { isValid: boolean; score: number; errors: unknown[]; warnings: unknown[] } }) => `
         <div class="recipe ${item.result.isValid ? 'valid' : 'invalid'}">
             <h3>${item.recipeName} ${item.result.isValid ? '✅' : '❌'}</h3>
             <p><strong>Score:</strong> ${item.result.score}/100</p>
@@ -567,14 +567,14 @@ function generateHtmlReportAll(validationResults: any): string {
             
             ${item.result.errors.length > 0 ? `
                 <h4>Errors:</h4>
-                ${item.result.errors.map((error: any) => `
+                ${item.result.errors.map((error: { category: string; message: string }) => `
                     <div class="error">[${error.category}] ${error.message}</div>
                 `).join('')}
             ` : ''}
             
             ${item.result.warnings.length > 0 ? `
                 <h4>Warnings:</h4>
-                ${item.result.warnings.map((warning: any) => `
+                ${item.result.warnings.map((warning: { category: string; message: string }) => `
                     <div class="warning">[${warning.category}] ${warning.message}</div>
                 `).join('')}
             ` : ''}
@@ -584,7 +584,7 @@ function generateHtmlReportAll(validationResults: any): string {
 </html>`;
 }
 
-function generateConsoleReportAll(validationResults: any): string {
+function generateConsoleReportAll(validationResults: { results: unknown[]; summary: { validRecipes: number; invalidRecipes: number; totalRecipes: number } }): string {
   const { results, summary } = validationResults;
   const lines: string[] = [];
 
@@ -597,19 +597,19 @@ function generateConsoleReportAll(validationResults: any): string {
   lines.push(`Total Warnings: ${summary.totalWarnings}`);
   lines.push('');
 
-  results.forEach((item: any, index: number) => {
+  results.forEach((item: { recipeName: string; result: { isValid: boolean; score: number; errors: unknown[]; warnings: unknown[] } }, index: number) => {
     lines.push(`${index + 1}. ${item.recipeName} ${item.result.isValid ? '✅' : '❌'} (Score: ${item.result.score}/100)`);
 
     if (item.result.errors.length > 0) {
       lines.push(`   Errors: ${item.result.errors.length}`);
-      item.result.errors.forEach((error: any) => {
+      item.result.errors.forEach((error: { category: string; message: string }) => {
         lines.push(`     - [${error.category}] ${error.message}`);
       });
     }
 
     if (item.result.warnings.length > 0) {
       lines.push(`   Warnings: ${item.result.warnings.length}`);
-      item.result.warnings.forEach((warning: any) => {
+      item.result.warnings.forEach((warning: { category: string; message: string }) => {
         lines.push(`     - [${warning.category}] ${warning.message}`);
       });
     }

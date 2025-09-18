@@ -6,6 +6,7 @@ import { ScrapingService } from './lib/core/services/scraping-service';
 import { rootContainer, RequestContext } from './lib/composition-root';
 import { Container } from './lib/infrastructure/di/container';
 import { TOKENS } from './lib/infrastructure/di/tokens';
+import { IStorageService } from './lib/infrastructure/storage/IStorageService';
 import pino from 'pino';
 import recipeRoutes from './app/api/recipes/route';
 import swaggerUi from 'swagger-ui-express';
@@ -326,7 +327,7 @@ app.get('/api/scrape/download/:jobId/:type', async (req, res) => {
         error: 'Container scope not available',
       });
     }
-    const storageService = await scope.resolve(TOKENS.StorageService) as any;
+    const storageService = await scope.resolve(TOKENS.StorageService) as IStorageService;
     const storageEntry = await storageService.getJobResult(jobId);
     if (!storageEntry) {
       console.log('❌ DEBUG: Storage entry not found for jobId:', jobId);
@@ -449,7 +450,7 @@ app.get('/api/storage/job/:jobId', async (req, res) => {
         error: 'Container scope not available',
       });
     }
-    const storageService = await scope.resolve(TOKENS.StorageService) as any;
+    const storageService = await scope.resolve(TOKENS.StorageService) as IStorageService;
     const storageEntry = await storageService.getJobResult(jobId);
 
     if (!storageEntry) {
@@ -490,7 +491,7 @@ app.delete('/api/storage/clear', async (req, res) => {
         error: 'Container scope not available',
       });
     }
-    const storageService = await scope.resolve(TOKENS.StorageService) as any;
+    const storageService = await scope.resolve(TOKENS.StorageService) as IStorageService;
     await storageService.clearAll();
     res.json({
       success: true,

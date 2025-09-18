@@ -107,8 +107,8 @@ describe('RecipeManager Cache Semantics', () => {
       };
 
       jest.spyOn(require('../core/adapters/generic-adapter'), 'GenericAdapter')
-        .mockReturnValueOnce(mockAdapter1 as any)
-        .mockReturnValueOnce(mockAdapter2 as any);
+        .mockReturnValueOnce(mockAdapter1 as unknown)
+        .mockReturnValueOnce(mockAdapter2 as unknown);
 
       const adapter1 = await recipeManager.createAdapter(siteUrl, recipe1);
       const adapter2 = await recipeManager.createAdapter(siteUrl, recipe2);

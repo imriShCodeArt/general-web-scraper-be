@@ -37,10 +37,10 @@ describe('Scraping Workflow Integration Tests', () => {
       getRecipeDetails: jest.fn(),
       // Add missing properties
       recipesDir: './recipes',
-      recipeLoader: {} as any,
+      recipeLoader: {} as unknown,
       adapterCache: new Map(),
       validateSiteUrl: jest.fn(),
-    } as any;
+    } as jest.Mocked<RecipeManager>;
 
     mockStorageService = {
       storeJobResult: jest.fn(),
@@ -53,9 +53,9 @@ describe('Scraping Workflow Integration Tests', () => {
       // Add missing properties
       inMemoryStorage: new Map(),
       storageDir: './storage',
-      cleanupInterval: {} as any,
+      cleanupInterval: {} as NodeJS.Timeout,
       ensureStorageDir: jest.fn(),
-    } as any;
+    } as jest.Mocked<IStorageService>;
 
     mockCsvGenerator = {
       generateParentCsv: jest.fn(),
@@ -63,11 +63,11 @@ describe('Scraping Workflow Integration Tests', () => {
       generateBothCsvs: jest.fn(),
       generateFilename: jest.fn(),
       validateProducts: jest.fn(),
-      csvWriter: {} as any,
+      csvWriter: {} as unknown,
       cleanAttributeName: jest.fn(),
       attributeDisplayName: jest.fn(),
       deduplicateProducts: jest.fn(),
-    } as any;
+    } as jest.Mocked<CsvGenerator>;
 
     scope.register(TOKENS.RecipeManager, {
       lifetime: 'scoped',

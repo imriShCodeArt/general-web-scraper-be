@@ -68,7 +68,7 @@ describe('helpers/json', () => {
         {
           selector: 'script',
           attribute: 'textContent',
-          transform: (data: any) => ({ processed: data.raw.toUpperCase() }),
+          transform: (data: { raw: string }) => ({ processed: data.raw.toUpperCase() }),
         },
       ];
 
@@ -165,7 +165,7 @@ describe('helpers/json', () => {
     });
 
     test('creates matcher with options', () => {
-      const transform = (data: any) => data;
+      const transform = (data: unknown) => data;
       const matcher = createJsonMatcher('script', {
         attribute: 'data-json',
         pattern: /product/,

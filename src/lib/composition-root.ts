@@ -106,7 +106,7 @@ rootContainer.register(TOKENS.HttpClient, {
 });
 
 // Adapter factory
-rootContainer.register(TOKENS.AdapterFactory as any, {
+rootContainer.register(TOKENS.AdapterFactory, {
   lifetime: 'singleton',
   factory: async (c) => new AdapterFactory(
     await c.resolve(TOKENS.RecipeManager),
@@ -115,13 +115,13 @@ rootContainer.register(TOKENS.AdapterFactory as any, {
 });
 
 // Job queue service
-rootContainer.register(TOKENS.JobQueueService as any, {
+rootContainer.register(TOKENS.JobQueueService, {
   lifetime: 'singleton',
   factory: () => new JobQueueService(),
 });
 
 // Job lifecycle service
-rootContainer.register(TOKENS.JobLifecycleService as any, {
+rootContainer.register(TOKENS.JobLifecycleService, {
   lifetime: 'singleton',
   factory: () => new JobLifecycleService(),
 });
@@ -134,9 +134,9 @@ rootContainer.register(TOKENS.ScrapingService, {
     await c.resolve(TOKENS.RecipeManager),
     await c.resolve(TOKENS.CsvGenerator),
     await c.resolve(TOKENS.Logger),
-    await c.resolve(TOKENS.AdapterFactory as any),
-    await c.resolve(TOKENS.JobQueueService as any),
-    await c.resolve(TOKENS.JobLifecycleService as any),
+    await c.resolve(TOKENS.AdapterFactory),
+    await c.resolve(TOKENS.JobQueueService),
+    await c.resolve(TOKENS.JobLifecycleService),
   ),
 });
 

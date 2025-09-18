@@ -126,7 +126,7 @@ class RolloutValidator {
       }
 
       // Validate results
-      const products = (jobResult.data as any)?.products || [];
+      const products = (jobResult.data as { products?: unknown[] })?.products || [];
       if (products.length === 0) {
         errors.push('No products scraped');
       } else {
@@ -211,7 +211,7 @@ class RolloutValidator {
       }
 
       // Validate results
-      const products = (jobResult.data as any)?.products || [];
+      const products = (jobResult.data as { products?: unknown[] })?.products || [];
       if (products.length === 0) {
         errors.push('No products scraped from archive');
       } else {
@@ -309,14 +309,14 @@ class RolloutValidator {
       process.env.SCRAPER_NORMALIZED_ATTRIBUTE_KEYS = 'false';
 
       const legacyGenerator = new CsvGenerator();
-      const legacyResult = await legacyGenerator.generateBothCsvs(mockProducts as any);
+      const legacyResult = await legacyGenerator.generateBothCsvs(mockProducts);
 
       // Test with feature flags enabled (new behavior)
       process.env.SCRAPER_BATCH_WIDE_ATTRIBUTE_UNION = 'true';
       process.env.SCRAPER_NORMALIZED_ATTRIBUTE_KEYS = 'true';
 
       const newGenerator = new CsvGenerator();
-      const newResult = await newGenerator.generateBothCsvs(mockProducts as any);
+      const newResult = await newGenerator.generateBothCsvs(mockProducts);
 
       // Compare results
       const legacyHeaders = this.extractHeaders(legacyResult.parentCsv);

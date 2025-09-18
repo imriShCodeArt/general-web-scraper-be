@@ -332,7 +332,7 @@ export class WooCommerceAdvancedFeatureValidator {
     }
 
     // Should not have add to cart functionality
-    if ((recipe.selectors as any).addToCart) {
+    if ((recipe.selectors as Record<string, unknown>).addToCart) {
       warnings.push({
         code: 'EXTERNAL_PRODUCT_HAS_CART_SELECTOR',
         message: 'External product should not have add to cart selector',

@@ -5,6 +5,8 @@ import { NormalizationToolkit } from '../core/normalization/normalization';
 import { GenericAdapter } from '../core/adapters/generic-adapter';
 import { pMapWithRateLimit } from '../helpers/concurrency';
 import { withRetry } from '../helpers/retry';
+import { RecipeConfig } from '../domain/types';
+import { RawProductData } from '../domain/types';
 
 // Mock dependencies
 jest.mock('../core/services/recipe-manager');
@@ -27,12 +29,12 @@ describe('Performance and Resilience Tests', () => {
     mockRecipeManager = new RecipeManager() as jest.Mocked<RecipeManager>;
     mockCsvGenerator = new CsvGenerator() as jest.Mocked<CsvGenerator>;
     _mockNormalizationToolkit = new NormalizationToolkit() as jest.Mocked<NormalizationToolkit>;
-    mockAdapter = new GenericAdapter({} as any, '') as jest.Mocked<GenericAdapter>;
+    mockAdapter = new GenericAdapter({} as RecipeConfig, '') as jest.Mocked<GenericAdapter>;
 
     // Ensure service uses our mocked adapter
     (mockRecipeManager.createAdapter as unknown as jest.Mock).mockResolvedValue(mockAdapter);
     // Ensure retry wrapper invokes the provided function
-    (withRetry as unknown as jest.Mock).mockImplementation(async (fn: any) => fn());
+    (withRetry as unknown as jest.Mock).mockImplementation(async (fn: () => unknown) => fn());
 
     scrapingService = new ScrapingService(
       undefined, // storage
@@ -60,7 +62,7 @@ describe('Performance and Resilience Tests', () => {
           productLinks: '.product a',
           attributes: '.attrs',
         },
-      } as any);
+      } as RecipeConfig);
 
       // Mock adapter to track cache usage
       let cacheHits = 0;
@@ -84,7 +86,7 @@ describe('Performance and Resilience Tests', () => {
           attributes: {},
           variations: [],
           price: '10.00',
-        } as any;
+        } as RawProductData;
       });
 
       // Mock discovery to emit URLs
@@ -130,7 +132,7 @@ describe('Performance and Resilience Tests', () => {
           selectors: {
             title: '.title', price: '.price', images: '.images', stock: '.stock', sku: '.sku', description: '.desc', productLinks: '.product1', attributes: '.attrs',
           },
-        } as any)
+        } as RecipeConfig)
         .mockResolvedValueOnce({
           name: recipe2,
           siteUrl: siteUrl,
@@ -138,10 +140,10 @@ describe('Performance and Resilience Tests', () => {
           selectors: {
             title: '.title', price: '.price', images: '.images', stock: '.stock', sku: '.sku', description: '.desc', productLinks: '.product2', attributes: '.attrs',
           },
-        } as any);
+        } as RecipeConfig);
 
       mockAdapter.extractProduct.mockImplementation(async (_url: string) => {
-        return { id: 'x', title: 'Product', slug: 'product', description: '', sku: 'SKU', images: [], attributes: {}, variations: [], price: '10.00' } as any;
+        return { id: 'x', title: 'Product', slug: 'product', description: '', sku: 'SKU', images: [], attributes: {}, variations: [], price: '10.00' } as RawProductData;
       });
 
       // Discovery for recipe1
@@ -184,10 +186,10 @@ describe('Performance and Resilience Tests', () => {
         siteUrl: siteUrl1,
         version: '1.0.0',
         selectors: { title: '.title', price: '.price', images: '.images', stock: '.stock', sku: '.sku', description: '.desc', productLinks: '.product a', attributes: '.attrs' },
-      } as any);
+      } as RecipeConfig);
 
       mockAdapter.extractProduct.mockImplementation(async (_url: string) => {
-        return { id: '1', title: 'Product', slug: 'product', description: '', sku: 'SKU-1', images: [], attributes: {}, variations: [], price: '10.00' } as any;
+        return { id: '1', title: 'Product', slug: 'product', description: '', sku: 'SKU-1', images: [], attributes: {}, variations: [], price: '10.00' } as RawProductData;
       });
 
       // Discovery for site1
@@ -229,7 +231,7 @@ describe('Performance and Resilience Tests', () => {
         siteUrl: 'https://example.com',
         version: '1.0.0',
         selectors: { title: '.title', price: '.price', images: '.images', stock: '.stock', sku: '.sku', description: '.desc', productLinks: '.product a', attributes: '.attrs' },
-      } as any);
+      } as RecipeConfig);
 
       mockAdapter.extractProduct.mockImplementation(async (_url: string) => {
         return {
@@ -542,7 +544,7 @@ describe('Performance and Resilience Tests', () => {
 
       // Should not have memory leaks
       // getJobs method not available in current implementation
-      const jobs: any[] = [];
+      const jobs: unknown[] = [];
       expect(jobs.length).toBeLessThan(1000); // Should not accumulate all jobs
     });
 
