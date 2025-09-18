@@ -9,7 +9,7 @@ import { TOKENS } from './lib/infrastructure/di/tokens';
 import { IStorageService } from './lib/infrastructure/storage/IStorageService';
 import pino from 'pino';
 import recipeRoutes from './app/api/recipes/route';
-import { ScrapeInitSchema } from './lib/helpers/validation';
+import { ScrapeInitSchema, JobIdParamSchema, DownloadParamsSchema } from './lib/helpers/validation';
 import swaggerUi from 'swagger-ui-express';
 import { swaggerSpec } from './app/openapi';
 
@@ -167,7 +167,11 @@ app.post('/api/scrape/init', async (req, res) => {
 // Get job status
 app.get('/api/scrape/status/:jobId', async (req, res) => {
   try {
-    const { jobId } = req.params;
+    const parsed = JobIdParamSchema.safeParse(req.params);
+    if (!parsed.success) {
+      return res.status(400).json({ success: false, error: 'Invalid jobId', details: parsed.error.errors.map(e => ({ path: e.path.join('.') || '(root)', message: e.message })) });
+    }
+    const { jobId } = parsed.data;
     const scope = (req as unknown as { containerScope?: Container }).containerScope;
     if (!scope) {
       return res.status(500).json({
@@ -283,7 +287,11 @@ app.get('/api/scrape/performance/recommendations', async (req, res) => {
 // Cancel job
 app.post('/api/scrape/cancel/:jobId', async (req, res) => {
   try {
-    const { jobId } = req.params;
+    const parsed = JobIdParamSchema.safeParse(req.params);
+    if (!parsed.success) {
+      return res.status(400).json({ success: false, error: 'Invalid jobId', details: parsed.error.errors.map(e => ({ path: e.path.join('.') || '(root)', message: e.message })) });
+    }
+    const { jobId } = parsed.data;
     const scope = (req as unknown as { containerScope?: Container }).containerScope;
     if (!scope) {
       return res.status(500).json({
@@ -311,7 +319,11 @@ app.post('/api/scrape/cancel/:jobId', async (req, res) => {
 // Download CSV files
 app.get('/api/scrape/download/:jobId/:type', async (req, res) => {
   try {
-    const { jobId, type } = req.params;
+    const parsed = DownloadParamsSchema.safeParse(req.params);
+    if (!parsed.success) {
+      return res.status(400).json({ success: false, error: 'Invalid params', details: parsed.error.errors.map(e => ({ path: e.path.join('.') || '(root)', message: e.message })) });
+    }
+    const { jobId, type } = parsed.data;
 
     console.log('🔍 DEBUG: Download CSV request:', { jobId, type });
 
@@ -442,7 +454,11 @@ app.get('/api/storage/stats', async (req, res) => {
 // Get job result from storage
 app.get('/api/storage/job/:jobId', async (req, res) => {
   try {
-    const { jobId } = req.params;
+    const parsed = JobIdParamSchema.safeParse(req.params);
+    if (!parsed.success) {
+      return res.status(400).json({ success: false, error: 'Invalid jobId', details: parsed.error.errors.map(e => ({ path: e.path.join('.') || '(root)', message: e.message })) });
+    }
+    const { jobId } = parsed.data;
     console.log('🔍 DEBUG: Storage job request for jobId:', jobId);
 
     const scope = (req as unknown as { containerScope?: Container }).containerScope;

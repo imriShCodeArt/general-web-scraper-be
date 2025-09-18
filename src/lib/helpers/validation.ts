@@ -24,4 +24,14 @@ export function formatZodError(error: z.ZodError): Array<{ path: string; message
   }));
 }
 
+// Common param schemas
+export const JobIdParamSchema = z.object({
+  jobId: z.string().min(1, 'jobId is required'),
+});
+
+export const DownloadParamsSchema = z.object({
+  jobId: z.string().min(1, 'jobId is required'),
+  type: z.enum(['parent', 'variation'], { required_error: 'type is required' }),
+});
+
 
