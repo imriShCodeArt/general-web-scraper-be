@@ -48,7 +48,7 @@ export function getAttributeNameFor(el: Element, scope?: Element | Document): st
 
 // New DOM selection helpers per Phase 1
 export function selectText(dom: Document | { window: { document: Document } }, selector: string): string {
-  const doc = (dom as any).window?.document || (dom as Document);
+  const doc = (dom as { window?: { document: Document } }).window?.document || (dom as Document);
   try {
     const element = doc.querySelector(selector);
     if (!element) return '';
@@ -74,9 +74,9 @@ export function selectText(dom: Document | { window: { document: Document } }, s
 }
 
 export function selectAllText(dom: Document | { window: { document: Document } }, selector: string): string[] {
-  const doc = (dom as any).window?.document || (dom as Document);
+  const doc = (dom as { window?: { document: Document } }).window?.document || (dom as Document);
   try {
-    return Array.from(doc.querySelectorAll(selector) as unknown as Element[])
+    return Array.from(doc.querySelectorAll(selector))
       .map((el: Element) => el.textContent?.trim())
       .filter((t): t is string => !!t);
   } catch {
@@ -85,7 +85,7 @@ export function selectAllText(dom: Document | { window: { document: Document } }
 }
 
 export function selectAttr(dom: Document | { window: { document: Document } }, selector: string, attr: string): string {
-  const doc = (dom as any).window?.document || (dom as Document);
+  const doc = (dom as { window?: { document: Document } }).window?.document || (dom as Document);
   try {
     const element = doc.querySelector(selector);
     return element?.getAttribute(attr) || '';
@@ -102,14 +102,14 @@ export function extractWithFallbacks(
 ): string {
   const selectors = Array.isArray(primary) ? primary : [primary];
   for (const sel of selectors) {
-    const result = selectText(dom as any, sel);
+    const result = selectText(dom, sel);
     if (result) {
       if (isPriceLike && isPriceLike(result)) continue;
       return result;
     }
   }
   for (const fb of fallbacks || []) {
-    const result = selectText(dom as any, fb);
+    const result = selectText(dom, fb);
     if (result) {
       if (isPriceLike && isPriceLike(result)) continue;
       return result;

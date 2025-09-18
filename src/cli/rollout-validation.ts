@@ -126,11 +126,11 @@ class RolloutValidator {
       }
 
       // Validate results
-      const products = (jobResult.data as any)?.products || [];
+      const products = (jobResult.data as { products?: unknown[] })?.products || [];
       if (products.length === 0) {
         errors.push('No products scraped');
       } else {
-        const product = products[0];
+        const product = products[0] as { title?: string; price?: string; sku?: string; description?: string; images?: unknown[]; attributes?: unknown; variations?: unknown[] };
 
         // Check required fields
         if (!product.title) errors.push('Missing product title');
@@ -147,7 +147,7 @@ class RolloutValidator {
         if (attributeCount === 0) warnings.push('No attributes found');
 
         // Generate CSV and validate
-        const csvResult = await this.csvGenerator.generateBothCsvs(products);
+        const csvResult = await this.csvGenerator.generateBothCsvs(products as any);
         const csvSize = csvResult.parentCsv.length + csvResult.variationCsv.length;
 
         // Validate CSV content
@@ -211,7 +211,7 @@ class RolloutValidator {
       }
 
       // Validate results
-      const products = (jobResult.data as any)?.products || [];
+      const products = (jobResult.data as { products?: unknown[] })?.products || [];
       if (products.length === 0) {
         errors.push('No products scraped from archive');
       } else {
@@ -220,16 +220,17 @@ class RolloutValidator {
         let totalVariations = 0;
 
         for (const product of products) {
-          if (product.attributes) {
-            Object.keys(product.attributes).forEach(key => allAttributes.add(key));
+          const prod = product as { attributes?: unknown; variations?: unknown[] };
+          if (prod.attributes) {
+            Object.keys(prod.attributes).forEach(key => allAttributes.add(key));
           }
-          if (product.variations) {
-            totalVariations += product.variations.length;
+          if (prod.variations) {
+            totalVariations += prod.variations.length;
           }
         }
 
         // Generate CSV and validate batch-wide union
-        const csvResult = await this.csvGenerator.generateBothCsvs(products);
+        const csvResult = await this.csvGenerator.generateBothCsvs(products as any);
         this.validateBatchWideUnion(csvResult.parentCsv, allAttributes, errors, warnings);
 
         this.addResult(testName, errors.length === 0, errors, warnings, startTime,

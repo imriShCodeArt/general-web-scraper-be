@@ -6,15 +6,15 @@ export interface JsonMatcher {
   selector: string;
   attribute?: string;
   pattern?: RegExp;
-  transform?: (text: string) => any;
+  transform?: (text: string) => unknown;
 }
 
 export function extractJsonFromScriptTags(
   dom: JSDOM,
   matchers: JsonMatcher[],
-): Record<string, any> {
+): Record<string, unknown> {
   const doc = dom.window.document;
-  const result: Record<string, any> = {};
+  const result: Record<string, unknown> = {};
 
   for (const matcher of matchers) {
     try {
@@ -41,7 +41,7 @@ export function extractJsonFromScriptTags(
         }
 
         // Extract JSON
-        let jsonData: any = null;
+        let jsonData: unknown = null;
 
         // Try to find JSON in the text - look for complete JSON objects
         const jsonMatch = text.match(/\{[\s\S]*\}/);
@@ -75,7 +75,7 @@ export function extractJsonFromScriptTags(
         if (jsonData) {
           // Apply transform if provided
           if (matcher.transform) {
-            jsonData = matcher.transform(jsonData);
+            jsonData = matcher.transform(jsonData as string);
           }
 
           // Merge into result
@@ -92,9 +92,9 @@ export function extractJsonFromScriptTags(
 }
 
 export function mergeJsonProductData(
-  a: Record<string, any>,
-  b: Record<string, any>,
-): Record<string, any> {
+  a: Record<string, unknown>,
+  b: Record<string, unknown>,
+): Record<string, unknown> {
   const result = { ...a };
 
   for (const [key, value] of Object.entries(b)) {
@@ -115,7 +115,7 @@ export function createJsonMatcher(
   options: {
     attribute?: string;
     pattern?: RegExp;
-    transform?: (text: string) => any;
+    transform?: (text: string) => unknown;
   } = {},
 ): JsonMatcher {
   return {

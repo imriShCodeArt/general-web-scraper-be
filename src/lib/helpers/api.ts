@@ -2,7 +2,7 @@
  * API response utilities
  */
 
-export interface ApiResponse<T = any, E = string> {
+export interface ApiResponse<T = unknown, E = string> {
   success: boolean;
   data?: T;
   error?: E;
@@ -14,7 +14,7 @@ export interface ApiResponse<T = any, E = string> {
 export interface ApiError {
   code: string;
   message: string;
-  details?: any;
+  details?: unknown;
 }
 
 /**
@@ -118,14 +118,14 @@ export function makeJobStatusResponse(
   jobId: string,
   status: 'pending' | 'running' | 'completed' | 'failed' | 'cancelled',
   progress?: number,
-  result?: any,
+  result?: unknown,
   error?: string,
   requestId?: string,
 ): ApiResponse<{
   jobId: string;
   status: string;
   progress?: number;
-  result?: any;
+  result?: unknown;
   error?: string;
 }> {
   return makeApiResponse(
@@ -133,7 +133,7 @@ export function makeJobStatusResponse(
       jobId,
       status,
       ...(progress !== undefined && { progress }),
-      ...(result && { result }),
+      ...(result ? { result } : {}),
       ...(error && { error }),
     },
     `Job ${jobId} is ${status}`,
@@ -175,12 +175,12 @@ export function makePerformanceResponse(
  */
 export function makeHealthResponse(
   status: 'healthy' | 'unhealthy' | 'degraded',
-  details?: Record<string, any>,
+  details?: Record<string, unknown>,
   requestId?: string,
 ): ApiResponse<{
   status: string;
   timestamp: string;
-  details?: Record<string, any>;
+  details?: Record<string, unknown>;
 }> {
   return makeApiResponse(
     {

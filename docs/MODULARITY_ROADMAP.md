@@ -29,11 +29,11 @@ A phased plan to improve code quality and modularity, increase testability, and 
 ## Phase 1 — Service Boundaries & DI Cleanup (High Impact)
 
 Tasks
-- [ ] Make `ScrapingService` orchestration-only; remove HTTP/response helpers
-- [ ] Extract `JobQueueService` (enqueue, process, cancel, retries/backoff)
-- [ ] Extract `JobLifecycleService` (status, metrics aggregation, progress)
-- [ ] Extract `AdapterFactory` (create/detect, single cleanup responsibility)
-- [ ] Remove in-class defaults (`new StorageService()`, `new CsvGenerator()`); inject via DI only
+- [*] Make `ScrapingService` orchestration-only; remove HTTP/response helpers
+- [*] Extract `JobQueueService` (enqueue, process, cancel, retries/backoff)
+- [*] Extract `JobLifecycleService` (status, metrics aggregation, progress)
+- [*] Extract `AdapterFactory` (create/detect, single cleanup responsibility)
+- [*] Remove in-class defaults (`new StorageService()`, `new CsvGenerator()`); inject via DI only
 
 Edits (indicative files)
 - `src/lib/core/services/scraping-service.ts`

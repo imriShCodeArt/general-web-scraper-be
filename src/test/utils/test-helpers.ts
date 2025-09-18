@@ -139,8 +139,8 @@ export class TestHelpers {
   /**
    * Restore console mocks after testing
    */
-  static restoreConsoleMocks(mocks: any) {
-    Object.values(mocks).forEach((mock: any) => mock.mockRestore());
+  static restoreConsoleMocks(mocks: Record<string, unknown>) {
+    Object.values(mocks).forEach((mock: unknown) => (mock as { mockRestore: () => void }).mockRestore());
   }
 
   /**
@@ -154,7 +154,7 @@ export class TestHelpers {
   /**
    * Create a mock product data object
    */
-  static createMockProduct(overrides: any = {}) {
+  static createMockProduct(overrides: Record<string, unknown> = {}) {
     return {
       title: 'Premium Test Product',
       price: '29.99',
@@ -180,7 +180,7 @@ export class TestHelpers {
   /**
    * Create a mock variable product with variations
    */
-  static createMockVariableProduct(overrides: any = {}) {
+  static createMockVariableProduct(overrides: Record<string, unknown> = {}) {
     return {
       title: 'Variable Test Product Collection',
       price: '34.99',

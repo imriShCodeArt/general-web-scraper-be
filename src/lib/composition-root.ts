@@ -1,6 +1,8 @@
 import { Container } from './infrastructure/di/container';
 import { TOKENS } from './infrastructure/di/tokens';
-import { StorageService } from './infrastructure/storage/storage';
+import { IStorageService } from './infrastructure/storage/IStorageService';
+import { FsStorageService } from './infrastructure/storage/fs-storage.service';
+import { S3StorageService } from './infrastructure/storage/s3-storage.service';
 import { RecipeManager } from './core/services/recipe-manager';
 import { RecipeLoader } from './utils/recipe-loader';
 import { CsvGenerator } from './core/services/csv-generator';
@@ -58,7 +60,13 @@ rootContainer.register(TOKENS.Logger, {
 // Storage service
 rootContainer.register(TOKENS.StorageService, {
   lifetime: 'singleton',
-  factory: () => new StorageService(),
+  factory: () => {
+    const provider = process.env.STORAGE_PROVIDER || 'fs';
+    if (provider === 's3') {
+      return new S3StorageService(process.env.S3_BUCKET || 'placeholder-bucket') as unknown as IStorageService;
+    }
+    return new FsStorageService() as unknown as IStorageService;
+  },
   destroy: async (s) => {
     if (typeof (s as unknown as { destroy?: () => Promise<void> }).destroy === 'function') {
       await (s as unknown as { destroy: () => Promise<void> }).destroy();
@@ -98,7 +106,7 @@ rootContainer.register(TOKENS.HttpClient, {
 });
 
 // Adapter factory
-rootContainer.register(TOKENS.AdapterFactory as any, {
+rootContainer.register(TOKENS.AdapterFactory, {
   lifetime: 'singleton',
   factory: async (c) => new AdapterFactory(
     await c.resolve(TOKENS.RecipeManager),
@@ -107,13 +115,13 @@ rootContainer.register(TOKENS.AdapterFactory as any, {
 });
 
 // Job queue service
-rootContainer.register(TOKENS.JobQueueService as any, {
+rootContainer.register(TOKENS.JobQueueService, {
   lifetime: 'singleton',
   factory: () => new JobQueueService(),
 });
 
 // Job lifecycle service
-rootContainer.register(TOKENS.JobLifecycleService as any, {
+rootContainer.register(TOKENS.JobLifecycleService, {
   lifetime: 'singleton',
   factory: () => new JobLifecycleService(),
 });
@@ -126,9 +134,9 @@ rootContainer.register(TOKENS.ScrapingService, {
     await c.resolve(TOKENS.RecipeManager),
     await c.resolve(TOKENS.CsvGenerator),
     await c.resolve(TOKENS.Logger),
-    await c.resolve(TOKENS.AdapterFactory as any),
-    await c.resolve(TOKENS.JobQueueService as any),
-    await c.resolve(TOKENS.JobLifecycleService as any),
+    await c.resolve(TOKENS.AdapterFactory),
+    await c.resolve(TOKENS.JobQueueService),
+    await c.resolve(TOKENS.JobLifecycleService),
   ),
 });
 

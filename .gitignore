@@ -138,6 +138,9 @@ storage/
 storage/*.json
 data/*.json
 
+# Allow source code under src/lib/infrastructure/storage even though the word 'storage' appears in the path
+!src/lib/infrastructure/storage/*.ts
+
 # Test outputs
 test-results/
 playwright-report/

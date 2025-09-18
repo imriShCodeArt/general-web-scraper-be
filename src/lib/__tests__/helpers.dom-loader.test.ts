@@ -13,11 +13,11 @@ describe('helpers/dom-loader', () => {
   beforeEach(() => {
     mockHttpClient = {
       getDom: jest.fn(),
-    } as any;
+    } as unknown as jest.Mocked<HttpClient>;
 
     mockPuppeteerClient = {
       getDom: jest.fn(),
-    } as any;
+    } as unknown as jest.Mocked<PuppeteerHttpClient>;
   });
 
   test('createDomLoaderStrategy creates strategy with correct settings', () => {

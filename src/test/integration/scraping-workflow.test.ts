@@ -3,14 +3,14 @@ import { CsvGenerator } from '../../lib/core/services/csv-generator';
 import { rootContainer, TOKENS } from '../../lib/composition-root';
 import type { Container } from '../../lib/infrastructure/di/container';
 import { RecipeManager } from '../../lib/core/services/recipe-manager';
-import { StorageService } from '../../lib/infrastructure/storage/storage';
+import { IStorageService } from '../../lib/infrastructure/storage/IStorageService';
 import { testUtils } from '../setup';
 
 describe('Scraping Workflow Integration Tests', () => {
   let scrapingService: ScrapingService;
   let scope: Container;
   let mockRecipeManager: jest.Mocked<RecipeManager>;
-  let mockStorageService: jest.Mocked<StorageService>;
+  let mockStorageService: jest.Mocked<IStorageService>;
   let mockCsvGenerator: jest.Mocked<CsvGenerator>;
 
   beforeEach(async () => {
@@ -35,12 +35,12 @@ describe('Scraping Workflow Integration Tests', () => {
       removeCachedAdapter: jest.fn(),
       getRecipeLoader: jest.fn(),
       getRecipeDetails: jest.fn(),
-      // Add missing properties
-      recipesDir: './recipes',
-      recipeLoader: {} as any,
-      adapterCache: new Map(),
       validateSiteUrl: jest.fn(),
-    } as any;
+      // Add missing WooCommerce validation methods
+      validateRecipeWooCommerce: jest.fn(),
+      validateAllRecipesWooCommerce: jest.fn(),
+      getValidationReport: jest.fn(),
+    } as unknown as jest.Mocked<RecipeManager>;
 
     mockStorageService = {
       storeJobResult: jest.fn(),
@@ -53,9 +53,9 @@ describe('Scraping Workflow Integration Tests', () => {
       // Add missing properties
       inMemoryStorage: new Map(),
       storageDir: './storage',
-      cleanupInterval: {} as any,
+      cleanupInterval: {} as NodeJS.Timeout,
       ensureStorageDir: jest.fn(),
-    } as any;
+    } as jest.Mocked<IStorageService>;
 
     mockCsvGenerator = {
       generateParentCsv: jest.fn(),
@@ -63,11 +63,12 @@ describe('Scraping Workflow Integration Tests', () => {
       generateBothCsvs: jest.fn(),
       generateFilename: jest.fn(),
       validateProducts: jest.fn(),
-      csvWriter: {} as any,
+      csvWriter: {} as unknown,
       cleanAttributeName: jest.fn(),
       attributeDisplayName: jest.fn(),
       deduplicateProducts: jest.fn(),
-    } as any;
+      cleanup: jest.fn(),
+    } as unknown as jest.Mocked<CsvGenerator>;
 
     scope.register(TOKENS.RecipeManager, {
       lifetime: 'scoped',
