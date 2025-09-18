@@ -19,6 +19,28 @@ const options: Options = {
     ],
     components: {
       schemas: {
+        ErrorResponse: {
+          type: 'object',
+          properties: {
+            success: { type: 'boolean', example: false },
+            code: {
+              type: 'string',
+              description: 'Domain error code',
+              enum: [
+                'RECIPE_NOT_FOUND',
+                'ADAPTER_CREATION_FAILED',
+                'EXTRACTION_FAILED',
+                'JOB_NOT_FOUND',
+                'STORAGE_ENTRY_NOT_FOUND',
+                'VALIDATION_ERROR',
+                'INTERNAL_ERROR',
+              ],
+            },
+            error: { type: 'string', example: 'Job result not found: abc123' },
+            details: { type: 'object' },
+          },
+          required: ['success', 'code', 'error'],
+        },
         ValidationError: {
           type: 'object',
           properties: {
@@ -97,7 +119,7 @@ const options: Options = {
           responses: {
             '200': { description: 'Status' },
             '400': { description: 'Validation error', content: { 'application/json': { schema: { $ref: '#/components/schemas/ValidationError' } } } },
-            '404': { description: 'Not found' },
+            '404': { description: 'Not found', content: { 'application/json': { schema: { $ref: '#/components/schemas/ErrorResponse' } } } },
           },
         },
       },
@@ -135,7 +157,7 @@ const options: Options = {
           responses: {
             '200': { description: 'CSV file' },
             '400': { description: 'Validation error', content: { 'application/json': { schema: { $ref: '#/components/schemas/ValidationError' } } } },
-            '404': { description: 'Not found' },
+            '404': { description: 'Not found', content: { 'application/json': { schema: { $ref: '#/components/schemas/ErrorResponse' } } } },
           },
         },
       },
@@ -151,7 +173,7 @@ const options: Options = {
           responses: {
             '200': { description: 'OK' },
             '400': { description: 'Validation error', content: { 'application/json': { schema: { $ref: '#/components/schemas/ValidationError' } } } },
-            '404': { description: 'Not found' },
+            '404': { description: 'Not found', content: { 'application/json': { schema: { $ref: '#/components/schemas/ErrorResponse' } } } },
           },
         },
       },
