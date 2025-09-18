@@ -228,6 +228,7 @@ export abstract class BaseAdapter implements SiteAdapter<RawProduct> {
       });
 
       if (isDebugEnabled() && elements.length > 0) {
+        // eslint-disable-next-line no-console
         console.log(`🔍 DEBUG[BaseAdapter]: extractElements found ${elements.length} elements with selectors:`, selectors);
       }
 
@@ -400,6 +401,7 @@ export abstract class BaseAdapter implements SiteAdapter<RawProduct> {
       const variationElements = await this.extractElements(dom, selector, scope);
 
       if (isDebugEnabled()) {
+        // eslint-disable-next-line no-console
         console.log('🔍 DEBUG[BaseAdapter]: extractVariations elements count', variationElements.length);
       }
 
@@ -422,6 +424,7 @@ export abstract class BaseAdapter implements SiteAdapter<RawProduct> {
       }
 
       if (isDebugEnabled()) {
+        // eslint-disable-next-line no-console
         console.log('🔍 DEBUG[BaseAdapter]: extracted variations', variations.length);
       }
       return variations;
@@ -440,6 +443,7 @@ export abstract class BaseAdapter implements SiteAdapter<RawProduct> {
       const variationElements = this.extractElementsSync(dom, selector);
 
       if (isDebugEnabled()) {
+        // eslint-disable-next-line no-console
         console.log('🔍 DEBUG[BaseAdapter]: extractVariations elements count', variationElements.length);
       }
 
@@ -462,6 +466,7 @@ export abstract class BaseAdapter implements SiteAdapter<RawProduct> {
       }
 
       if (isDebugEnabled()) {
+        // eslint-disable-next-line no-console
         console.log('🔍 DEBUG[BaseAdapter]: extracted variations', variations.length);
       }
       return variations;
@@ -537,7 +542,10 @@ export abstract class BaseAdapter implements SiteAdapter<RawProduct> {
           break;
         }
       } catch (error) {
-        console.error(`Failed to process page ${currentUrl}:`, error);
+        if (isDebugEnabled()) {
+          // eslint-disable-next-line no-console
+          console.error(`Failed to process page ${currentUrl}:`, error);
+        }
         break;
       }
     }
