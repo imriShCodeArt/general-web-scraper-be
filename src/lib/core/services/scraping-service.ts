@@ -23,6 +23,7 @@ import { makePerformanceResponse } from '../../helpers/api';
 import { makeCsvFilenames, generateJobId } from '../../helpers/naming';
 import pino from 'pino';
 import { AdapterFactory } from './adapter-factory';
+import { withRetry } from '../../helpers/retry';
 import { Result, ok, err } from '../../domain/results';
 import { JobQueueService } from './job-queue-service';
 import { JobLifecycleService } from './job-lifecycle-service';
@@ -332,7 +333,17 @@ export class ScrapingService {
               );
 
               const startTime = Date.now();
-              const rawProduct = await adapter.extractProduct(url);
+              // Prefer adapter-provided retry if available; otherwise apply generic retry policy
+              const retryAttempts = recipe.behavior?.retryAttempts ?? 3;
+              const retryDelayMs = recipe.behavior?.retryDelay ?? 250;
+              const hasAdapterRetry = typeof (adapter as unknown as { extractProductWithRetry?: (u: string) => Promise<RawProductData> }).extractProductWithRetry === 'function';
+              const rawProduct = hasAdapterRetry
+                ? await (adapter as unknown as { extractProductWithRetry: (u: string) => Promise<RawProductData> }).extractProductWithRetry(url)
+                : await withRetry(() => adapter.extractProduct(url), {
+                  maxAttempts: Math.max(1, retryAttempts),
+                  baseDelayMs: Math.max(0, retryDelayMs),
+                  jitterRatio: 0.1,
+                });
               const extractionTime = Date.now() - startTime;
 
               this.logger.debug(`Raw product data extracted in ${extractionTime}ms:`, {
