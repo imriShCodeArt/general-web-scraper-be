@@ -68,7 +68,7 @@ describe('helpers/json', () => {
         {
           selector: 'script',
           attribute: 'textContent',
-          transform: (data: { raw: string }) => ({ processed: data.raw.toUpperCase() }),
+          transform: (data: unknown) => ({ processed: (data as { raw: string }).raw.toUpperCase() }),
         },
       ];
 

@@ -67,6 +67,7 @@ describe('Scraping Workflow Integration Tests', () => {
       cleanAttributeName: jest.fn(),
       attributeDisplayName: jest.fn(),
       deduplicateProducts: jest.fn(),
+      cleanup: jest.fn(),
     } as jest.Mocked<CsvGenerator>;
 
     scope.register(TOKENS.RecipeManager, {

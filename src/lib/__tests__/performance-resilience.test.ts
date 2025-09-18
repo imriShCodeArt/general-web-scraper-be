@@ -6,7 +6,7 @@ import { GenericAdapter } from '../core/adapters/generic-adapter';
 import { pMapWithRateLimit } from '../helpers/concurrency';
 import { withRetry } from '../helpers/retry';
 import { RecipeConfig } from '../domain/types';
-import { RawProductData } from '../domain/types';
+import { RawProduct } from '../domain/types';
 
 // Mock dependencies
 jest.mock('../core/services/recipe-manager');
@@ -81,12 +81,16 @@ describe('Performance and Resilience Tests', () => {
           title: 'Product',
           slug: 'product',
           description: '',
+          shortDescription: '',
           sku: 'SKU-1',
           images: [],
           attributes: {},
           variations: [],
           price: '10.00',
-        } as RawProductData;
+          stockStatus: 'instock',
+          category: 'test',
+          productType: 'simple',
+        } as RawProduct;
       });
 
       // Mock discovery to emit URLs
@@ -143,7 +147,7 @@ describe('Performance and Resilience Tests', () => {
         } as RecipeConfig);
 
       mockAdapter.extractProduct.mockImplementation(async (_url: string) => {
-        return { id: 'x', title: 'Product', slug: 'product', description: '', sku: 'SKU', images: [], attributes: {}, variations: [], price: '10.00' } as RawProductData;
+        return { id: 'x', title: 'Product', slug: 'product', description: '', shortDescription: '', sku: 'SKU', images: [], attributes: {}, variations: [], price: '10.00', stockStatus: 'instock', category: 'test', productType: 'simple' } as RawProduct;
       });
 
       // Discovery for recipe1
@@ -189,7 +193,7 @@ describe('Performance and Resilience Tests', () => {
       } as RecipeConfig);
 
       mockAdapter.extractProduct.mockImplementation(async (_url: string) => {
-        return { id: '1', title: 'Product', slug: 'product', description: '', sku: 'SKU-1', images: [], attributes: {}, variations: [], price: '10.00' } as RawProductData;
+        return { id: '1', title: 'Product', slug: 'product', description: '', shortDescription: '', sku: 'SKU-1', images: [], attributes: {}, variations: [], price: '10.00', stockStatus: 'instock', category: 'test', productType: 'simple' } as RawProduct;
       });
 
       // Discovery for site1

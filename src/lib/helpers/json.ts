@@ -75,7 +75,7 @@ export function extractJsonFromScriptTags(
         if (jsonData) {
           // Apply transform if provided
           if (matcher.transform) {
-            jsonData = matcher.transform(jsonData);
+            jsonData = matcher.transform(jsonData as string);
           }
 
           // Merge into result

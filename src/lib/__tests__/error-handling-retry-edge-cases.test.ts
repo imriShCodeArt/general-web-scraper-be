@@ -7,7 +7,7 @@ describe('Error Handling and Retry Edge Cases', () => {
     originalSetTimeout = global.setTimeout;
     global.setTimeout = jest.fn().mockImplementation((fn: Function, delay: number) => {
       return originalSetTimeout(fn, delay);
-    }) as typeof global.setTimeout;
+    }) as unknown as typeof global.setTimeout;
   });
 
   afterEach(() => {

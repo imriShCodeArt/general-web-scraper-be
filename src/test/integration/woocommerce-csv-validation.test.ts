@@ -617,7 +617,7 @@ describe('Phase 4: Integration Testing with Validation Schemas', () => {
         const variationSkus = variationParsed.rows.map(row => row.sku);
         const originalVariationSkus = testProducts
           .filter(p => p.productType === 'variable')
-          .flatMap(p => p.variations.map((v: any) => v.sku));
+          .flatMap(p => p.variations.map((v: unknown) => (v as { sku: string }).sku));
         expect(variationSkus).toEqual(expect.arrayContaining(originalVariationSkus));
       }
     });

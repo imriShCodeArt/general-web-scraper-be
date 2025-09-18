@@ -133,7 +133,7 @@ export function makeJobStatusResponse(
       jobId,
       status,
       ...(progress !== undefined && { progress }),
-      ...(result && { result }),
+      ...(result ? { result } : {}),
       ...(error && { error }),
     },
     `Job ${jobId} is ${status}`,
