@@ -85,7 +85,7 @@ export class GenericAdapter extends BaseAdapter {
           break;
         }
       } catch (error) {
-        console.error(`Failed to process page ${currentUrl}:`, error);
+        if (process.env.SCRAPER_DEBUG === '1') console.error(`Failed to process page ${currentUrl}:`, error);
         break;
       }
     }
