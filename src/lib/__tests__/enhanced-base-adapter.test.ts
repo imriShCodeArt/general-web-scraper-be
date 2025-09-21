@@ -248,7 +248,7 @@ describe('EnhancedBaseAdapter', () => {
     });
 
     it('should extract images', () => {
-      const images = adapter['extractImages'](mockDom, '.product-image');
+      const images = adapter['extractImagesSync'](mockDom, '.product-image');
       expect(images).toHaveLength(2);
       expect(images[0]).toContain('image1.jpg');
       expect(images[1]).toContain('image2.jpg');
