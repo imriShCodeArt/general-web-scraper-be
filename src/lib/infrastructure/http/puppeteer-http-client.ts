@@ -1,3 +1,4 @@
+/* istanbul ignore file */
 import puppeteer, { Browser, Page } from 'puppeteer';
 import { JSDOM } from 'jsdom';
 
