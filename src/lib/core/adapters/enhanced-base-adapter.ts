@@ -550,14 +550,14 @@ implements SiteAdapter<T>
 
       if (needsJavaScript && this.puppeteerClient) {
         try {
-          console.log('🔍 DEBUG: Using Puppeteer for JavaScript execution:', url);
+          if (process.env.SCRAPER_DEBUG === '1') console.log('🔍 DEBUG: Using Puppeteer for JavaScript execution:', url);
           return await this.puppeteerClient.getDom(url, options);
         } catch (error) {
-          console.warn('❌ DEBUG: Puppeteer failed, falling back to JSDOM:', error);
+          if (process.env.SCRAPER_DEBUG === '1') console.warn('❌ DEBUG: Puppeteer failed, falling back to JSDOM:', error);
           return await this.httpClient.getDom(url);
         }
       } else {
-        console.log('🔍 DEBUG: Using JSDOM (faster, no JavaScript execution):', url);
+        if (process.env.SCRAPER_DEBUG === '1') console.log('🔍 DEBUG: Using JSDOM (faster, no JavaScript execution):', url);
         return await this.httpClient.getDom(url);
       }
     } catch (error) {

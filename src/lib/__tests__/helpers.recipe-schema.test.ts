@@ -11,7 +11,7 @@ describe('helpers/recipe-schema', () => {
   });
 
   it('reports issues for missing/invalid fields', () => {
-    const result = validateRecipeConfig({ selectors: {} } as any);
+    const result = validateRecipeConfig({ selectors: {} } as unknown);
     expect(result.valid).toBe(false);
     expect(result.issues.find((i) => i.path === 'name')).toBeTruthy();
     expect(result.issues.find((i) => i.path === 'selectors.productLinks')).toBeTruthy();

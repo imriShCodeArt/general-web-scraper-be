@@ -14,14 +14,20 @@ import {
 } from '../../domain/types';
 import { NormalizationToolkit } from '../normalization/normalization';
 import { CsvGenerator } from './csv-generator';
-import { StorageService } from '../../infrastructure/storage/storage';
+import { IStorageService } from '../../infrastructure/storage/IStorageService';
 import { RecipeManager } from './recipe-manager';
 import { ErrorFactory, ErrorCodes } from '../../utils/error-handler';
 import { pMapWithRateLimit } from '../../helpers/concurrency';
 import { Metrics, createInitialMetrics, aggregateMetrics, createBatchMetrics, formatMetrics } from '../../helpers/metrics';
-import { makeApiResponse, makeErrorResponse, makePerformanceResponse } from '../../helpers/api';
+import { makePerformanceResponse } from '../../helpers/api';
 import { makeCsvFilenames, generateJobId } from '../../helpers/naming';
 import pino from 'pino';
+import { AdapterFactory } from './adapter-factory';
+import { withRetry } from '../../helpers/retry';
+import { Result, ok, err } from '../../domain/results';
+import { JobQueueService } from './job-queue-service';
+import { JobLifecycleService } from './job-lifecycle-service';
+import { DefaultProviders } from './default-providers';
 
 /**
  * Main scraping service that orchestrates the web scraping process.
@@ -45,33 +51,94 @@ import pino from 'pino';
  */
 export class ScrapingService {
   private logger: pino.Logger;
-  private storage: StorageService;
+  private storage: IStorageService;
   private recipeManager: RecipeManager;
   private csvGenerator: CsvGenerator;
   private activeJobs = new Map<string, ScrapingJob<ProductOptions>>();
   private jobQueue: ScrapingJob<ProductOptions>[] = [];
   private isProcessing = false;
   private performanceMetrics: Metrics = createInitialMetrics();
+  private adapterFactory?: AdapterFactory;
+  private jobQueueService?: JobQueueService;
+  private jobLifecycleService?: JobLifecycleService;
 
   /**
    * Helper method to create success ApiResponse objects
    */
   private createSuccessResponse<T>(data: T, message?: string): ApiResponse<T, string> {
-    return makeApiResponse(data, message, randomUUID());
+    return {
+      success: true,
+      data,
+      message,
+      timestamp: new Date(),
+      requestId: randomUUID(),
+    } as unknown as ApiResponse<T, string>;
+  }
+
+  /**
+   * Domain-first Result-returning variants for controllers
+   * These avoid HTTP-specific ApiResponse wrappers.
+   */
+  async startScrapingResult(request: ScrapingRequest<ProductOptions>): Promise<Result<{ jobId: string }>> {
+    const resp = await this.startScraping(request as unknown as ScrapingRequest<ProductOptions>);
+    return resp.success && resp.data?.jobId ? ok({ jobId: resp.data.jobId }) : err(String(resp.error ?? 'Failed to start job'));
+  }
+
+  async getJobStatusResult(jobId: string): Promise<Result<{ status: string; processedProducts?: number; totalProducts?: number; errors?: Array<{ message: string }> }>> {
+    const resp = await this.getJobStatus(jobId);
+    return resp.success && resp.data ? ok(resp.data as any) : err(String(resp.error ?? 'Not found'));
+  }
+
+  async getAllJobsResult(): Promise<Result<Array<{ id: string; status: string }>>> {
+    const resp = await this.getAllJobs();
+    return resp.success && resp.data ? ok(resp.data as any) : err(String(resp.error ?? 'Failed to list jobs'));
+  }
+
+  async getPerformanceMetricsResult(): Promise<Result<Metrics>> {
+    const resp = await this.getPerformanceMetrics();
+    return resp.success && resp.data ? ok(resp.data as any) : err(String(resp.error ?? 'Failed to fetch metrics'));
+  }
+
+  async getLivePerformanceMetricsResult(): Promise<Result<unknown>> {
+    const resp = await this.getLivePerformanceMetrics();
+    return resp.success && resp.data ? ok(resp.data as any) : err(String(resp.error ?? 'Failed to fetch live metrics'));
+  }
+
+  async getPerformanceRecommendationsResult(): Promise<Result<unknown>> {
+    const resp = await this.getPerformanceRecommendations();
+    return resp.success && resp.data ? ok(resp.data as any) : err(String(resp.error ?? 'Failed to fetch recommendations'));
+  }
+
+  async cancelJobResult(jobId: string): Promise<Result<{ cancelled: boolean }>> {
+    const resp = await this.cancelJob(jobId);
+    return resp.success && resp.data ? ok(resp.data as any) : err(String(resp.error ?? 'Failed to cancel job'));
+  }
+
+  async getStorageStatsResult(): Promise<Result<unknown>> {
+    const resp = await this.getStorageStats();
+    return resp.success && resp.data ? ok(resp.data as any) : err(String(resp.error ?? 'Failed to get storage stats'));
   }
 
   /**
    * Helper method to create error ApiResponse objects
    */
   private createErrorResponse<T, E>(error: E, _message?: string): ApiResponse<T, string> {
-    return makeErrorResponse(error as string, undefined, randomUUID());
+    return {
+      success: false,
+      error: String(error) as unknown as string,
+      timestamp: new Date(),
+      requestId: randomUUID(),
+    } as unknown as ApiResponse<T, string>;
   }
 
   constructor(
-    storage?: StorageService,
+    storage?: IStorageService,
     recipeManager?: RecipeManager,
     csvGenerator?: CsvGenerator,
     logger?: pino.Logger,
+    adapterFactory?: AdapterFactory,
+    jobQueueService?: JobQueueService,
+    jobLifecycleService?: JobLifecycleService,
   ) {
     this.logger = logger || pino({
       level: process.env.SCRAPER_DEBUG === '1' ? 'debug' : (process.env.LOG_LEVEL || 'warn'),
@@ -84,9 +151,12 @@ export class ScrapingService {
       },
     });
 
-    this.storage = storage || new StorageService();
-    this.recipeManager = recipeManager || new RecipeManager();
-    this.csvGenerator = csvGenerator || new CsvGenerator();
+    this.storage = storage || DefaultProviders.getStorageService();
+    this.recipeManager = recipeManager || DefaultProviders.getRecipeManager();
+    this.csvGenerator = csvGenerator || DefaultProviders.getCsvGenerator();
+    this.adapterFactory = adapterFactory;
+    this.jobQueueService = jobQueueService;
+    this.jobLifecycleService = jobLifecycleService;
   }
 
   /**
@@ -143,9 +213,18 @@ export class ScrapingService {
         },
       };
 
-      // Add to queue
-      this.jobQueue.push(job);
+      // Track job
+      if (this.jobLifecycleService) {
+        this.jobLifecycleService.add(job);
+      }
       this.activeJobs.set(jobId, job);
+
+      // Enqueue
+      if (this.jobQueueService) {
+        this.jobQueueService.enqueue(job);
+      } else {
+        this.jobQueue.push(job);
+      }
 
       this.logger.info(`Created scraping job ${jobId} for ${request.siteUrl}`);
 
@@ -165,14 +244,15 @@ export class ScrapingService {
    * Process the job queue
    */
   private async processQueue(): Promise<void> {
-    if (this.isProcessing || this.jobQueue.length === 0) {
+    const queueLength = this.jobQueueService ? this.jobQueueService.length : this.jobQueue.length;
+    if (this.isProcessing || queueLength === 0) {
       return;
     }
 
     this.isProcessing = true;
 
-    while (this.jobQueue.length > 0) {
-      const job = this.jobQueue.shift();
+    while ((this.jobQueueService ? this.jobQueueService.length : this.jobQueue.length) > 0) {
+      const job = this.jobQueueService ? this.jobQueueService.shift() : this.jobQueue.shift();
       if (job) {
         await this.processJob(job);
       }
@@ -188,8 +268,12 @@ export class ScrapingService {
     try {
       this.logger.info(`Starting job ${job.id} for ${job.metadata.siteUrl}`);
 
-      job.status = 'running';
-      job.startedAt = new Date();
+      if (this.jobLifecycleService) {
+        this.jobLifecycleService.markRunning(job.id);
+      } else {
+        job.status = 'running';
+        job.startedAt = new Date();
+      }
 
       // Get recipe configuration
       const recipe = await this.recipeManager.getRecipe(job.metadata.recipe);
@@ -249,7 +333,17 @@ export class ScrapingService {
               );
 
               const startTime = Date.now();
-              const rawProduct = await adapter.extractProduct(url);
+              // Prefer adapter-provided retry if available; otherwise apply generic retry policy
+              const retryAttempts = recipe.behavior?.retryAttempts ?? 3;
+              const retryDelayMs = recipe.behavior?.retryDelay ?? 250;
+              const hasAdapterRetry = typeof (adapter as unknown as { extractProductWithRetry?: (u: string) => Promise<RawProductData> }).extractProductWithRetry === 'function';
+              const rawProduct = hasAdapterRetry
+                ? await (adapter as unknown as { extractProductWithRetry: (u: string) => Promise<RawProductData> }).extractProductWithRetry(url)
+                : await withRetry(() => adapter.extractProduct(url), {
+                  maxAttempts: Math.max(1, retryAttempts),
+                  baseDelayMs: Math.max(0, retryDelayMs),
+                  jitterRatio: 0.1,
+                });
               const extractionTime = Date.now() - startTime;
 
               this.logger.debug(`Raw product data extracted in ${extractionTime}ms:`, {
@@ -328,13 +422,19 @@ export class ScrapingService {
         await this.storage.storeJobResult(job.id, result);
 
         // Mark job as completed
-        job.status = 'completed';
-        job.completedAt = new Date();
-        // totalProducts should remain as the total discovered, not just successful ones
-        job.processedProducts = products.length;
+        if (this.jobLifecycleService) {
+          this.jobLifecycleService.markCompleted(job.id, products.length, csvResult.variationCount);
+        } else {
+          job.status = 'completed';
+          job.completedAt = new Date();
+          // totalProducts should remain as the total discovered, not just successful ones
+          job.processedProducts = products.length;
+        }
 
         // Update performance metrics using the new metrics helper
-        const jobDuration = job.completedAt.getTime() - job.startedAt!.getTime();
+        const jobEndTime = Date.now();
+        const jobStartTime = job.startedAt ? job.startedAt.getTime() : jobEndTime;
+        const jobDuration = jobEndTime - jobStartTime;
         const batchMetrics = createBatchMetrics(
           products.length,
           products.length, // All products were successful
@@ -353,15 +453,21 @@ export class ScrapingService {
         );
       } finally {
         // Clean up adapter resources (including Puppeteer)
-        if (adapter && typeof adapter.cleanup === 'function') {
+        if (this.adapterFactory) {
+          await this.adapterFactory.cleanupAdapter(adapter);
+        } else if (adapter && typeof adapter.cleanup === 'function') {
           await adapter.cleanup();
         }
       }
     } catch (error) {
       this.logger.error(`Job ${job.id} failed:`, error);
 
-      job.status = 'failed';
-      job.completedAt = new Date();
+      if (this.jobLifecycleService) {
+        this.jobLifecycleService.markFailed(job.id, String(error));
+      } else {
+        job.status = 'failed';
+        job.completedAt = new Date();
+      }
       const scrapingError = ErrorFactory.createScrapingError(
         `Job failed: ${error}`,
         ErrorCodes.RECIPE_ERROR,
@@ -372,7 +478,9 @@ export class ScrapingService {
       // Clean up adapter resources even on failure
       try {
         const adapter = await this.createAdapter(job.metadata.recipe, job.metadata.siteUrl);
-        if (adapter && typeof adapter.cleanup === 'function') {
+        if (this.adapterFactory) {
+          await this.adapterFactory.cleanupAdapter(adapter);
+        } else if (adapter && typeof adapter.cleanup === 'function') {
           await adapter.cleanup();
         }
       } catch (cleanupError) {
@@ -387,8 +495,11 @@ export class ScrapingService {
    * @param siteUrl - Target website URL
    */
   private async createAdapter(recipe: string, siteUrl: string): Promise<SiteAdapter<RawProductData>> {
+    if (this.adapterFactory) {
+      return this.adapterFactory.createAdapter(siteUrl, recipe);
+    }
     try {
-      // Try to create adapter using the recipe manager
+      // Try to create adapter using the recipe manager (backward-compat path)
       const adapter = await this.recipeManager.createAdapter(siteUrl, recipe);
       this.logger.info(`Created adapter for ${siteUrl} using recipe: ${recipe}`);
       return adapter;
@@ -396,18 +507,9 @@ export class ScrapingService {
       this.logger.warn(
         `Failed to create adapter with recipe '${recipe}', trying auto-detection: ${error}`,
       );
-
-      try {
-        // Fallback to auto-detection
-        const adapter = await this.recipeManager.createAdapter(siteUrl);
-        this.logger.info(`Created adapter for ${siteUrl} using auto-detected recipe`);
-        return adapter;
-      } catch (fallbackError) {
-        this.logger.error(`Failed to create adapter for ${siteUrl}: ${fallbackError}`);
-        throw new Error(
-          `No suitable recipe found for ${siteUrl}. Please provide a valid recipe name or ensure a recipe exists for this site.`,
-        );
-      }
+      const adapter = await this.recipeManager.createAdapter(siteUrl);
+      this.logger.info(`Created adapter for ${siteUrl} using auto-detected recipe`);
+      return adapter;
     }
   }
 
@@ -498,20 +600,28 @@ export class ScrapingService {
       }
 
       // Remove from queue if pending
-      const queueIndex = this.jobQueue.findIndex((j) => j.id === jobId);
-      if (queueIndex !== -1) {
-        this.jobQueue.splice(queueIndex, 1);
+      if (this.jobQueueService) {
+        this.jobQueueService.cancel(jobId);
+      } else {
+        const queueIndex = this.jobQueue.findIndex((j) => j.id === jobId);
+        if (queueIndex !== -1) {
+          this.jobQueue.splice(queueIndex, 1);
+        }
       }
 
       // Mark as cancelled
-      job.status = 'failed';
-      job.completedAt = new Date();
-      const scrapingError = ErrorFactory.createScrapingError(
-        'Job cancelled by user',
-        ErrorCodes.UNKNOWN_ERROR,
-        false,
-      );
-      job.errors.push(scrapingError);
+      if (this.jobLifecycleService) {
+        this.jobLifecycleService.cancel(jobId);
+      } else {
+        job.status = 'failed';
+        job.completedAt = new Date();
+        const scrapingError = ErrorFactory.createScrapingError(
+          'Job cancelled by user',
+          ErrorCodes.UNKNOWN_ERROR,
+          false,
+        );
+        job.errors.push(scrapingError);
+      }
 
       return this.createSuccessResponse({ cancelled: true }, 'Job cancelled successfully');
     } catch (error) {
@@ -544,14 +654,14 @@ export class ScrapingService {
         averageProcessingTime: this.performanceMetrics.averageProcessingTime,
         averageTimePerProduct: this.performanceMetrics.averageTimePerProduct,
         totalProcessingTime: this.performanceMetrics.totalProcessingTime,
-        averageProductsPerJob: this.performanceMetrics.totalProducts / Math.max(this.activeJobs.size + this.jobQueue.length, 1),
+        averageProductsPerJob: this.performanceMetrics.totalProducts / Math.max(this.activeJobs.size + (this.jobQueueService ? this.jobQueueService.length : this.jobQueue.length), 1),
         totalProductsProcessed: this.performanceMetrics.totalProducts,
         totalProducts: this.performanceMetrics.totalProducts,
-        queuedJobs: this.jobQueue.length,
+        queuedJobs: this.jobQueueService ? this.jobQueueService.length : this.jobQueue.length,
         isProcessing: this.isProcessing,
         // Backward/compat aliases used by some tests
         currentActiveJobs: this.activeJobs.size,
-        queueLength: this.jobQueue.length,
+        queueLength: this.jobQueueService ? this.jobQueueService.length : this.jobQueue.length,
       };
 
       return makePerformanceResponse(metrics, randomUUID());
@@ -580,7 +690,7 @@ export class ScrapingService {
       return this.createSuccessResponse({
         timestamp: now,
         activeJobs: activeJobStats,
-        queueLength: this.jobQueue.length,
+        queueLength: this.jobQueueService ? this.jobQueueService.length : this.jobQueue.length,
         isProcessing: this.isProcessing,
         systemLoad: {
           memoryUsage: process.memoryUsage(),

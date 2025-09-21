@@ -7,7 +7,7 @@ describe('Error Handling and Retry Edge Cases', () => {
     originalSetTimeout = global.setTimeout;
     global.setTimeout = jest.fn().mockImplementation((fn: Function, delay: number) => {
       return originalSetTimeout(fn, delay);
-    }) as any;
+    }) as unknown as typeof global.setTimeout;
   });
 
   afterEach(() => {
@@ -154,7 +154,6 @@ describe('Error Handling and Retry Edge Cases', () => {
     });
 
     it('should not exceed maximum delay', () => {
-      const maxDelay = 1000;
       const delay = exponentialBackoff(10, 100, 0.1);
       expect(delay).toBeGreaterThan(0);
     });
@@ -198,7 +197,7 @@ describe('Error Handling and Retry Edge Cases', () => {
       const mockFn = jest.fn().mockRejectedValue(new Error('Test error'));
 
       const promises = Array.from({ length: 10 }, () =>
-        withRetry(mockFn, { maxAttempts: 2, baseDelayMs: 1 }).catch(() => 'failed')
+        withRetry(mockFn, { maxAttempts: 2, baseDelayMs: 1 }).catch(() => 'failed'),
       );
 
       const results = await Promise.all(promises);

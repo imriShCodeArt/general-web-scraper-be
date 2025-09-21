@@ -6,10 +6,16 @@ import { ScrapingService } from './lib/core/services/scraping-service';
 import { rootContainer, RequestContext } from './lib/composition-root';
 import { Container } from './lib/infrastructure/di/container';
 import { TOKENS } from './lib/infrastructure/di/tokens';
+import { IStorageService } from './lib/infrastructure/storage/IStorageService';
 import pino from 'pino';
+import pinoHttp from 'pino-http';
+import type { IncomingMessage, ServerResponse } from 'http';
 import recipeRoutes from './app/api/recipes/route';
+import { ScrapeInitSchema, JobIdParamSchema, DownloadParamsSchema } from './lib/helpers/validation';
 import swaggerUi from 'swagger-ui-express';
 import { swaggerSpec } from './app/openapi';
+import { errorHandler } from './app/middleware/error-handler';
+import { DomainValidationError } from './lib/domain/errors';
 
 /**
  * Create a clean filename for CSV downloads
@@ -36,16 +42,12 @@ const app = express();
 // Services are now managed by DI container
 
 // Logger
-const logger = pino({
-  level: process.env.SCRAPER_DEBUG === '1' ? 'debug' : 'info',
-  transport: {
-    target: 'pino-pretty',
-    options: {
-      colorize: true,
-      translateTime: 'SYS:standard',
-    },
-  },
-});
+const logger = pino({ level: process.env.SCRAPER_DEBUG === '1' ? 'debug' : 'info' });
+
+// HTTP request logger with requestId
+app.use(pinoHttp({
+  genReqId: (_req: IncomingMessage, _res: ServerResponse) => (Math.random() + 1).toString(36).substring(2),
+}));
 
 // Middleware
 app.use(helmet());
@@ -54,12 +56,8 @@ app.use(compression());
 app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true, limit: '10mb' }));
 
-// Request logging middleware
+// Request-scoped DI container & logger binding
 app.use((req, res, next) => {
-  logger.info(`${req.method} ${req.path}`, {
-    ip: req.ip,
-    userAgent: req.get('User-Agent'),
-  });
   // attach a scope per request with RequestContext and scoped logger
   const scope = rootContainer.createScope();
   const requestId = (Math.random() + 1).toString(36).substring(2);
@@ -112,6 +110,7 @@ app.get('/', (req, res) => {
 
 // Recipe management routes
 app.use('/api/recipes', recipeRoutes);
+app.use('/api/v1/recipes', recipeRoutes);
 
 // API Routes
 // OpenAPI and Swagger UI
@@ -122,16 +121,13 @@ app.get('/openapi.json', (req, res) => {
 app.use('/docs', swaggerUi.serve, swaggerUi.setup(swaggerSpec));
 
 // Start scraping job
-app.post('/api/scrape/init', async (req, res) => {
+app.post('/api/scrape/init', async (req, res, next) => {
   try {
-    const { siteUrl, recipe, options } = req.body;
-
-    if (!siteUrl || !recipe) {
-      return res.status(400).json({
-        success: false,
-        error: 'Missing required fields: siteUrl and recipe',
-      });
+    const parse = ScrapeInitSchema.safeParse(req.body);
+    if (!parse.success) {
+      throw new DomainValidationError('Invalid request body', parse.error.errors.map(e => ({ path: e.path.join('.') || '(root)', message: e.message })));
     }
+    const { siteUrl, recipe, options } = parse.data;
 
     const scope = (req as unknown as { containerScope?: Container }).containerScope;
     if (!scope) {
@@ -154,17 +150,40 @@ app.post('/api/scrape/init', async (req, res) => {
     }
   } catch (error) {
     logger.error('Failed to start scraping:', error);
-    return res.status(500).json({
-      success: false,
-      error: 'Internal server error',
-    });
+    return next(error as Error);
+  }
+});
+// v1 alias
+app.post('/api/v1/scrape/init', async (req, res, next) => {
+  try {
+    const parse = ScrapeInitSchema.safeParse(req.body);
+    if (!parse.success) {
+      throw new DomainValidationError('Invalid request body', parse.error.errors.map(e => ({ path: e.path.join('.') || '(root)', message: e.message })));
+    }
+    const { siteUrl, recipe, options } = parse.data;
+
+    const scope = (req as unknown as { containerScope?: Container }).containerScope;
+    if (!scope) {
+      return res.status(500).json({ success: false, error: 'Container scope not available' });
+    }
+    const scrapingService = await scope.resolve(TOKENS.ScrapingService) as ScrapingService;
+    const result = await scrapingService.startScraping({ siteUrl, recipe, options });
+    if (result.success) return res.status(201).json(result);
+    return res.status(400).json(result);
+  } catch (error) {
+    logger.error('Failed to start scraping:', error);
+    return next(error as Error);
   }
 });
 
 // Get job status
-app.get('/api/scrape/status/:jobId', async (req, res) => {
+app.get('/api/scrape/status/:jobId', async (req, res, next) => {
   try {
-    const { jobId } = req.params;
+    const parsed = JobIdParamSchema.safeParse(req.params);
+    if (!parsed.success) {
+      throw new DomainValidationError('Invalid jobId', parsed.error.errors.map(e => ({ path: e.path.join('.') || '(root)', message: e.message })));
+    }
+    const { jobId } = parsed.data;
     const scope = (req as unknown as { containerScope?: Container }).containerScope;
     if (!scope) {
       return res.status(500).json({
@@ -182,15 +201,29 @@ app.get('/api/scrape/status/:jobId', async (req, res) => {
     }
   } catch (error) {
     logger.error('Failed to get job status:', error);
-    return res.status(500).json({
-      success: false,
-      error: 'Internal server error',
-    });
+    return next(error as Error);
+  }
+});
+app.get('/api/v1/scrape/status/:jobId', async (req, res, next) => {
+  try {
+    const parsed = JobIdParamSchema.safeParse(req.params);
+    if (!parsed.success) {
+      throw new DomainValidationError('Invalid jobId', parsed.error.errors.map(e => ({ path: e.path.join('.') || '(root)', message: e.message })));
+    }
+    const { jobId } = parsed.data;
+    const scope = (req as unknown as { containerScope?: Container }).containerScope;
+    if (!scope) return res.status(500).json({ success: false, error: 'Container scope not available' });
+    const scrapingService = await scope.resolve(TOKENS.ScrapingService) as ScrapingService;
+    const result = await scrapingService.getJobStatus(jobId);
+    return result.success ? res.json(result) : res.status(404).json(result);
+  } catch (error) {
+    logger.error('Failed to get job status:', error);
+    return next(error as Error);
   }
 });
 
 // Get all jobs
-app.get('/api/scrape/jobs', async (req, res) => {
+app.get('/api/scrape/jobs', async (req, res, next) => {
   try {
     const scope = (req as unknown as { containerScope?: Container }).containerScope;
     if (!scope) {
@@ -204,15 +237,24 @@ app.get('/api/scrape/jobs', async (req, res) => {
     return res.json(result);
   } catch (error) {
     logger.error('Failed to get jobs:', error);
-    return res.status(500).json({
-      success: false,
-      error: 'Internal server error',
-    });
+    return next(error as Error);
+  }
+});
+app.get('/api/v1/scrape/jobs', async (req, res, next) => {
+  try {
+    const scope = (req as unknown as { containerScope?: Container }).containerScope;
+    if (!scope) return res.status(500).json({ success: false, error: 'Container scope not available' });
+    const scrapingService = await scope.resolve(TOKENS.ScrapingService) as ScrapingService;
+    const result = await scrapingService.getAllJobs();
+    return res.json(result);
+  } catch (error) {
+    logger.error('Failed to get jobs:', error);
+    return next(error as Error);
   }
 });
 
 // Get performance metrics
-app.get('/api/scrape/performance', async (req, res) => {
+app.get('/api/scrape/performance', async (req, res, next) => {
   try {
     const scope = (req as unknown as { containerScope?: Container }).containerScope;
     if (!scope) {
@@ -226,15 +268,24 @@ app.get('/api/scrape/performance', async (req, res) => {
     return res.json(result);
   } catch (error) {
     logger.error('Failed to get performance metrics:', error);
-    return res.status(500).json({
-      success: false,
-      error: 'Internal server error',
-    });
+    return next(error as Error);
+  }
+});
+app.get('/api/v1/scrape/performance', async (req, res, next) => {
+  try {
+    const scope = (req as unknown as { containerScope?: Container }).containerScope;
+    if (!scope) return res.status(500).json({ success: false, error: 'Container scope not available' });
+    const scrapingService = await scope.resolve(TOKENS.ScrapingService) as ScrapingService;
+    const result = await scrapingService.getPerformanceMetrics();
+    return res.json(result);
+  } catch (error) {
+    logger.error('Failed to get performance metrics:', error);
+    return next(error as Error);
   }
 });
 
 // Get real-time performance monitoring
-app.get('/api/scrape/performance/live', async (req, res) => {
+app.get('/api/scrape/performance/live', async (req, res, next) => {
   try {
     const scope = (req as unknown as { containerScope?: Container }).containerScope;
     if (!scope) {
@@ -248,15 +299,24 @@ app.get('/api/scrape/performance/live', async (req, res) => {
     return res.json(result);
   } catch (error) {
     logger.error('Failed to get live performance metrics:', error);
-    return res.status(500).json({
-      success: false,
-      error: 'Internal server error',
-    });
+    return next(error as Error);
+  }
+});
+app.get('/api/v1/scrape/performance/live', async (req, res, next) => {
+  try {
+    const scope = (req as unknown as { containerScope?: Container }).containerScope;
+    if (!scope) return res.status(500).json({ success: false, error: 'Container scope not available' });
+    const scrapingService = await scope.resolve(TOKENS.ScrapingService) as ScrapingService;
+    const result = await scrapingService.getLivePerformanceMetrics();
+    return res.json(result);
+  } catch (error) {
+    logger.error('Failed to get live performance metrics:', error);
+    return next(error as Error);
   }
 });
 
 // Get performance recommendations
-app.get('/api/scrape/performance/recommendations', async (req, res) => {
+app.get('/api/scrape/performance/recommendations', async (req, res, next) => {
   try {
     const scope = (req as unknown as { containerScope?: Container }).containerScope;
     if (!scope) {
@@ -270,17 +330,30 @@ app.get('/api/scrape/performance/recommendations', async (req, res) => {
     return res.json(result);
   } catch (error) {
     logger.error('Failed to get performance recommendations:', error);
-    return res.status(500).json({
-      success: false,
-      error: 'Internal server error',
-    });
+    return next(error as Error);
+  }
+});
+app.get('/api/v1/scrape/performance/recommendations', async (req, res, next) => {
+  try {
+    const scope = (req as unknown as { containerScope?: Container }).containerScope;
+    if (!scope) return res.status(500).json({ success: false, error: 'Container scope not available' });
+    const scrapingService = await scope.resolve(TOKENS.ScrapingService) as ScrapingService;
+    const result = await scrapingService.getPerformanceRecommendations();
+    return res.json(result);
+  } catch (error) {
+    logger.error('Failed to get performance recommendations:', error);
+    return next(error as Error);
   }
 });
 
 // Cancel job
-app.post('/api/scrape/cancel/:jobId', async (req, res) => {
+app.post('/api/scrape/cancel/:jobId', async (req, res, next) => {
   try {
-    const { jobId } = req.params;
+    const parsed = JobIdParamSchema.safeParse(req.params);
+    if (!parsed.success) {
+      throw new DomainValidationError('Invalid jobId', parsed.error.errors.map(e => ({ path: e.path.join('.') || '(root)', message: e.message })));
+    }
+    const { jobId } = parsed.data;
     const scope = (req as unknown as { containerScope?: Container }).containerScope;
     if (!scope) {
       return res.status(500).json({
@@ -298,19 +371,37 @@ app.post('/api/scrape/cancel/:jobId', async (req, res) => {
     }
   } catch (error) {
     logger.error('Failed to cancel job:', error);
-    return res.status(500).json({
-      success: false,
-      error: 'Internal server error',
-    });
+    return next(error as Error);
+  }
+});
+app.post('/api/v1/scrape/cancel/:jobId', async (req, res, next) => {
+  try {
+    const parsed = JobIdParamSchema.safeParse(req.params);
+    if (!parsed.success) {
+      throw new DomainValidationError('Invalid jobId', parsed.error.errors.map(e => ({ path: e.path.join('.') || '(root)', message: e.message })));
+    }
+    const { jobId } = parsed.data;
+    const scope = (req as unknown as { containerScope?: Container }).containerScope;
+    if (!scope) return res.status(500).json({ success: false, error: 'Container scope not available' });
+    const scrapingService = await scope.resolve(TOKENS.ScrapingService) as ScrapingService;
+    const result = await scrapingService.cancelJob(jobId);
+    return result.success ? res.json(result) : res.status(400).json(result);
+  } catch (error) {
+    logger.error('Failed to cancel job:', error);
+    return next(error as Error);
   }
 });
 
 // Download CSV files
-app.get('/api/scrape/download/:jobId/:type', async (req, res) => {
+app.get('/api/scrape/download/:jobId/:type', async (req, res, next) => {
   try {
-    const { jobId, type } = req.params;
+    const parsed = DownloadParamsSchema.safeParse(req.params);
+    if (!parsed.success) {
+      throw new DomainValidationError('Invalid params', parsed.error.errors.map(e => ({ path: e.path.join('.') || '(root)', message: e.message })));
+    }
+    const { jobId, type } = parsed.data;
 
-    console.log('🔍 DEBUG: Download CSV request:', { jobId, type });
+    // debug removed
 
     if (!['parent', 'variation'].includes(type)) {
       return res.status(400).json({
@@ -326,22 +417,14 @@ app.get('/api/scrape/download/:jobId/:type', async (req, res) => {
         error: 'Container scope not available',
       });
     }
-    const storageService = await scope.resolve(TOKENS.StorageService) as any;
+    const storageService = await scope.resolve(TOKENS.StorageService) as IStorageService;
     const storageEntry = await storageService.getJobResult(jobId);
     if (!storageEntry) {
-      console.log('❌ DEBUG: Storage entry not found for jobId:', jobId);
-      return res.status(404).json({
-        success: false,
-        error: 'Job result not found',
-      });
+      // debug removed
+      throw new (await import('./lib/domain/errors')).StorageEntryNotFoundError(jobId);
     }
 
-    console.log('🔍 DEBUG: Storage entry found:', {
-      hasParentCsv: !!storageEntry.parentCsv,
-      parentCsvLength: storageEntry.parentCsv?.length || 0,
-      hasVariationCsv: !!storageEntry.variationCsv,
-      variationCsvLength: storageEntry.variationCsv?.length || 0,
-    });
+    // debug removed
 
     let csvContent: string;
     let filename: string;
@@ -354,20 +437,13 @@ app.get('/api/scrape/download/:jobId/:type', async (req, res) => {
         type,
       );
       filename = `parent-${cleanFilename}`;
-      console.log('🔍 DEBUG: Parent CSV processing:', {
-        csvContentLength: csvContent?.length || 0,
-        cleanFilename,
-        hasContent: !!csvContent && csvContent.trim() !== '',
-      });
+      // debug removed
     } else {
       csvContent = storageEntry.variationCsv;
-      console.log('🔍 DEBUG: Variation CSV processing:', {
-        csvContentLength: csvContent?.length || 0,
-        hasContent: !!csvContent && csvContent.trim() !== '',
-      });
+      // debug removed
 
       if (!csvContent || csvContent.trim() === '') {
-        console.log('❌ DEBUG: Variation CSV is empty, returning 404');
+        // debug removed
         return res.status(404).json({
           success: false,
           error: `${type} CSV not found for this job`,
@@ -387,12 +463,7 @@ app.get('/api/scrape/download/:jobId/:type', async (req, res) => {
       });
     }
 
-    console.log('🔍 DEBUG: Sending CSV response:', {
-      type,
-      filename,
-      contentLength: Buffer.byteLength(csvContent, 'utf8'),
-      hasContent: !!csvContent,
-    });
+    // debug removed
 
     // Set headers for CSV download
     res.setHeader('Content-Type', 'text/csv; charset=utf-8');
@@ -407,15 +478,53 @@ app.get('/api/scrape/download/:jobId/:type', async (req, res) => {
     return;
   } catch (error) {
     logger.error('Failed to download CSV:', error);
-    return res.status(500).json({
-      success: false,
-      error: 'Internal server error',
-    });
+    return next(error as Error);
+  }
+});
+app.get('/api/v1/scrape/download/:jobId/:type', async (req, res, next) => {
+  try {
+    const parsed = DownloadParamsSchema.safeParse(req.params);
+    if (!parsed.success) {
+      throw new DomainValidationError('Invalid params', parsed.error.errors.map(e => ({ path: e.path.join('.') || '(root)', message: e.message })));
+    }
+    const { jobId, type } = parsed.data;
+    const scope = (req as unknown as { containerScope?: Container }).containerScope;
+    if (!scope) return res.status(500).json({ success: false, error: 'Container scope not available' });
+    const storageService = await scope.resolve(TOKENS.StorageService) as IStorageService;
+    const storageEntry = await storageService.getJobResult(jobId);
+    if (!storageEntry) {
+      throw new (await import('./lib/domain/errors')).StorageEntryNotFoundError(jobId);
+    }
+    let csvContent: string;
+    let filename: string;
+    if (type === 'parent') {
+      csvContent = storageEntry.parentCsv;
+      const cleanFilename = createCleanFilename(storageEntry.metadata?.filename || 'products', type);
+      filename = `parent-${cleanFilename}`;
+    } else {
+      csvContent = storageEntry.variationCsv;
+      if (!csvContent || csvContent.trim() === '') {
+        return res.status(404).json({ success: false, error: `${type} CSV not found for this job` });
+      }
+      const cleanFilename = createCleanFilename(storageEntry.metadata?.filename || 'products', type);
+      filename = `variation-${cleanFilename}`;
+    }
+    if (!csvContent || csvContent.trim() === '') {
+      return res.status(404).json({ success: false, error: `${type} CSV not found for this job` });
+    }
+    res.setHeader('Content-Type', 'text/csv; charset=utf-8');
+    res.setHeader('Content-Disposition', `attachment; filename="${filename}"; filename*=UTF-8''${encodeURIComponent(filename)}`);
+    res.setHeader('Content-Length', Buffer.byteLength(csvContent, 'utf8'));
+    res.send(csvContent);
+    return;
+  } catch (error) {
+    logger.error('Failed to download CSV:', error);
+    return next(error as Error);
   }
 });
 
 // Get storage statistics
-app.get('/api/storage/stats', async (req, res) => {
+app.get('/api/storage/stats', async (req, res, next) => {
   try {
     const scope = (req as unknown as { containerScope?: Container }).containerScope;
     if (!scope) {
@@ -429,18 +538,31 @@ app.get('/api/storage/stats', async (req, res) => {
     res.json(result);
   } catch (error) {
     logger.error('Failed to get storage stats:', error);
-    res.status(500).json({
-      success: false,
-      error: 'Internal server error',
-    });
+    return next(error as Error);
+  }
+});
+app.get('/api/v1/storage/stats', async (req, res, next) => {
+  try {
+    const scope = (req as unknown as { containerScope?: Container }).containerScope;
+    if (!scope) return res.status(500).json({ success: false, error: 'Container scope not available' });
+    const scrapingService = await scope.resolve(TOKENS.ScrapingService) as ScrapingService;
+    const result = await scrapingService.getStorageStats();
+    res.json(result);
+  } catch (error) {
+    logger.error('Failed to get storage stats:', error);
+    return next(error as Error);
   }
 });
 
 // Get job result from storage
-app.get('/api/storage/job/:jobId', async (req, res) => {
+app.get('/api/storage/job/:jobId', async (req, res, next) => {
   try {
-    const { jobId } = req.params;
-    console.log('🔍 DEBUG: Storage job request for jobId:', jobId);
+    const parsed = JobIdParamSchema.safeParse(req.params);
+    if (!parsed.success) {
+      throw new DomainValidationError('Invalid jobId', parsed.error.errors.map(e => ({ path: e.path.join('.') || '(root)', message: e.message })));
+    }
+    const { jobId } = parsed.data;
+    // debug removed
 
     const scope = (req as unknown as { containerScope?: Container }).containerScope;
     if (!scope) {
@@ -449,23 +571,15 @@ app.get('/api/storage/job/:jobId', async (req, res) => {
         error: 'Container scope not available',
       });
     }
-    const storageService = await scope.resolve(TOKENS.StorageService) as any;
+    const storageService = await scope.resolve(TOKENS.StorageService) as IStorageService;
     const storageEntry = await storageService.getJobResult(jobId);
 
     if (!storageEntry) {
-      console.log('❌ DEBUG: Storage entry not found for jobId:', jobId);
-      return res.status(404).json({
-        success: false,
-        error: 'Job result not found',
-      });
+      // debug removed
+      throw new (await import('./lib/domain/errors')).StorageEntryNotFoundError(jobId);
     }
 
-    console.log('🔍 DEBUG: Storage entry returned:', {
-      hasParentCsv: !!storageEntry.parentCsv,
-      parentCsvLength: storageEntry.parentCsv?.length || 0,
-      hasVariationCsv: !!storageEntry.variationCsv,
-      variationCsvLength: storageEntry.variationCsv?.length || 0,
-    });
+    // debug removed
 
     return res.json({
       success: true,
@@ -473,15 +587,32 @@ app.get('/api/storage/job/:jobId', async (req, res) => {
     });
   } catch (error) {
     logger.error('Failed to get job result:', error);
-    return res.status(500).json({
-      success: false,
-      error: 'Internal server error',
-    });
+    return next(error as Error);
+  }
+});
+app.get('/api/v1/storage/job/:jobId', async (req, res, next) => {
+  try {
+    const parsed = JobIdParamSchema.safeParse(req.params);
+    if (!parsed.success) {
+      throw new DomainValidationError('Invalid jobId', parsed.error.errors.map(e => ({ path: e.path.join('.') || '(root)', message: e.message })));
+    }
+    const { jobId } = parsed.data;
+    const scope = (req as unknown as { containerScope?: Container }).containerScope;
+    if (!scope) return res.status(500).json({ success: false, error: 'Container scope not available' });
+    const storageService = await scope.resolve(TOKENS.StorageService) as IStorageService;
+    const storageEntry = await storageService.getJobResult(jobId);
+    if (!storageEntry) {
+      throw new (await import('./lib/domain/errors')).StorageEntryNotFoundError(jobId);
+    }
+    return res.json({ success: true, data: storageEntry });
+  } catch (error) {
+    logger.error('Failed to get job result:', error);
+    return next(error as Error);
   }
 });
 
 // Clear all storage
-app.delete('/api/storage/clear', async (req, res) => {
+app.delete('/api/storage/clear', async (req, res, next) => {
   try {
     const scope = (req as unknown as { containerScope?: Container }).containerScope;
     if (!scope) {
@@ -490,7 +621,7 @@ app.delete('/api/storage/clear', async (req, res) => {
         error: 'Container scope not available',
       });
     }
-    const storageService = await scope.resolve(TOKENS.StorageService) as any;
+    const storageService = await scope.resolve(TOKENS.StorageService) as IStorageService;
     await storageService.clearAll();
     res.json({
       success: true,
@@ -498,21 +629,24 @@ app.delete('/api/storage/clear', async (req, res) => {
     });
   } catch (error) {
     logger.error('Failed to clear storage:', error);
-    res.status(500).json({
-      success: false,
-      error: 'Internal server error',
-    });
+    return next(error as Error);
+  }
+});
+app.delete('/api/v1/storage/clear', async (req, res, next) => {
+  try {
+    const scope = (req as unknown as { containerScope?: Container }).containerScope;
+    if (!scope) return res.status(500).json({ success: false, error: 'Container scope not available' });
+    const storageService = await scope.resolve(TOKENS.StorageService) as IStorageService;
+    await storageService.clearAll();
+    res.json({ success: true, message: 'All storage cleared successfully' });
+  } catch (error) {
+    logger.error('Failed to clear storage:', error);
+    return next(error as Error);
   }
 });
 
 // Error handling middleware
-app.use((error: Error, req: express.Request, res: express.Response, _next: express.NextFunction) => {
-  logger.error('Unhandled error:', error);
-  res.status(500).json({
-    success: false,
-    error: 'Internal server error',
-  });
-});
+app.use(errorHandler());
 
 // 404 handler
 app.use('*', (req, res) => {

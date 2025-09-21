@@ -85,7 +85,7 @@ export class GenericAdapter extends BaseAdapter {
           break;
         }
       } catch (error) {
-        console.error(`Failed to process page ${currentUrl}:`, error);
+        if (process.env.SCRAPER_DEBUG === '1') console.error(`Failed to process page ${currentUrl}:`, error);
         break;
       }
     }
@@ -198,7 +198,7 @@ export class GenericAdapter extends BaseAdapter {
     selectors: string | string[],
     fallbacks?: string[],
   ): string {
-    return extractWithFallbacksHelper(dom as any, selectors, fallbacks, (t) => this.isPriceLike(t));
+    return extractWithFallbacksHelper(dom, selectors, fallbacks, (t) => this.isPriceLike(t));
   }
 
   /**

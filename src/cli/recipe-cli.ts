@@ -149,7 +149,7 @@ program
         output = JSON.stringify(result, null, 2);
         break;
       case 'html':
-        output = generateHtmlReport(recipeName, result);
+        output = generateHtmlReport(recipeName, { ...result, timestamp: result.timestamp?.toISOString() });
         break;
       case 'console':
       default:
@@ -444,7 +444,7 @@ program
   });
 
 // Helper functions for report generation
-function generateHtmlReport(recipeName: string, result: any): string {
+function generateHtmlReport(recipeName: string, result: { isValid: boolean; score?: number; timestamp?: string; errors?: unknown[]; warnings?: unknown[]; issues?: unknown[] }): string {
   const statusIcon = result.isValid ? '✅' : '❌';
   const statusText = result.isValid ? 'VALID' : 'INVALID';
   const statusColor = result.isValid ? '#28a745' : '#dc3545';
@@ -474,33 +474,39 @@ function generateHtmlReport(recipeName: string, result: any): string {
         <p>Generated: ${result.timestamp}</p>
     </div>
 
-    ${result.errors.length > 0 ? `
+    ${(result.errors || result.issues || []).length > 0 ? `
     <div class="section">
-        <h3>🚨 Errors (${result.errors.length})</h3>
-        ${result.errors.map((error: any, index: number) => `
+        <h3>🚨 Errors (${(result.errors || result.issues || []).length})</h3>
+        ${(result.errors || result.issues || []).map((error, index: number) => {
+    const err = error as { category: string; message: string; field?: string; suggestion?: string };
+    return `
             <div class="error">
-                <strong>${index + 1}. [${error.category.toUpperCase()}] ${error.message}</strong>
-                ${error.field ? `<br><small>Field: ${error.field}</small>` : ''}
-                ${error.suggestion ? `<div class="suggestion">Suggestion: ${error.suggestion}</div>` : ''}
+                <strong>${index + 1}. [${err.category.toUpperCase()}] ${err.message}</strong>
+                ${err.field ? `<br><small>Field: ${err.field}</small>` : ''}
+                ${err.suggestion ? `<div class="suggestion">Suggestion: ${err.suggestion}</div>` : ''}
             </div>
-        `).join('')}
+        `;
+  }).join('')}
     </div>
     ` : ''}
 
-    ${result.warnings.length > 0 ? `
+    ${(result.warnings || []).length > 0 ? `
     <div class="section">
-        <h3>⚠️ Warnings (${result.warnings.length})</h3>
-        ${result.warnings.map((warning: any, index: number) => `
+        <h3>⚠️ Warnings (${(result.warnings || []).length})</h3>
+        ${(result.warnings || []).map((warning, index: number) => {
+    const warn = warning as { category: string; message: string; field?: string; suggestion?: string };
+    return `
             <div class="warning">
-                <strong>${index + 1}. [${warning.category.toUpperCase()}] ${warning.message}</strong>
-                ${warning.field ? `<br><small>Field: ${warning.field}</small>` : ''}
-                ${warning.suggestion ? `<div class="suggestion">Suggestion: ${warning.suggestion}</div>` : ''}
+                <strong>${index + 1}. [${warn.category.toUpperCase()}] ${warn.message}</strong>
+                ${warn.field ? `<br><small>Field: ${warn.field}</small>` : ''}
+                ${warn.suggestion ? `<div class="suggestion">Suggestion: ${warn.suggestion}</div>` : ''}
             </div>
-        `).join('')}
+        `;
+  }).join('')}
     </div>
     ` : ''}
 
-    ${result.errors.length === 0 && result.warnings.length === 0 ? `
+    ${(result.errors || result.issues || []).length === 0 && (result.warnings || []).length === 0 ? `
     <div class="section">
         <h3>🎉 No Issues Found!</h3>
         <p>Recipe is fully compliant with WooCommerce standards.</p>
@@ -510,7 +516,7 @@ function generateHtmlReport(recipeName: string, result: any): string {
 </html>`;
 }
 
-function generateHtmlReportAll(validationResults: any): string {
+function generateHtmlReportAll(validationResults: { results: unknown[]; summary: { validRecipes: number; invalidRecipes: number; totalRecipes: number; averageScore?: number; totalErrors?: number; totalWarnings?: number } }): string {
   const { results, summary } = validationResults;
   const validCount = summary.validRecipes;
   const invalidCount = summary.invalidRecipes;
@@ -559,7 +565,7 @@ function generateHtmlReportAll(validationResults: any): string {
         </div>
     </div>
 
-    ${results.map((item: any) => `
+    ${(results as { recipeName: string; result: { isValid: boolean; score: number; errors: unknown[]; warnings: unknown[] } }[]).map((item) => `
         <div class="recipe ${item.result.isValid ? 'valid' : 'invalid'}">
             <h3>${item.recipeName} ${item.result.isValid ? '✅' : '❌'}</h3>
             <p><strong>Score:</strong> ${item.result.score}/100</p>
@@ -567,14 +573,14 @@ function generateHtmlReportAll(validationResults: any): string {
             
             ${item.result.errors.length > 0 ? `
                 <h4>Errors:</h4>
-                ${item.result.errors.map((error: any) => `
+                ${(item.result.errors as { category: string; message: string }[]).map((error) => `
                     <div class="error">[${error.category}] ${error.message}</div>
                 `).join('')}
             ` : ''}
             
             ${item.result.warnings.length > 0 ? `
                 <h4>Warnings:</h4>
-                ${item.result.warnings.map((warning: any) => `
+                ${(item.result.warnings as { category: string; message: string }[]).map((warning) => `
                     <div class="warning">[${warning.category}] ${warning.message}</div>
                 `).join('')}
             ` : ''}
@@ -584,7 +590,7 @@ function generateHtmlReportAll(validationResults: any): string {
 </html>`;
 }
 
-function generateConsoleReportAll(validationResults: any): string {
+function generateConsoleReportAll(validationResults: { results: unknown[]; summary: { validRecipes: number; invalidRecipes: number; totalRecipes: number; averageScore?: number; totalErrors?: number; totalWarnings?: number } }): string {
   const { results, summary } = validationResults;
   const lines: string[] = [];
 
@@ -592,24 +598,24 @@ function generateConsoleReportAll(validationResults: any): string {
   lines.push(`Total Recipes: ${summary.totalRecipes}`);
   lines.push(`Valid Recipes: ${summary.validRecipes}`);
   lines.push(`Invalid Recipes: ${summary.invalidRecipes}`);
-  lines.push(`Average Score: ${summary.averageScore}/100`);
-  lines.push(`Total Errors: ${summary.totalErrors}`);
-  lines.push(`Total Warnings: ${summary.totalWarnings}`);
+  lines.push(`Average Score: ${summary.averageScore || 0}/100`);
+  lines.push(`Total Errors: ${summary.totalErrors || 0}`);
+  lines.push(`Total Warnings: ${summary.totalWarnings || 0}`);
   lines.push('');
 
-  results.forEach((item: any, index: number) => {
+  (results as { recipeName: string; result: { isValid: boolean; score: number; errors: unknown[]; warnings: unknown[] } }[]).forEach((item, index: number) => {
     lines.push(`${index + 1}. ${item.recipeName} ${item.result.isValid ? '✅' : '❌'} (Score: ${item.result.score}/100)`);
 
     if (item.result.errors.length > 0) {
       lines.push(`   Errors: ${item.result.errors.length}`);
-      item.result.errors.forEach((error: any) => {
+      (item.result.errors as { category: string; message: string }[]).forEach((error) => {
         lines.push(`     - [${error.category}] ${error.message}`);
       });
     }
 
     if (item.result.warnings.length > 0) {
       lines.push(`   Warnings: ${item.result.warnings.length}`);
-      item.result.warnings.forEach((warning: any) => {
+      (item.result.warnings as { category: string; message: string }[]).forEach((warning) => {
         lines.push(`     - [${warning.category}] ${warning.message}`);
       });
     }

@@ -135,7 +135,7 @@ class SimpleRolloutTester {
       const legacyGenerator = new CsvGenerator();
       let legacyResult;
       try {
-        legacyResult = await legacyGenerator.generateBothCsvs(mockProducts as any);
+        legacyResult = await legacyGenerator.generateBothCsvs(mockProducts);
         info('Legacy CSV generation successful');
       } catch (err) {
         errors.push(`Legacy CSV generation failed: ${err}`);
@@ -150,7 +150,7 @@ class SimpleRolloutTester {
       const newGenerator = new CsvGenerator();
       let newResult;
       try {
-        newResult = await newGenerator.generateBothCsvs(mockProducts as any);
+        newResult = await newGenerator.generateBothCsvs(mockProducts);
         info('New CSV generation successful');
       } catch (err) {
         errors.push(`New CSV generation failed: ${err}`);

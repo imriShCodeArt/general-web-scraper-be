@@ -40,7 +40,7 @@ describe('ScrapingService Cancellation and Retry Integration', () => {
       siteUrl: 'https://example.com',
       version: '1.0.0',
       selectors: { title: '.t', price: '.p', images: '.i', stock: '.s', sku: '.k', description: '.d', productLinks: '.a', attributes: '.attrs' },
-    } as any);
+    } as unknown);
 
     scrapingService = new ScrapingService(
       undefined, // storage

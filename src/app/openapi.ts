@@ -19,6 +19,45 @@ const options: Options = {
     ],
     components: {
       schemas: {
+        ErrorResponse: {
+          type: 'object',
+          properties: {
+            success: { type: 'boolean', example: false },
+            code: {
+              type: 'string',
+              description: 'Domain error code',
+              enum: [
+                'RECIPE_NOT_FOUND',
+                'ADAPTER_CREATION_FAILED',
+                'EXTRACTION_FAILED',
+                'JOB_NOT_FOUND',
+                'STORAGE_ENTRY_NOT_FOUND',
+                'VALIDATION_ERROR',
+                'INTERNAL_ERROR',
+              ],
+            },
+            error: { type: 'string', example: 'Job result not found: abc123' },
+            details: { type: 'object' },
+          },
+          required: ['success', 'code', 'error'],
+        },
+        ValidationError: {
+          type: 'object',
+          properties: {
+            success: { type: 'boolean', example: false },
+            error: { type: 'string', example: 'Invalid request body' },
+            details: {
+              type: 'array',
+              items: {
+                type: 'object',
+                properties: {
+                  path: { type: 'string', example: 'siteUrl' },
+                  message: { type: 'string', example: 'siteUrl is required' },
+                },
+              },
+            },
+          },
+        },
         StartScrapeRequest: {
           type: 'object',
           required: ['siteUrl', 'recipe'],
@@ -60,10 +99,18 @@ const options: Options = {
           },
           responses: {
             '201': { description: 'Job created' },
-            '400': { description: 'Bad request' },
+            '400': {
+              description: 'Validation error',
+              content: {
+                'application/json': {
+                  schema: { $ref: '#/components/schemas/ValidationError' },
+                },
+              },
+            },
           },
         },
       },
+      '/api/v1/scrape/init': { $ref: '#/paths/~1api~1scrape~1init' },
       '/api/scrape/status/{jobId}': {
         get: {
           summary: 'Get scraping job status',
@@ -72,31 +119,41 @@ const options: Options = {
           ],
           responses: {
             '200': { description: 'Status' },
-            '404': { description: 'Not found' },
+            '400': { description: 'Validation error', content: { 'application/json': { schema: { $ref: '#/components/schemas/ValidationError' } } } },
+            '404': { description: 'Not found', content: { 'application/json': { schema: { $ref: '#/components/schemas/ErrorResponse' } } } },
           },
         },
       },
+      '/api/v1/scrape/status/{jobId}': { $ref: '#/paths/~1api~1scrape~1status~1{jobId}' },
       '/api/scrape/jobs': {
         get: { summary: 'List all jobs', responses: { '200': { description: 'OK' } } },
       },
+      '/api/v1/scrape/jobs': { $ref: '#/paths/~1api~1scrape~1jobs' },
       '/api/scrape/performance': {
         get: { summary: 'Performance metrics', responses: { '200': { description: 'OK' } } },
       },
+      '/api/v1/scrape/performance': { $ref: '#/paths/~1api~1scrape~1performance' },
       '/api/scrape/performance/live': {
         get: { summary: 'Live performance metrics', responses: { '200': { description: 'OK' } } },
       },
+      '/api/v1/scrape/performance/live': { $ref: '#/paths/~1api~1scrape~1performance~1live' },
       '/api/scrape/performance/recommendations': {
         get: { summary: 'Performance recommendations', responses: { '200': { description: 'OK' } } },
       },
+      '/api/v1/scrape/performance/recommendations': { $ref: '#/paths/~1api~1scrape~1performance~1recommendations' },
       '/api/scrape/cancel/{jobId}': {
         post: {
           summary: 'Cancel a job',
           parameters: [
             { name: 'jobId', in: 'path', required: true, schema: { type: 'string' } },
           ],
-          responses: { '200': { description: 'Cancelled' }, '400': { description: 'Bad request' } },
+          responses: {
+            '200': { description: 'Cancelled' },
+            '400': { description: 'Validation error', content: { 'application/json': { schema: { $ref: '#/components/schemas/ValidationError' } } } },
+          },
         },
       },
+      '/api/v1/scrape/cancel/{jobId}': { $ref: '#/paths/~1api~1scrape~1cancel~1{jobId}' },
       '/api/scrape/download/{jobId}/{type}': {
         get: {
           summary: 'Download CSV',
@@ -104,24 +161,36 @@ const options: Options = {
             { name: 'jobId', in: 'path', required: true, schema: { type: 'string' } },
             { name: 'type', in: 'path', required: true, schema: { type: 'string', enum: ['parent', 'variation'] } },
           ],
-          responses: { '200': { description: 'CSV file' }, '404': { description: 'Not found' } },
+          responses: {
+            '200': { description: 'CSV file' },
+            '400': { description: 'Validation error', content: { 'application/json': { schema: { $ref: '#/components/schemas/ValidationError' } } } },
+            '404': { description: 'Not found', content: { 'application/json': { schema: { $ref: '#/components/schemas/ErrorResponse' } } } },
+          },
         },
       },
+      '/api/v1/scrape/download/{jobId}/{type}': { $ref: '#/paths/~1api~1scrape~1download~1{jobId}~1{type}' },
       '/api/storage/stats': {
         get: { summary: 'Storage stats', responses: { '200': { description: 'OK' } } },
       },
+      '/api/v1/storage/stats': { $ref: '#/paths/~1api~1storage~1stats' },
       '/api/storage/job/{jobId}': {
         get: {
           summary: 'Get job result from storage',
           parameters: [
             { name: 'jobId', in: 'path', required: true, schema: { type: 'string' } },
           ],
-          responses: { '200': { description: 'OK' }, '404': { description: 'Not found' } },
+          responses: {
+            '200': { description: 'OK' },
+            '400': { description: 'Validation error', content: { 'application/json': { schema: { $ref: '#/components/schemas/ValidationError' } } } },
+            '404': { description: 'Not found', content: { 'application/json': { schema: { $ref: '#/components/schemas/ErrorResponse' } } } },
+          },
         },
       },
+      '/api/v1/storage/job/{jobId}': { $ref: '#/paths/~1api~1storage~1job~1{jobId}' },
       '/api/storage/clear': {
         delete: { summary: 'Clear storage', responses: { '200': { description: 'Cleared' } } },
       },
+      '/api/v1/storage/clear': { $ref: '#/paths/~1api~1storage~1clear' },
       '/api/recipes/list': {
         get: { summary: 'List recipes', responses: { '200': { description: 'OK' } } },
       },
