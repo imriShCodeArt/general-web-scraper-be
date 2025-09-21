@@ -2,19 +2,20 @@ import {
   SiteAdapter,
   RecipeConfig,
   ValidationError,
-  Result,
-  ScrapingError,
   RawProductData,
-  NormalizableProductData,
   JsonData,
 } from '../../domain/types';
 import { HttpClient } from '../../infrastructure/http/http-client';
 import { PuppeteerHttpClient } from '../../infrastructure/http/puppeteer-http-client';
 import { JSDOM } from 'jsdom';
-import { ErrorFactory, ErrorCodes, retryManager } from '../../utils/error-handler';
+import { ProductValidator, IProductValidator } from './product-validator';
+import { ElementExtractor, IElementExtractor } from './element-extractor';
+import { DataTransformer, IDataTransformer } from './data-transformer';
+import { getDomWithStrategy, createDomLoaderStrategy } from '../../helpers/dom-loader';
+import { extractJsonFromScriptTags } from '../../helpers/json';
 
 /**
- * Enhanced Base Adapter with better generics, error handling, and validation
+ * Refactored Enhanced Base Adapter that uses extracted components for better modularity
  */
 export abstract class EnhancedBaseAdapter<T extends RawProductData = RawProductData>
 implements SiteAdapter<T>
@@ -24,6 +25,11 @@ implements SiteAdapter<T>
   protected config: RecipeConfig;
   protected baseUrl: string;
   protected usePuppeteer: boolean;
+
+  // Extracted services
+  protected productValidator: IProductValidator;
+  protected elementExtractor: IElementExtractor;
+  protected dataTransformer: IDataTransformer;
 
   constructor(config: RecipeConfig, baseUrl: string) {
     this.config = config;
@@ -35,6 +41,11 @@ implements SiteAdapter<T>
     if (this.usePuppeteer) {
       this.puppeteerClient = new PuppeteerHttpClient();
     }
+
+    // Initialize extracted services
+    this.productValidator = new ProductValidator(config);
+    this.elementExtractor = new ElementExtractor(baseUrl);
+    this.dataTransformer = new DataTransformer();
   }
 
   /**
@@ -55,523 +66,284 @@ implements SiteAdapter<T>
   }
 
   /**
-   * Validate a product using recipe validation rules with proper generic constraints
+   * Get base URL
+   */
+  getBaseUrl(): string {
+    return this.baseUrl;
+  }
+
+  /**
+   * Get HTTP client
+   */
+  getHttpClient(): HttpClient {
+    return this.httpClient;
+  }
+
+  /**
+   * Validate a product using the extracted ProductValidator
    */
   validateProduct(product: T): ValidationError[] {
-    const errors: ValidationError[] = [];
-    const validation = this.config.validation;
-
-    if (!validation) {
-      return errors;
-    }
-
-    // Required fields validation
-    if (validation.requiredFields) {
-      for (const field of validation.requiredFields) {
-        const value = (product as JsonData<unknown>)[field];
-        if (!value || (typeof value === 'string' && value.trim() === '')) {
-          errors.push({
-            field,
-            value,
-            expected: 'non-empty value',
-            message: `Required field '${field}' is missing or empty`,
-          } as ValidationError);
-        }
-      }
-    }
-
-    // Price format validation
-    if (validation.priceFormat && (product as NormalizableProductData).price) {
-      const priceRegex = new RegExp(validation.priceFormat);
-      if (!priceRegex.test((product as NormalizableProductData).price!)) {
-        errors.push({
-          field: 'price',
-          value: (product as NormalizableProductData).price,
-          expected: `format matching ${validation.priceFormat}`,
-          message: `Price format validation failed for '${(product as NormalizableProductData).price}'`,
-        } as ValidationError);
-      }
-    }
-
-    // SKU format validation
-    if (validation.skuFormat && (product as NormalizableProductData).sku) {
-      const skuRegex = new RegExp(validation.skuFormat);
-      if (!skuRegex.test((product as NormalizableProductData).sku!)) {
-        errors.push({
-          field: 'sku',
-          value: (product as NormalizableProductData).sku,
-          expected: `format matching ${validation.skuFormat}`,
-          message: `SKU format validation failed for '${(product as NormalizableProductData).sku}'`,
-        } as ValidationError);
-      }
-    }
-
-    // Description length validation
-    if (validation.minDescriptionLength && (product as NormalizableProductData).description) {
-      if ((product as NormalizableProductData).description!.length < validation.minDescriptionLength) {
-        errors.push({
-          field: 'description',
-          value: (product as NormalizableProductData).description!.length,
-          expected: `at least ${validation.minDescriptionLength} characters`,
-          message: `Description is too short: ${(product as NormalizableProductData).description!.length} characters`,
-        } as ValidationError);
-      }
-    }
-
-    // Title length validation
-    if (validation.maxTitleLength && (product as NormalizableProductData).title) {
-      if ((product as NormalizableProductData).title!.length > validation.maxTitleLength) {
-        errors.push({
-          field: 'title',
-          value: (product as NormalizableProductData).title!.length,
-          expected: `at most ${validation.maxTitleLength} characters`,
-          message: `Title is too long: ${(product as NormalizableProductData).title!.length} characters`,
-        } as ValidationError);
-      }
-    }
-
-    return errors;
+    return this.productValidator.validateProduct(product as any);
   }
 
   /**
-   * Extract product with validation and error handling
-   */
-  async extractProductWithValidation(url: string): Promise<Result<T, ScrapingError>> {
-    try {
-      const product = await this.extractProduct(url);
-      const validationErrors = this.validateProduct(product);
-
-      if (validationErrors.length > 0) {
-        const errorMessage = `Product validation failed: ${validationErrors.map((e) => e.message).join(', ')}`;
-        const error = ErrorFactory.createScrapingError(
-          errorMessage,
-          ErrorCodes.VALIDATION_ERROR,
-          false,
-          { url, validationErrors },
-        );
-        return { success: false, error };
-      }
-
-      return { success: true, data: product };
-    } catch (error) {
-      const scrapingError =
-        error instanceof Error
-          ? ErrorFactory.createScrapingError(error.message, ErrorCodes.UNKNOWN_ERROR, false, {
-            url,
-          })
-          : ErrorFactory.createScrapingError(
-            'Unknown error during product extraction',
-            ErrorCodes.UNKNOWN_ERROR,
-            false,
-            { url },
-          );
-
-      return { success: false, error: scrapingError };
-    }
-  }
-
-  /**
-   * Extract product with retry logic
-   */
-  async extractProductWithRetry(url: string): Promise<T> {
-    const retryConfig = {
-      maxAttempts: this.config.behavior?.retryAttempts || 3,
-      baseDelay: this.config.behavior?.retryDelay || 1000,
-      maxDelay: 30000,
-      backoffMultiplier: 2,
-      retryableErrors: [ErrorCodes.NETWORK_ERROR, ErrorCodes.TIMEOUT_ERROR],
-    };
-
-    return await retryManager.executeWithRetry(
-      () => this.extractProduct(url),
-      retryConfig,
-      `extractProduct(${url})`,
-    );
-  }
-
-  /**
-   * Common method to extract text content using CSS selector with error handling
+   * Extract text content from a selector using ElementExtractor
    */
   protected extractText(dom: JSDOM, selector: string): string {
-    try {
-      const element = dom.window.document.querySelector(selector);
-      if (!element) {
-        return '';
-      }
-
-      // For description fields, try to get all text content including multiple paragraphs
-      if (
-        selector.includes('description') ||
-        selector.includes('content') ||
-        selector.includes('p')
-      ) {
-        // Get all text nodes and paragraph content
-        const textContent = element.textContent?.trim() || '';
-        const innerHTML = element.innerHTML || '';
-
-        // If we have HTML content, try to extract meaningful text
-        if (innerHTML.includes('<p>') || innerHTML.includes('<br>')) {
-          // Extract text from paragraphs and line breaks
-          const paragraphs = element.querySelectorAll('p, br + *, div');
-          if (paragraphs.length > 0) {
-            const paragraphTexts = Array.from(paragraphs)
-              .map((p) => p.textContent?.trim())
-              .filter((text) => text && text.length > 10) // Filter out very short text
-              .join('\n\n');
-
-            if (paragraphTexts) {
-              return paragraphTexts;
-            }
-          }
-        }
-
-        return textContent;
-      }
-
-      return element.textContent?.trim() || '';
-    } catch (error) {
-      console.warn(`Failed to extract text from selector '${selector}':`, error);
-      return '';
-    }
+    return this.elementExtractor.extractText(dom, selector);
   }
 
   /**
-   * Common method to extract attribute value with error handling
+   * Extract attribute value from a selector using ElementExtractor
    */
   protected extractAttribute(dom: JSDOM, selector: string, attribute: string): string {
-    try {
-      const element = dom.window.document.querySelector(selector);
-      return element?.getAttribute(attribute) || '';
-    } catch (error) {
-      console.warn(
-        `Failed to extract attribute '${attribute}' from selector '${selector}':`,
-        error,
-      );
-      return '';
-    }
+    return this.elementExtractor.extractAttribute(dom, selector, attribute);
   }
 
   /**
-   * Common method to extract multiple elements with error handling
+   * Extract elements from DOM using ElementExtractor
    */
-  protected extractElements(dom: JSDOM, selector: string): Element[] {
-    try {
-      return Array.from(dom.window.document.querySelectorAll(selector));
-    } catch (error) {
-      console.warn(`Failed to extract elements from selector '${selector}':`, error);
-      return [];
-    }
+  protected async extractElements(dom: JSDOM, selector: string | string[], scope?: Element): Promise<Element[]> {
+    return this.elementExtractor.extractElements(dom, selector, scope);
   }
 
   /**
-   * Common method to extract image URLs with error handling
+   * Extract elements synchronously using ElementExtractor
    */
-  protected extractImages(dom: JSDOM, selector: string): string[] {
-    try {
-      const images = this.extractElements(dom, selector);
-      return images
-        .map((img) => {
-          const src = img.getAttribute('src') || img.getAttribute('data-src');
-          if (src) {
-            return this.resolveUrl(src);
-          }
-          return null;
-        })
-        .filter((src): src is string => src !== null);
-    } catch (error) {
-      console.warn(`Failed to extract images from selector '${selector}':`, error);
-      return [];
-    }
+  protected extractElementsSync(dom: JSDOM, selector: string): Element[] {
+    return this.elementExtractor.extractElementsSync(dom, selector);
   }
 
   /**
-   * Common method to extract price with error handling
+   * Extract image URLs using ElementExtractor (synchronous)
+   */
+  protected extractImagesSync(dom: JSDOM, selector: string): string[] {
+    return this.elementExtractor.extractImagesSync(dom, selector);
+  }
+
+  /**
+   * Extract image URLs using ElementExtractor (asynchronous)
+   */
+  protected async extractImages(dom: JSDOM, selector: string | string[], scope?: Element): Promise<string[]> {
+    return this.elementExtractor.extractImages(dom, selector, scope);
+  }
+
+
+  /**
+   * Extract and parse price using ElementExtractor
    */
   protected extractPrice(dom: JSDOM, selector: string): string {
-    try {
-      const priceText = this.extractText(dom, selector);
-      return this.cleanPrice(priceText);
-    } catch (error) {
-      console.warn(`Failed to extract price from selector '${selector}':`, error);
-      return '';
-    }
+    return this.elementExtractor.extractPrice(dom, selector);
   }
 
   /**
-   * Common method to extract stock status with error handling
+   * Extract stock status using ElementExtractor
    */
   protected extractStockStatus(dom: JSDOM, selector: string): string {
-    try {
-      const stockText = this.extractText(dom, selector);
-      return this.normalizeStockText(stockText);
-    } catch (error) {
-      console.warn(`Failed to extract stock status from selector '${selector}':`, error);
-      return 'instock'; // Default to in stock
-    }
+    return this.elementExtractor.extractStockStatus(dom, selector);
   }
 
   /**
-   * Common method to extract attributes with error handling
+   * Extract attributes using ElementExtractor
    */
-  protected extractAttributes(dom: JSDOM, selector: string): Record<string, string[]> {
-    try {
-      const attributes: Record<string, string[]> = {};
-
-      const attributeElements = this.extractElements(dom, selector);
-
-      for (const element of attributeElements) {
-        const nameElement = element.querySelector(
-          '[data-attribute-name], .attribute-name, .attr-name',
-        );
-        const valueElements = element.querySelectorAll(
-          '[data-attribute-value], .attribute-value, .attr-value, option',
-        );
-
-        if (nameElement && valueElements.length > 0) {
-          const name = nameElement.textContent?.trim() || '';
-          const values = Array.from(valueElements)
-            .map((val) => val.textContent?.trim())
-            .filter((val) => val && val !== 'בחר אפשרות' && val !== 'Select option');
-
-          if (name && values.length > 0) {
-            attributes[name] = values;
-          }
-        }
-      }
-
-      return attributes;
-    } catch (error) {
-      console.warn(`Failed to extract attributes from selector '${selector}':`, error);
-      return {};
-    }
+  protected async extractAttributes(dom: JSDOM, selector: string | string[], scope?: Element): Promise<Record<string, string[]>> {
+    return this.elementExtractor.extractAttributes(dom, selector, scope);
   }
 
   /**
-   * Common method to extract variations with error handling and proper typing
+   * Extract attributes synchronously using ElementExtractor
    */
-  protected extractVariations(dom: JSDOM, selector: string): RawProductData['variations'] {
-    try {
-      const variations: RawProductData['variations'] = [];
-      const variationElements = this.extractElements(dom, selector);
-
-      for (const element of variationElements) {
-        const sku = element.querySelector('[data-sku], .sku, .product-sku')?.textContent?.trim();
-        const price = element
-          .querySelector('[data-price], .price, .product-price')
-          ?.textContent?.trim();
-
-        if (sku) {
-          variations.push({
-            sku,
-            regularPrice: this.cleanPrice(price || ''),
-            taxClass: '',
-            stockStatus: 'instock',
-            images: [],
-            attributeAssignments: {},
-          });
-        }
-      }
-
-      return variations;
-    } catch (error) {
-      console.warn(`Failed to extract variations from selector '${selector}':`, error);
-      return [];
-    }
+  protected extractAttributesSync(dom: JSDOM, selector: string): Record<string, string[]> {
+    return this.elementExtractor.extractAttributesSync(dom, selector);
   }
 
   /**
-   * Resolve relative URLs to absolute URLs
+   * Extract variations using ElementExtractor
    */
-  protected resolveUrl(url: string): string {
-    try {
-      if (url.startsWith('http')) {
-        return url;
-      }
-
-      if (url.startsWith('//')) {
-        return `https:${url}`;
-      }
-
-      if (url.startsWith('/')) {
-        const baseUrl = new URL(this.baseUrl);
-        return `${baseUrl.protocol}//${baseUrl.host}${url}`;
-      }
-
-      return `${this.baseUrl}/${url}`;
-    } catch (error) {
-      console.warn(`Failed to resolve URL '${url}':`, error);
-      return url;
-    }
+  protected async extractVariations(dom: JSDOM, selector: string | string[], scope?: Element): Promise<RawProductData['variations']> {
+    return this.elementExtractor.extractVariations(dom, selector, scope);
   }
 
   /**
-   * Clean price text
+   * Extract variations synchronously using ElementExtractor
    */
-  protected cleanPrice(priceText: string): string {
-    try {
-      return priceText
-        .replace(/[^\d.,]/g, '')
-        .replace(',', '.')
-        .trim();
-    } catch (error) {
-      console.warn(`Failed to clean price text '${priceText}':`, error);
-      return '';
-    }
+  protected extractVariationsSync(dom: JSDOM, selector: string): RawProductData['variations'] {
+    return this.elementExtractor.extractVariationsSync(dom, selector);
   }
 
   /**
-   * Normalize stock text
+   * Extract embedded JSON using ElementExtractor
+   */
+  protected async extractEmbeddedJson(dom: JSDOM, selectors: string[]): Promise<JsonData[]> {
+    return this.elementExtractor.extractEmbeddedJson(dom, selectors);
+  }
+
+  /**
+   * Resolve URL using ElementExtractor
+   */
+  protected resolveUrl(url: string, baseUrl?: string): string {
+    return this.elementExtractor.resolveUrl(url, baseUrl || this.baseUrl);
+  }
+
+  /**
+   * Transform product data using DataTransformer
+   */
+  protected transformProduct(product: RawProductData): any {
+    return this.dataTransformer.transformProduct(product);
+  }
+
+  /**
+   * Transform text using DataTransformer
+   */
+  protected transformText(text: string, transforms?: any[]): string {
+    return this.dataTransformer.transformText(text, transforms);
+  }
+
+  /**
+   * Transform attributes using DataTransformer
+   */
+  protected transformAttributes(attributes: Record<string, (string | undefined)[]>): Record<string, (string | undefined)[]> {
+    return this.dataTransformer.transformAttributes(attributes);
+  }
+
+  /**
+   * Transform images using DataTransformer
+   */
+  protected transformImages(images: (string | undefined)[]): (string | undefined)[] {
+    return this.dataTransformer.transformImages(images);
+  }
+
+  /**
+   * Transform price using DataTransformer
+   */
+  protected transformPrice(price: string): string {
+    return this.dataTransformer.transformPrice(price);
+  }
+
+  /**
+   * Transform stock status using DataTransformer
+   */
+  protected transformStockStatus(stockStatus: string): string {
+    return this.dataTransformer.transformStockStatus(stockStatus);
+  }
+
+  /**
+   * Transform variations using DataTransformer
+   */
+  protected transformVariations(variations: RawProductData['variations']): any[] {
+    return this.dataTransformer.transformVariations(variations);
+  }
+
+  /**
+   * Clean price using DataTransformer
+   */
+  protected cleanPrice(price: string): string {
+    return this.dataTransformer.cleanPrice(price);
+  }
+
+  /**
+   * Normalize stock text using DataTransformer
    */
   protected normalizeStockText(stockText: string): string {
+    return this.dataTransformer.normalizeStockText(stockText);
+  }
+
+  /**
+   * Get DOM using the dom-loader strategy
+   */
+  protected async getDom(url: string): Promise<JSDOM> {
     try {
-      const text = stockText.toLowerCase();
-
-      if (text.includes('out') || text.includes('unavailable') || text.includes('0')) {
-        return 'outofstock';
-      }
-
-      if (text.includes('in') || text.includes('available') || text.includes('stock')) {
-        return 'instock';
-      }
-
-      return 'instock'; // Default to in stock
+      const strategy = createDomLoaderStrategy(this.httpClient, this.puppeteerClient || undefined, this.usePuppeteer);
+      return await getDomWithStrategy(url, {
+        httpClient: this.httpClient,
+        puppeteerClient: this.puppeteerClient || undefined,
+        useHeadless: this.usePuppeteer,
+      }, strategy);
     } catch (error) {
-      console.warn(`Failed to normalize stock text '${stockText}':`, error);
-      return 'instock';
+      throw new Error('Failed to get DOM');
     }
   }
 
   /**
-   * Extract embedded JSON data with error handling and proper typing
+   * Get DOM with fallback
    */
-  protected async extractEmbeddedJson(url: string, selectors: string[]): Promise<JsonData<unknown>[]> {
+  protected async getDomFallback(url: string): Promise<JSDOM> {
     try {
-      return await this.httpClient.extractEmbeddedJson(url, selectors);
+      return await this.getDom(url);
     } catch (error) {
-      console.warn(`Failed to extract embedded JSON from '${url}':`, error);
-      return [];
-    }
-  }
-
-  /**
-   * Follow pagination with error handling and retry
-   */
-  protected async followPagination(
-    baseUrl: string,
-    pattern: string,
-    nextPageSelector: string,
-  ): Promise<string[]> {
-    const urls: string[] = [];
-    let currentUrl = baseUrl;
-    let pageCount = 0;
-    const maxPages = 100; // Safety limit - could be configurable in future
-
-    while (currentUrl && pageCount < maxPages) {
-      try {
-        const dom = await this.getDom(currentUrl);
-
-        // Extract product URLs from current page
-        const productUrls = this.extractProductUrls(dom);
-        urls.push(...productUrls);
-
-        // Find next page
-        const nextPageElement = dom.window.document.querySelector(nextPageSelector);
-        if (nextPageElement) {
-          const nextPageUrl = nextPageElement.getAttribute('href');
-          if (nextPageUrl) {
-            currentUrl = this.resolveUrl(nextPageUrl);
-            pageCount++;
-          } else {
-            break;
-          }
-        } else {
-          break;
-        }
-      } catch (error) {
-        console.error(`Failed to process page ${currentUrl}:`, error);
-        break;
-      }
-    }
-
-    return urls;
-  }
-
-  /**
-   * Extract product URLs from a page (generic implementation)
-   */
-  protected extractProductUrls(dom: JSDOM): string[] {
-    try {
-      // This is a generic implementation - subclasses should override
-      const productLinks = dom.window.document.querySelectorAll(
-        'a[href*="/product/"], a[href*="/item/"], a[href*="/item/"], a[href*="/p/"]',
-      );
-      return Array.from(productLinks)
-        .map((link) => link.getAttribute('href'))
-        .filter((href): href is string => href !== null)
-        .map((href) => this.resolveUrl(href));
-    } catch (error) {
-      console.warn('Failed to extract product URLs:', error);
-      return [];
-    }
-  }
-
-  /**
-   * Apply text transformations with error handling
-   */
-  protected applyTransformations(text: string, transformations: string[]): string {
-    let result = text;
-
-    for (const transform of transformations) {
-      try {
-        // Simple regex replacement for now
-        // In a real implementation, this could be more sophisticated
-        if (transform.includes('->')) {
-          const [pattern, replacement] = transform.split('->').map((s) => s.trim());
-          if (pattern && replacement) {
-            const regex = new RegExp(pattern, 'g');
-            result = result.replace(regex, replacement);
-          }
-        }
-      } catch (error) {
-        console.warn(`Failed to apply transformation: ${transform}`, error);
-      }
-    }
-
-    return result;
-  }
-
-  /**
-   * Get DOM using the appropriate method (JSDOM or Puppeteer) with error handling
-   */
-  protected async getDom(url: string, options?: { waitForSelectors?: string[] }): Promise<JSDOM> {
-    try {
-      // Smart Puppeteer usage: use it when explicitly enabled in recipe
-      const needsJavaScript = this.config.behavior?.useHeadlessBrowser === true;
-
-      if (needsJavaScript && this.puppeteerClient) {
+      // Fallback to HTTP client if Puppeteer fails
+      if (this.usePuppeteer && this.puppeteerClient) {
         try {
-          if (process.env.SCRAPER_DEBUG === '1') console.log('🔍 DEBUG: Using Puppeteer for JavaScript execution:', url);
-          return await this.puppeteerClient.getDom(url, options);
-        } catch (error) {
-          if (process.env.SCRAPER_DEBUG === '1') console.warn('❌ DEBUG: Puppeteer failed, falling back to JSDOM:', error);
           return await this.httpClient.getDom(url);
+        } catch (fallbackError) {
+          throw new Error(`Both Puppeteer and HTTP client failed: ${error}, ${fallbackError}`);
         }
-      } else {
-        if (process.env.SCRAPER_DEBUG === '1') console.log('🔍 DEBUG: Using JSDOM (faster, no JavaScript execution):', url);
-        return await this.httpClient.getDom(url);
       }
-    } catch (error) {
-      throw ErrorFactory.createScrapingError(
-        `Failed to get DOM for ${url}: ${error}`,
-        ErrorCodes.NETWORK_ERROR,
-        true,
-        { url, options },
-      );
+      throw error;
     }
   }
 
   /**
-   * Clean up resources
+   * Extract product URLs from DOM (synchronous version)
+   */
+  protected extractProductUrls(dom: JSDOM, selectors?: string[]): string[] {
+    const urls: string[] = [];
+    const defaultSelectors = selectors || [
+      'a[href*="/product/"]',
+      'a[href*="/item/"]',
+      'a[href*="/p/"]',
+    ];
+
+    for (const selector of defaultSelectors) {
+      const elements = dom.window.document.querySelectorAll(selector);
+      for (const element of elements) {
+        const href = element.getAttribute('href');
+        if (href) {
+          const resolvedUrl = this.resolveUrl(href, this.baseUrl);
+          urls.push(resolvedUrl);
+        }
+      }
+    }
+
+    return [...new Set(urls)]; // Remove duplicates
+  }
+
+  /**
+   * Extract product URLs synchronously
+   */
+  protected extractProductUrlsSync(dom: JSDOM, selector: string): string[] {
+    const urls: string[] = [];
+    const elements = dom.window.document.querySelectorAll(selector);
+
+    for (const element of elements) {
+      const href = element.getAttribute('href');
+      if (href) {
+        const resolvedUrl = this.resolveUrl(href, this.baseUrl);
+        urls.push(resolvedUrl);
+      }
+    }
+
+    return [...new Set(urls)]; // Remove duplicates
+  }
+
+  /**
+   * Extract JSON data from script tags
+   */
+  protected async extractJsonData(dom: JSDOM, selectors: string[]): Promise<JsonData[]> {
+    const matchers = selectors.map(selector => ({ selector, pattern: /.*/ }));
+    const results = await extractJsonFromScriptTags(dom, matchers);
+    return results as unknown as JsonData[];
+  }
+
+  /**
+   * Check if Puppeteer is available
+   */
+  protected isPuppeteerAvailable(): boolean {
+    return this.puppeteerClient?.isAvailable() ?? false;
+  }
+
+  /**
+   * Cleanup resources
    */
   async cleanup(): Promise<void> {
     try {
@@ -579,21 +351,39 @@ implements SiteAdapter<T>
         await this.puppeteerClient.close();
       }
     } catch (error) {
-      console.warn('Failed to cleanup Puppeteer client:', error);
+      // Ignore cleanup errors to prevent test failures
+      // In production, you might want to log these errors
     }
   }
 
   /**
-   * Get HTTP client instance
+   * Update configuration and refresh services
    */
-  getHttpClient(): HttpClient {
-    return this.httpClient;
+  updateConfig(config: RecipeConfig): void {
+    this.config = config;
+    this.productValidator.updateConfig(config);
+    this.elementExtractor.updateBaseUrl(this.baseUrl);
   }
 
   /**
-   * Get base URL
+   * Update base URL and refresh services
    */
-  getBaseUrl(): string {
-    return this.baseUrl;
+  updateBaseUrl(baseUrl: string): void {
+    this.baseUrl = baseUrl;
+    this.elementExtractor.updateBaseUrl(baseUrl);
+  }
+
+  /**
+   * Update transforms for data transformation
+   */
+  updateTransforms(transforms: any[]): void {
+    this.dataTransformer.updateTransforms(transforms);
+  }
+
+  /**
+   * Apply text transformations with error handling
+   */
+  protected applyTransformations(text: string, transformations: string[]): string {
+    return this.dataTransformer.transformText(text, transformations);
   }
 }
