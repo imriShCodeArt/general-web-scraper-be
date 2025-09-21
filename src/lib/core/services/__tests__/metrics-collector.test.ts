@@ -1,5 +1,5 @@
 import { MetricsCollector } from '../metrics-collector';
-import { Metrics, BatchMetrics } from '../../../helpers/metrics';
+import { BatchMetrics } from '../../../helpers/metrics';
 import pino from 'pino';
 
 describe('MetricsCollector', () => {

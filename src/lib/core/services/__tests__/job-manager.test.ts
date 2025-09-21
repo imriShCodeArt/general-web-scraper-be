@@ -266,7 +266,7 @@ describe('JobManager', () => {
       } as any;
 
       const job1 = jobManager.createJob(request);
-      const job2 = jobManager.createJob(request);
+      jobManager.createJob(request);
 
       const nextJob = jobManager.getNextJob();
 

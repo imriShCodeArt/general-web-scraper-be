@@ -1,30 +1,18 @@
 import {
   ScrapingJob,
   ScrapingRequest,
-  NormalizedProduct,
-  JobResult,
   ApiResponse,
-  RawProductData,
-  NormalizableProductData,
   ProductOptions,
   GenericMetadata,
   RecipeConfig,
-  SiteAdapter,
 } from '../../domain/types';
-import { NormalizationToolkit } from '../normalization/normalization';
 import { CsvGenerator } from './csv-generator';
 import { IStorageService } from '../../infrastructure/storage/IStorageService';
 import { RecipeManager } from './recipe-manager';
-import { ErrorFactory, ErrorCodes } from '../../utils/error-handler';
-import { pMapWithRateLimit } from '../../helpers/concurrency';
-import { makeCsvFilenames, generateJobId } from '../../helpers/naming';
 import pino from 'pino';
 import { AdapterFactory } from './adapter-factory';
-import { withRetry } from '../../helpers/retry';
-import { Result, ok, err } from '../../domain/results';
 import { JobQueueService } from './job-queue-service';
 import { JobLifecycleService } from './job-lifecycle-service';
-import { DefaultProviders } from './default-providers';
 import { ScrapingOrchestrator } from './scraping-orchestrator';
 
 /**

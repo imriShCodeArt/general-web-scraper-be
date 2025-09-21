@@ -109,16 +109,6 @@ describe('HttpClient - Integration Tests', () => {
   describe('JSON extraction', () => {
     it('should extract embedded JSON from page with JSON-LD', async () => {
       // Create a simple test page with JSON-LD
-      const testHtml = `
-        <html>
-          <head>
-            <script type="application/ld+json">
-              {"@type": "Product", "name": "Test Product"}
-            </script>
-          </head>
-          <body>Test</body>
-        </html>
-      `;
 
       // Mock the getDom method to return our test HTML
       const originalGetDom = httpClient.getDom.bind(httpClient);

@@ -1,6 +1,5 @@
 import { JobLifecycleService } from '../job-lifecycle-service';
 import { ScrapingJob, ProductOptions } from '../../../domain/types';
-import { ErrorFactory, ErrorCodes } from '../../../utils/error-handler';
 
 describe('JobLifecycleService', () => {
   let service: JobLifecycleService;
@@ -15,31 +14,31 @@ describe('JobLifecycleService', () => {
         siteUrl: 'https://example.com',
         recipe: 'test-recipe',
         categories: [],
-        options: {} as ProductOptions
+        options: {} as ProductOptions,
       },
       createdAt: new Date(),
       startedAt: undefined,
       completedAt: undefined,
       errors: [],
       totalProducts: 0,
-      processedProducts: 0
+      processedProducts: 0,
     };
   });
 
   describe('add', () => {
     it('should add a job to active jobs', () => {
       service.add(mockJob);
-      
+
       const retrievedJob = service.get(mockJob.id);
       expect(retrievedJob).toBe(mockJob);
     });
 
     it('should overwrite existing job with same ID', () => {
       const updatedJob = { ...mockJob, status: 'running' as const };
-      
+
       service.add(mockJob);
       service.add(updatedJob);
-      
+
       const retrievedJob = service.get(mockJob.id);
       expect(retrievedJob?.status).toBe('running');
     });
@@ -48,7 +47,7 @@ describe('JobLifecycleService', () => {
   describe('get', () => {
     it('should return job if it exists', () => {
       service.add(mockJob);
-      
+
       const retrievedJob = service.get(mockJob.id);
       expect(retrievedJob).toBe(mockJob);
     });
@@ -63,10 +62,10 @@ describe('JobLifecycleService', () => {
     it('should return all active jobs', () => {
       const job1 = { ...mockJob, id: 'job-1' };
       const job2 = { ...mockJob, id: 'job-2' };
-      
+
       service.add(job1);
       service.add(job2);
-      
+
       const allJobs = service.all();
       expect(allJobs).toHaveLength(2);
       expect(allJobs).toContain(job1);
@@ -83,9 +82,9 @@ describe('JobLifecycleService', () => {
     it('should mark job as running and set startedAt', () => {
       service.add(mockJob);
       const beforeTime = new Date();
-      
+
       service.markRunning(mockJob.id);
-      
+
       const updatedJob = service.get(mockJob.id);
       expect(updatedJob?.status).toBe('running');
       expect(updatedJob?.startedAt).toBeDefined();
@@ -101,9 +100,9 @@ describe('JobLifecycleService', () => {
     it('should mark job as completed and set completedAt', () => {
       service.add(mockJob);
       const beforeTime = new Date();
-      
+
       service.markCompleted(mockJob.id, 10, 5);
-      
+
       const updatedJob = service.get(mockJob.id);
       expect(updatedJob?.status).toBe('completed');
       expect(updatedJob?.completedAt).toBeDefined();
@@ -120,9 +119,9 @@ describe('JobLifecycleService', () => {
     it('should mark job as failed and add error', () => {
       service.add(mockJob);
       const beforeTime = new Date();
-      
+
       service.markFailed(mockJob.id, 'Test error');
-      
+
       const updatedJob = service.get(mockJob.id);
       expect(updatedJob?.status).toBe('failed');
       expect(updatedJob?.completedAt).toBeDefined();
@@ -139,9 +138,9 @@ describe('JobLifecycleService', () => {
   describe('cancel', () => {
     it('should cancel a pending job', () => {
       service.add(mockJob);
-      
+
       const result = service.cancel(mockJob.id);
-      
+
       expect(result).toBe(true);
       const updatedJob = service.get(mockJob.id);
       expect(updatedJob?.status).toBe('failed');
@@ -157,7 +156,7 @@ describe('JobLifecycleService', () => {
     it('should return false for already completed job', () => {
       service.add(mockJob);
       service.markCompleted(mockJob.id, 5, 2);
-      
+
       const result = service.cancel(mockJob.id);
       expect(result).toBe(false);
     });
@@ -165,7 +164,7 @@ describe('JobLifecycleService', () => {
     it('should return false for already failed job', () => {
       service.add(mockJob);
       service.markFailed(mockJob.id, 'Test error');
-      
+
       const result = service.cancel(mockJob.id);
       expect(result).toBe(false);
     });
