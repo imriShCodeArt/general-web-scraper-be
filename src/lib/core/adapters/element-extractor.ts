@@ -2,7 +2,6 @@ import { JSDOM } from 'jsdom';
 import { applyTransforms } from '../../helpers/transforms';
 import { resolveUrl as resolveUrlHelper } from '../../helpers/url';
 import { parsePrice, extractStockStatus } from '../../helpers/parse';
-import { extractJsonFromScriptTags } from '../../helpers/json';
 import { isDebugEnabled } from '../../infrastructure/logging/logger';
 
 /**

@@ -125,7 +125,7 @@ export class ProductValidator implements IProductValidator {
 
     if (!pattern) {
       // Default price pattern: currency symbol followed by digits and optional decimal
-      pattern = /^[\$€£¥₹]?\s*\d+(?:\.\d{2})?$/;
+      pattern = /^[$€£¥₹]?\s*\d+(?:\.\d{2})?$/;
     }
 
     if (!pattern.test(price.trim())) {
@@ -192,7 +192,7 @@ export class ProductValidator implements IProductValidator {
       if (!key || key.trim() === '') {
         errors.push({
           name: 'ValidationError',
-          message: `Attribute name cannot be empty`,
+          message: 'Attribute name cannot be empty',
           field: 'attributes',
           value: key,
           expected: 'non-empty attribute name',

@@ -1,6 +1,5 @@
 import { RawProduct, RawProductData } from '../../domain/types';
 import { applyTransforms } from '../../helpers/transforms';
-import { applyAttributeTransforms } from '../../helpers/transforms';
 
 /**
  * Interface for data transformation operations
@@ -56,13 +55,13 @@ export class DataTransformer implements IDataTransformer {
    */
   transformText(text: string, transforms?: any[]): string {
     const transformsToUse = transforms || this.transforms;
-    
+
     if (!transformsToUse || transformsToUse.length === 0) {
       return text;
     }
 
     let result = text;
-    
+
     for (const transform of transformsToUse) {
       if (typeof transform === 'string') {
         // Handle string-based transforms
@@ -70,23 +69,23 @@ export class DataTransformer implements IDataTransformer {
       } else if (typeof transform === 'object' && transform.type) {
         // Handle object-based transforms
         switch (transform.type) {
-          case 'trim':
-            result = result.trim();
-            break;
-          case 'replace':
-            if (transform.from && transform.to) {
-              result = result.replace(new RegExp(transform.from, 'g'), transform.to);
-            }
-            break;
-          case 'regex':
-            if (transform.pattern && transform.replacement) {
-              result = result.replace(new RegExp(transform.pattern, 'g'), transform.replacement);
-            }
-            break;
+        case 'trim':
+          result = result.trim();
+          break;
+        case 'replace':
+          if (transform.from && transform.to) {
+            result = result.replace(new RegExp(transform.from, 'g'), transform.to);
+          }
+          break;
+        case 'regex':
+          if (transform.pattern && transform.replacement) {
+            result = result.replace(new RegExp(transform.pattern, 'g'), transform.replacement);
+          }
+          break;
         }
       }
     }
-    
+
     return result;
   }
 
@@ -98,8 +97,8 @@ export class DataTransformer implements IDataTransformer {
 
     for (const [key, values] of Object.entries(attributes)) {
       const transformedKey = this.transformText(key);
-      const transformedValues = values.map(value => 
-        value ? this.transformText(value) : value
+      const transformedValues = values.map(value =>
+        value ? this.transformText(value) : value,
       );
       transformed[transformedKey] = transformedValues;
     }
@@ -156,11 +155,11 @@ export class DataTransformer implements IDataTransformer {
     if (!price) return '';
 
     // Remove currency symbols and extra whitespace
-    let cleaned = price.replace(/[\$€£¥₹]/g, '').trim();
-    
+    let cleaned = price.replace(/[$€£¥₹]/g, '').trim();
+
     // Keep only digits, decimal point, and comma (for thousands separator)
     cleaned = cleaned.replace(/[^\d.,]/g, '');
-    
+
     // Handle comma as thousands separator
     if (cleaned.includes(',') && cleaned.includes('.')) {
       // Format: 1,234.56 - remove commas
@@ -169,7 +168,7 @@ export class DataTransformer implements IDataTransformer {
       // Format: 1,234 or 1,234,56 - check if last comma is decimal separator
       const lastCommaIndex = cleaned.lastIndexOf(',');
       const afterLastComma = cleaned.substring(lastCommaIndex + 1);
-      
+
       if (afterLastComma.length <= 2) {
         // Likely decimal separator: 1,234,56 -> 1234.56
         cleaned = cleaned.replace(/,/g, '');
@@ -190,24 +189,24 @@ export class DataTransformer implements IDataTransformer {
     if (!stockText) return '';
 
     const normalized = stockText.toLowerCase().trim();
-    
+
     // Common stock status patterns
     if (normalized.includes('out of stock') || normalized.includes('unavailable') || normalized.includes('outofstock')) {
       return 'outofstock';
     }
-    
+
     if (normalized.includes('in stock') || normalized.includes('available') || normalized.includes('instock')) {
       return 'instock';
     }
-    
+
     if (normalized.includes('pre-order') || normalized.includes('preorder')) {
       return 'preorder';
     }
-    
+
     if (normalized.includes('backorder') || normalized.includes('back order')) {
       return 'backorder';
     }
-    
+
     // Default to unknown if no pattern matches
     return 'unknown';
   }
