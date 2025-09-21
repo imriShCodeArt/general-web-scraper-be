@@ -324,7 +324,7 @@ describe('EnhancedBaseAdapter', () => {
 
       const result = await puppeteerAdapter['getDom']('https://test.com');
       expect(result).toBe(mockDom);
-      expect(mockPuppeteerClient.getDom).toHaveBeenCalledWith('https://test.com', undefined);
+      expect(mockPuppeteerClient.getDom).toHaveBeenCalledWith('https://test.com', { waitForSelectors: [] });
     });
 
     it('should fallback to JSDOM when Puppeteer fails', async () => {
