@@ -6,6 +6,7 @@ import {
   GenericMetadata,
   RecipeConfig,
 } from '../../domain/types';
+import { Result } from '../../domain/results';
 import { CsvGenerator } from './csv-generator';
 import { IStorageService } from '../../infrastructure/storage/IStorageService';
 import { RecipeManager } from './recipe-manager';
