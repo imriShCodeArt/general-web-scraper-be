@@ -44,7 +44,7 @@ describe('PuppeteerHttpClient - Integration Tests', () => {
         // Fallback might fail in some environments, that's okay
         expect(error).toBeDefined();
       }
-    }, 15000);
+    }, 30000);
   });
 
   describe('availability check', () => {

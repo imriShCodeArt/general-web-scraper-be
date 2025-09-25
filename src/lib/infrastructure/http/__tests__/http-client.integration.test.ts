@@ -14,7 +14,7 @@ describe('HttpClient - Integration Tests', () => {
 
       expect(result).toBeDefined();
       expect(typeof result).toBe('object');
-    }, 10000);
+    }, 30000);
 
     it('should make POST request to real URL', async () => {
       const postData = { test: 'data' };
@@ -30,15 +30,21 @@ describe('HttpClient - Integration Tests', () => {
       expect(dom).toBeDefined();
       expect(dom.window).toBeDefined();
       expect(dom.window.document).toBeDefined();
-    }, 10000);
+    }, 20000);
 
     it('should check if URL is accessible', async () => {
-      const accessible = await httpClient.isAccessible('https://httpbin.org/get');
+      const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
+      let accessible = false;
+      for (let i = 0; i < 3; i++) {
+        accessible = await httpClient.isAccessible('https://httpbin.org/get');
+        if (accessible) break;
+        await sleep(300 * (i + 1));
+      }
       const notAccessible = await httpClient.isAccessible('https://httpbin.org/status/404');
 
       expect(accessible).toBe(true);
       expect(notAccessible).toBe(false);
-    }, 10000);
+    }, 30000);
 
     it('should get response headers', async () => {
       const headers = await httpClient.getHeaders('https://httpbin.org/get');
@@ -53,7 +59,7 @@ describe('HttpClient - Integration Tests', () => {
 
       expect(finalUrl).toBeDefined();
       expect(typeof finalUrl).toBe('string');
-    }, 10000);
+    }, 30000);
   });
 
   describe('user agent management', () => {

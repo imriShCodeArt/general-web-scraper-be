@@ -16,6 +16,15 @@ export class HttpClient {
     axios.defaults.validateStatus = (status) => status < 400;
   }
 
+  private async sleep(ms: number): Promise<void> {
+    return new Promise(resolve => setTimeout(resolve, ms));
+  }
+
+  private isRetriableStatus(status?: number): boolean {
+    // Retry on transient server/network errors (5xx)
+    return typeof status === 'number' && status >= 500 && status < 600;
+  }
+
   /**
    * Get a random user agent
    */
@@ -27,51 +36,73 @@ export class HttpClient {
    * Make a GET request with proper generic typing
    */
   async get<T = string>(url: string, config?: AxiosRequestConfig): Promise<T> {
-    try {
-      const response: AxiosResponse<T> = await axios.get(url, {
-        ...config,
-        headers: {
-          'User-Agent': this.getRandomUserAgent(),
-          'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8',
-          'Accept-Language': 'en-US,en;q=0.5',
-          'Accept-Encoding': 'gzip, deflate',
-          'Connection': 'keep-alive',
-          'Upgrade-Insecure-Requests': '1',
-          ...config?.headers,
-        },
-      });
-
-      return response.data;
-    } catch (error) {
-      if (axios.isAxiosError(error)) {
-        throw new Error(`HTTP GET request failed: ${error.message} (${error.response?.status})`);
+    const maxAttempts = 3;
+    let attempt = 0;
+    let lastError: unknown;
+    while (attempt < maxAttempts) {
+      try {
+        const response: AxiosResponse<T> = await axios.get(url, {
+          ...config,
+          headers: {
+            'User-Agent': this.getRandomUserAgent(),
+            'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8',
+            'Accept-Language': 'en-US,en;q=0.5',
+            'Accept-Encoding': 'gzip, deflate',
+            'Connection': 'keep-alive',
+            'Upgrade-Insecure-Requests': '1',
+            ...config?.headers,
+          },
+        });
+        return response.data;
+      } catch (error) {
+        lastError = error;
+        if (axios.isAxiosError(error) && this.isRetriableStatus(error.response?.status) && attempt < maxAttempts - 1) {
+          attempt += 1;
+          await this.sleep(200 * attempt);
+          continue;
+        }
+        if (axios.isAxiosError(error)) {
+          throw new Error(`HTTP GET request failed: ${error.message} (${error.response?.status})`);
+        }
+        throw new Error(`HTTP GET request failed: ${String(error)}`);
       }
-      throw new Error(`HTTP GET request failed: ${error}`);
     }
+    throw lastError instanceof Error ? lastError : new Error(String(lastError));
   }
 
   /**
    * Make a POST request with proper generic typing
    */
   async post<T = JsonData<unknown>>(url: string, data?: JsonData<unknown>, config?: AxiosRequestConfig): Promise<T> {
-    try {
-      const response: AxiosResponse<T> = await axios.post(url, data, {
-        ...config,
-        headers: {
-          'User-Agent': this.getRandomUserAgent(),
-          'Content-Type': 'application/json',
-          'Accept': 'application/json, text/plain, */*',
-          ...config?.headers,
-        },
-      });
-
-      return response.data;
-    } catch (error) {
-      if (axios.isAxiosError(error)) {
-        throw new Error(`HTTP POST request failed: ${error.message} (${error.response?.status})`);
+    const maxAttempts = 3;
+    let attempt = 0;
+    let lastError: unknown;
+    while (attempt < maxAttempts) {
+      try {
+        const response: AxiosResponse<T> = await axios.post(url, data, {
+          ...config,
+          headers: {
+            'User-Agent': this.getRandomUserAgent(),
+            'Content-Type': 'application/json',
+            'Accept': 'application/json, text/plain, */*',
+            ...config?.headers,
+          },
+        });
+        return response.data;
+      } catch (error) {
+        lastError = error;
+        if (axios.isAxiosError(error) && this.isRetriableStatus(error.response?.status) && attempt < maxAttempts - 1) {
+          attempt += 1;
+          await this.sleep(200 * attempt);
+          continue;
+        }
+        if (axios.isAxiosError(error)) {
+          throw new Error(`HTTP POST request failed: ${error.message} (${error.response?.status})`);
+        }
+        throw new Error(`HTTP POST request failed: ${String(error)}`);
       }
-      throw new Error(`HTTP POST request failed: ${error}`);
     }
+    throw lastError instanceof Error ? lastError : new Error(String(lastError));
   }
 
   /**
@@ -196,18 +227,28 @@ export class HttpClient {
    * Get response headers for a URL
    */
   async getHeaders(url: string): Promise<Record<string, string>> {
-    try {
-      const response = await axios.head(url, {
-        headers: {
-          'User-Agent': this.getRandomUserAgent(),
-        },
-        timeout: 10000,
-      });
-
-      return response.headers as Record<string, string>;
-    } catch (error) {
-      throw new Error(`Failed to get headers from ${url}: ${error}`);
+    const maxAttempts = 3;
+    let attempt = 0;
+    while (attempt < maxAttempts) {
+      try {
+        const response = await axios.head(url, {
+          headers: {
+            'User-Agent': this.getRandomUserAgent(),
+          },
+          timeout: 10000,
+        });
+        return response.headers as Record<string, string>;
+      } catch (error) {
+        if (axios.isAxiosError(error) && this.isRetriableStatus(error.response?.status) && attempt < maxAttempts - 1) {
+          attempt += 1;
+          await this.sleep(200 * attempt);
+          continue;
+        }
+        throw new Error(`Failed to get headers from ${url}: ${String(error)}`);
+      }
     }
+    // Fallback unreachable
+    return {};
   }
 
   /**
