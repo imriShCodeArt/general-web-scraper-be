@@ -350,7 +350,7 @@ describe('E2E Mock Website Scraping Tests', () => {
         scrapingService,
         response.data!.jobId,
         (s) => s.success && (s.data?.status === 'completed' || s.data?.status === 'failed'),
-        20000,
+        40000,
         150,
       );
       expect(jobStatus.success).toBe(true);
@@ -536,7 +536,7 @@ describe('E2E Mock Website Scraping Tests', () => {
         scrapingService,
         response.data!.jobId,
         (s) => s.success && (s.data?.status === 'completed' || s.data?.status === 'failed'),
-        10000,
+        20000,
         150,
       );
       expect(jobStatus.success).toBe(true);

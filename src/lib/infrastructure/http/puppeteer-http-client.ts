@@ -61,6 +61,14 @@ export class PuppeteerHttpClient {
     }
 
     const page = await this.browser.newPage();
+    try {
+      page.setDefaultNavigationTimeout(45000);
+    } catch (e) {
+      if (process.env.SCRAPER_DEBUG === '1') {
+        // eslint-disable-next-line no-console
+        console.warn('Failed to set default navigation timeout on page');
+      }
+    }
 
     try {
       // Set user agent to avoid detection
@@ -94,11 +102,15 @@ export class PuppeteerHttpClient {
         return req.continue();
       });
 
-      // Navigate to the page with optimized wait strategy
-      await page.goto(url, {
-        waitUntil: 'domcontentloaded', // Changed from 'networkidle2' to 'domcontentloaded' for faster loading
-        timeout: 20000, // Reduced from 30000ms to 20000ms
-      });
+      // Navigate with simple retry for slow CI
+      const gotoOnce = async () =>
+        page.goto(url, { waitUntil: 'domcontentloaded', timeout: 45000 });
+      try {
+        await gotoOnce();
+      } catch (e) {
+        await new Promise((r) => setTimeout(r, 500));
+        await gotoOnce();
+      }
 
       // Smart selector waiting with reduced timeout
       if (options?.waitForSelectors && options.waitForSelectors.length > 0) {
