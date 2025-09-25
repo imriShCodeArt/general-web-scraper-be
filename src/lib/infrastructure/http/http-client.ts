@@ -1,5 +1,5 @@
 import axios, { AxiosRequestConfig, AxiosResponse } from 'axios';
-import { JSDOM } from 'jsdom';
+import type { JSDOM as JSDOMType } from 'jsdom';
 import { JsonData } from '../../domain/types';
 
 export class HttpClient {
@@ -77,9 +77,11 @@ export class HttpClient {
   /**
    * Get DOM from URL with proper error handling
    */
-  async getDom(url: string): Promise<JSDOM> {
+  async getDom(url: string): Promise<JSDOMType> {
     try {
       const html = await this.get<string>(url);
+      // Lazy-load jsdom to avoid initializing it at module import time in Node/CI
+      const { JSDOM } = await import('jsdom');
       return new JSDOM(html, { url });
     } catch (error) {
       throw new Error(`Failed to get DOM from ${url}: ${error}`);
