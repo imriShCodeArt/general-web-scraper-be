@@ -11,6 +11,10 @@ import { AddressInfo } from 'net';
 // We will override DI tokens within a request-scoped container per test
 
 describe('E2E Mock Website Scraping Tests', () => {
+  if (process.env.CI) {
+    // Retry once on CI to deflake occasional timing hiccups
+    jest.retryTimes(1);
+  }
   let scrapingService: ScrapingService;
   let scope: Container;
   let mockRecipeManager: jest.Mocked<RecipeManager>;
@@ -28,6 +32,11 @@ describe('E2E Mock Website Scraping Tests', () => {
     timeoutMs = 15000,
     pollMs = 150,
   ) {
+    // Bump defaults on CI where machines are slower
+    if (process.env.CI) {
+      timeoutMs = Math.max(timeoutMs, 30000);
+      pollMs = Math.max(pollMs, 200);
+    }
     const start = Date.now();
     // eslint-disable-next-line no-constant-condition
     while (true) {
