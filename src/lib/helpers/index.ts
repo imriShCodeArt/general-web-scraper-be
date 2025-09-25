@@ -1,8 +1,12 @@
+// Domain-specific modules
 export * from './dom';
+export * from './csv';
+export * from './validation';
+export * from './transforms';
+
+// Legacy exports for backward compatibility
 export * from './attrs';
 export * from './variations';
-export * from './csv';
-export * from './transforms';
 export * from './url';
 export * from './text';
 export * from './sku';

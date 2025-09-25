@@ -1,19 +1,11 @@
 import { Container } from './infrastructure/di/container';
 import { TOKENS } from './infrastructure/di/tokens';
-import { IStorageService } from './infrastructure/storage/IStorageService';
-import { FsStorageService } from './infrastructure/storage/fs-storage.service';
-import { S3StorageService } from './infrastructure/storage/s3-storage.service';
-import { RecipeManager } from './core/services/recipe-manager';
-import { RecipeLoader } from './utils/recipe-loader';
-import { CsvGenerator } from './core/services/csv-generator';
-import { ScrapingService } from './core/services/scraping-service';
-import { AdapterFactory } from './core/services/adapter-factory';
-import { JobQueueService } from './core/services/job-queue-service';
-import { JobLifecycleService } from './core/services/job-lifecycle-service';
-import { HttpClient } from './infrastructure/http/http-client';
-import pino from 'pino';
 import { loadConfig, AppConfig as LoadedAppConfig } from './infrastructure/config/config';
-import { createLoggerFactory } from './infrastructure/logging/logger-factory';
+import {
+  registerCoreServices,
+  registerInfrastructureServices,
+  registerValidationServices,
+} from './infrastructure/di/registries';
 
 export interface AppConfig extends LoadedAppConfig {}
 
@@ -27,106 +19,19 @@ export interface RequestContext {
 export const rootContainer = new Container();
 
 // Configuration
-rootContainer.register(TOKENS.Config, { lifetime: 'singleton', factory: (): AppConfig => loadConfig() });
-
-// Logger factory
-rootContainer.register(TOKENS.LoggerFactory, { lifetime: 'singleton', factory: async (c) => {
-  const cfg = await c.resolve<AppConfig>(TOKENS.Config);
-  const isProd = cfg.nodeEnv === 'production';
-  const options: pino.LoggerOptions = isProd
-    ? { level: cfg.logLevel }
-    : { level: cfg.logLevel, transport: { target: 'pino-pretty', options: { colorize: true, translateTime: 'SYS:standard' } } };
-  return createLoggerFactory(options);
-}});
-
-// Logger
-rootContainer.register(TOKENS.Logger, { lifetime: 'singleton', factory: async (c) => {
-  const factory = await c.resolve<ReturnType<typeof createLoggerFactory>>(TOKENS.LoggerFactory);
-  return factory();
-}});
-
-// Storage service
-rootContainer.register(TOKENS.StorageService, {
+let config: AppConfig;
+rootContainer.register(TOKENS.Config, {
   lifetime: 'singleton',
-  factory: async (c) => {
-    const cfg = await c.resolve<AppConfig>(TOKENS.Config);
-    if (cfg.storageProvider === 's3') {
-      return new S3StorageService(cfg.s3Bucket || 'placeholder-bucket') as unknown as IStorageService;
-    }
-    return new FsStorageService() as unknown as IStorageService;
-  },
-  destroy: async (s) => {
-    if (typeof (s as unknown as { destroy?: () => Promise<void> }).destroy === 'function') {
-      await (s as unknown as { destroy: () => Promise<void> }).destroy();
-    }
+  factory: (): AppConfig => {
+    config = loadConfig();
+    return config;
   },
 });
 
-// Recipe loader service
-rootContainer.register(TOKENS.RecipeLoaderService, {
-  lifetime: 'singleton',
-  factory: async (c) => {
-    const cfg = await c.resolve<AppConfig>(TOKENS.Config);
-    return new RecipeLoader(cfg.recipesDir);
-  },
-});
-
-// Recipe manager
-rootContainer.register(TOKENS.RecipeManager, {
-  lifetime: 'singleton',
-  factory: async (c) => {
-    const cfg = await c.resolve<AppConfig>(TOKENS.Config);
-    const recipeLoader = await c.resolve<RecipeLoader>(TOKENS.RecipeLoaderService);
-    return new RecipeManager(cfg.recipesDir, recipeLoader);
-  },
-});
-
-// CSV generator
-rootContainer.register(TOKENS.CsvGenerator, {
-  lifetime: 'singleton',
-  factory: () => new CsvGenerator(),
-});
-
-// HTTP client
-rootContainer.register(TOKENS.HttpClient, {
-  lifetime: 'singleton',
-  factory: () => new HttpClient(),
-});
-
-// Adapter factory
-rootContainer.register(TOKENS.AdapterFactory, {
-  lifetime: 'singleton',
-  factory: async (c) => new AdapterFactory(
-    await c.resolve(TOKENS.RecipeManager),
-    await c.resolve(TOKENS.Logger),
-  ),
-});
-
-// Job queue service
-rootContainer.register(TOKENS.JobQueueService, {
-  lifetime: 'singleton',
-  factory: () => new JobQueueService(),
-});
-
-// Job lifecycle service
-rootContainer.register(TOKENS.JobLifecycleService, {
-  lifetime: 'singleton',
-  factory: () => new JobLifecycleService(),
-});
-
-// Scraping service
-rootContainer.register(TOKENS.ScrapingService, {
-  lifetime: 'singleton',
-  factory: async (c) => new ScrapingService(
-    await c.resolve(TOKENS.StorageService),
-    await c.resolve(TOKENS.RecipeManager),
-    await c.resolve(TOKENS.CsvGenerator),
-    await c.resolve(TOKENS.Logger),
-    await c.resolve(TOKENS.AdapterFactory),
-    await c.resolve(TOKENS.JobQueueService),
-    await c.resolve(TOKENS.JobLifecycleService),
-  ),
-});
+// Register services using domain-specific registries
+registerInfrastructureServices(rootContainer, config!);
+registerCoreServices(rootContainer, config!);
+registerValidationServices(rootContainer);
 
 /**
  * Creates a request-scoped container with request-specific context
