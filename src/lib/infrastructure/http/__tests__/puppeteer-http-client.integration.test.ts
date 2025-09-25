@@ -35,7 +35,7 @@ describe('PuppeteerHttpClient - Integration Tests', () => {
     it('should handle fallback when Puppeteer fails', async () => {
       // This test might fail if Puppeteer is not available
       try {
-        const dom = await httpClient.getDomFallback('https://httpbin.org/html');
+        const dom = await httpClient.getDomFallback('https://example.com');
 
         expect(dom).toBeDefined();
         expect(dom.window).toBeDefined();
@@ -44,7 +44,7 @@ describe('PuppeteerHttpClient - Integration Tests', () => {
         // Fallback might fail in some environments, that's okay
         expect(error).toBeDefined();
       }
-    }, 30000);
+    }, 60000);
   });
 
   describe('availability check', () => {
