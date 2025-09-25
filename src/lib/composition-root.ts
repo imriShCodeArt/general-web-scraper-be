@@ -19,18 +19,15 @@ export interface RequestContext {
 export const rootContainer = new Container();
 
 // Configuration
-let config: AppConfig;
 rootContainer.register(TOKENS.Config, {
   lifetime: 'singleton',
-  factory: (): AppConfig => {
-    config = loadConfig();
-    return config;
-  },
+  factory: (): AppConfig => loadConfig(),
 });
 
-// Register services using domain-specific registries
-registerInfrastructureServices(rootContainer, config!);
-registerCoreServices(rootContainer, config!);
+// Register services using domain-specific registries (config is resolved within registries as needed)
+// Passing a placeholder to satisfy types; registries resolve actual config internally
+registerInfrastructureServices(rootContainer, undefined as unknown as AppConfig);
+registerCoreServices(rootContainer, undefined as unknown as AppConfig);
 registerValidationServices(rootContainer);
 
 /**

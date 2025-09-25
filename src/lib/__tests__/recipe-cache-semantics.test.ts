@@ -14,6 +14,10 @@ jest.mock('../helpers', () => {
 jest.mock('../helpers/recipe-utils');
 const mockBuildAdapterCacheKey = buildAdapterCacheKey as jest.MockedFunction<typeof buildAdapterCacheKey>;
 const mockValidateSiteUrl = validateSiteUrl as jest.MockedFunction<typeof validateSiteUrl>;
+// Also patch the barrel export used by RecipeManager
+// eslint-disable-next-line @typescript-eslint/no-var-requires
+const helpersBarrel = require('../helpers');
+const mockBarrelValidateSiteUrl = helpersBarrel.validateSiteUrl as jest.MockedFunction<typeof validateSiteUrl>;
 
 describe('RecipeManager Cache Semantics', () => {
   let recipeManager: RecipeManager;
@@ -23,13 +27,15 @@ describe('RecipeManager Cache Semantics', () => {
     recipeManager = new RecipeManager();
 
     // Default: strict host validation (matches RecipeLoader below)
-    mockValidateSiteUrl.mockImplementation((expected: string, actual: string) => {
+    const strict = (expected: string, actual: string) => {
       try {
         return new URL(expected).hostname === new URL(actual).hostname;
       } catch {
         return false;
       }
-    });
+    };
+    mockValidateSiteUrl.mockImplementation(strict);
+    mockBarrelValidateSiteUrl.mockImplementation(strict);
 
     // Use predictable cache keys
     mockBuildAdapterCacheKey.mockImplementation((recipeName: string, siteUrl: string) => `${recipeName}:${siteUrl}`);
@@ -205,6 +211,17 @@ describe('RecipeManager Cache Semantics', () => {
 
   describe('Site URL Validation Integration', () => {
     it('should throw when site URL does not match recipe site', async () => {
+      // Ensure both mocks enforce strict check
+      const strict = (expected: string, actual: string) => {
+        try {
+          return new URL(expected).hostname === new URL(actual).hostname;
+        } catch {
+          return false;
+        }
+      };
+      mockValidateSiteUrl.mockImplementation(strict);
+      mockBarrelValidateSiteUrl.mockImplementation(strict);
+
       await expect(recipeManager.createAdapter('https://other.com', 'test-recipe')).rejects.toThrow();
     });
   });

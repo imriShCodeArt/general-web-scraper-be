@@ -14,9 +14,11 @@ import { HttpClient } from '../infrastructure/http/http-client';
 // Mock the config loading
 jest.mock('../infrastructure/config/config', () => ({
   loadConfig: jest.fn(() => ({
-    storage: { type: 'fs', path: '/tmp/test' },
-    logging: { level: 'info' },
-    scraping: { concurrency: 5, timeout: 30000 },
+    nodeEnv: 'test',
+    logLevel: 'info',
+    recipesDir: './recipes',
+    storageProvider: 'fs',
+    s3Bucket: undefined,
   })),
 }));
 
