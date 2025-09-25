@@ -1,5 +1,15 @@
-import { initializeServices, cleanupServices } from '../lib/composition-root';
 import { RecipeConfig, RawProduct, NormalizedProduct, ScrapingJob } from '../types';
+
+// Polyfill for jsdom environment (needed by jsdom/whatwg-url)
+// Provides TextEncoder/TextDecoder in Node environment when missing
+// eslint-disable-next-line @typescript-eslint/ban-ts-comment
+// @ts-ignore
+if (typeof (global as any).TextEncoder === 'undefined' || typeof (global as any).TextDecoder === 'undefined') {
+  // eslint-disable-next-line @typescript-eslint/no-var-requires
+  const { TextEncoder, TextDecoder } = require('util');
+  (global as unknown as { TextEncoder: typeof TextEncoder; TextDecoder: typeof TextDecoder }).TextEncoder = TextEncoder;
+  (global as unknown as { TextEncoder: typeof TextEncoder; TextDecoder: typeof TextDecoder }).TextDecoder = TextDecoder as unknown as typeof TextDecoder;
+}
 import './setup-woocommerce-matchers';
 
 // Define the test utilities interface
@@ -25,14 +35,20 @@ beforeAll(async () => {
   // Set test environment
   process.env.NODE_ENV = 'test';
 
-  // Initialize services
-  await initializeServices();
+  // Initialize services only in Node environment (not jsdom)
+  if (typeof window === 'undefined') {
+    const { initializeServices } = await import('../lib/composition-root');
+    await initializeServices();
+  }
 });
 
 // Global test teardown
 afterAll(async () => {
-  // Clean up services
-  await cleanupServices();
+  // Clean up services only in Node environment (not jsdom)
+  if (typeof window === 'undefined') {
+    const { cleanupServices } = await import('../lib/composition-root');
+    await cleanupServices();
+  }
 });
 
 // Mock console methods to reduce noise in tests
