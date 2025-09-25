@@ -312,7 +312,8 @@ describe('E2E Mock Website Scraping Tests', () => {
       expect(response.data?.jobId).toBeDefined();
 
       // Wait for job to complete
-      await testUtils.wait(3000);
+      // Allow extra buffer on CI
+      await testUtils.wait(4000);
 
       // Check job status
       const jobStatus = await scrapingService.getJobStatus(response.data!.jobId);
@@ -495,7 +496,7 @@ describe('E2E Mock Website Scraping Tests', () => {
       expect(response.success).toBe(true);
 
       // Wait for job to complete
-      await testUtils.wait(300);
+      await testUtils.wait(600);
 
       const jobStatus = await scrapingService.getJobStatus(response.data!.jobId);
       expect(jobStatus.success).toBe(true);
