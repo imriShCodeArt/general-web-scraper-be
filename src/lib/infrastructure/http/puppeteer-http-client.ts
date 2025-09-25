@@ -1,6 +1,6 @@
 /* istanbul ignore file */
 import puppeteer, { Browser, Page } from 'puppeteer';
-import { JSDOM } from 'jsdom';
+import type { JSDOM as JSDOMType } from 'jsdom';
 
 export class PuppeteerHttpClient {
   private browser: Browser | null = null;
@@ -53,7 +53,7 @@ export class PuppeteerHttpClient {
   /**
    * Get DOM using Puppeteer (with JavaScript execution)
    */
-  async getDom(url: string, options?: { waitForSelectors?: string[] }): Promise<JSDOM> {
+  async getDom(url: string, options?: { waitForSelectors?: string[] }): Promise<JSDOMType> {
     await this.initialize();
 
     if (!this.browser) {
@@ -148,7 +148,8 @@ export class PuppeteerHttpClient {
       // Get the final HTML after JavaScript execution
       const html = await page.content();
 
-      // Create JSDOM from the rendered HTML
+      // Create JSDOM from the rendered HTML (lazy import to avoid CI init issues)
+      const { JSDOM } = await import('jsdom');
       const dom = new JSDOM(html, { url });
 
       // Optional HTML snapshot when debugging
@@ -206,9 +207,10 @@ export class PuppeteerHttpClient {
   /**
    * Get DOM using traditional JSDOM (fallback)
    */
-  async getDomFallback(url: string): Promise<JSDOM> {
+  async getDomFallback(url: string): Promise<JSDOMType> {
     const response = await fetch(url);
     const html = await response.text();
+    const { JSDOM } = await import('jsdom');
     return new JSDOM(html, { url });
   }
 
