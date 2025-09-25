@@ -36,7 +36,7 @@ export class HttpClient {
    * Make a GET request with proper generic typing
    */
   async get<T = string>(url: string, config?: AxiosRequestConfig): Promise<T> {
-    const maxAttempts = 3;
+    const maxAttempts = 5;
     let attempt = 0;
     let lastError: unknown;
     while (attempt < maxAttempts) {
@@ -58,7 +58,7 @@ export class HttpClient {
         lastError = error;
         if (axios.isAxiosError(error) && this.isRetriableStatus(error.response?.status) && attempt < maxAttempts - 1) {
           attempt += 1;
-          await this.sleep(200 * attempt);
+          await this.sleep(300 * attempt);
           continue;
         }
         if (axios.isAxiosError(error)) {
@@ -74,7 +74,7 @@ export class HttpClient {
    * Make a POST request with proper generic typing
    */
   async post<T = JsonData<unknown>>(url: string, data?: JsonData<unknown>, config?: AxiosRequestConfig): Promise<T> {
-    const maxAttempts = 3;
+    const maxAttempts = 5;
     let attempt = 0;
     let lastError: unknown;
     while (attempt < maxAttempts) {
@@ -93,7 +93,7 @@ export class HttpClient {
         lastError = error;
         if (axios.isAxiosError(error) && this.isRetriableStatus(error.response?.status) && attempt < maxAttempts - 1) {
           attempt += 1;
-          await this.sleep(200 * attempt);
+          await this.sleep(300 * attempt);
           continue;
         }
         if (axios.isAxiosError(error)) {
@@ -227,7 +227,7 @@ export class HttpClient {
    * Get response headers for a URL
    */
   async getHeaders(url: string): Promise<Record<string, string>> {
-    const maxAttempts = 3;
+    const maxAttempts = 5;
     let attempt = 0;
     while (attempt < maxAttempts) {
       try {
@@ -241,7 +241,7 @@ export class HttpClient {
       } catch (error) {
         if (axios.isAxiosError(error) && this.isRetriableStatus(error.response?.status) && attempt < maxAttempts - 1) {
           attempt += 1;
-          await this.sleep(200 * attempt);
+          await this.sleep(300 * attempt);
           continue;
         }
         throw new Error(`Failed to get headers from ${url}: ${String(error)}`);

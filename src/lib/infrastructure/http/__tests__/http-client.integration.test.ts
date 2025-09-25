@@ -10,22 +10,22 @@ describe('HttpClient - Integration Tests', () => {
 
   describe('basic functionality', () => {
     it('should make GET request to real URL', async () => {
-      const result = await httpClient.get('https://httpbin.org/get');
+      const result = await httpClient.get('https://example.com');
 
       expect(result).toBeDefined();
-      expect(typeof result).toBe('object');
+      expect(typeof result).toBe('string');
     }, 30000);
 
     it('should make POST request to real URL', async () => {
       const postData = { test: 'data' };
-      const result = await httpClient.post('https://httpbin.org/post', postData);
+      const result = await httpClient.post('https://postman-echo.com/post', postData);
 
       expect(result).toBeDefined();
       expect(typeof result).toBe('object');
     }, 10000);
 
     it('should get DOM from real URL', async () => {
-      const dom = await httpClient.getDom('https://httpbin.org/html');
+      const dom = await httpClient.getDom('https://example.com');
 
       expect(dom).toBeDefined();
       expect(dom.window).toBeDefined();
@@ -36,18 +36,18 @@ describe('HttpClient - Integration Tests', () => {
       const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
       let accessible = false;
       for (let i = 0; i < 3; i++) {
-        accessible = await httpClient.isAccessible('https://httpbin.org/get');
+        accessible = await httpClient.isAccessible('https://example.com');
         if (accessible) break;
         await sleep(300 * (i + 1));
       }
-      const notAccessible = await httpClient.isAccessible('https://httpbin.org/status/404');
+      const notAccessible = await httpClient.isAccessible('https://postman-echo.com/status/404');
 
       expect(accessible).toBe(true);
       expect(notAccessible).toBe(false);
     }, 30000);
 
     it('should get response headers', async () => {
-      const headers = await httpClient.getHeaders('https://httpbin.org/get');
+      const headers = await httpClient.getHeaders('https://example.com');
 
       expect(headers).toBeDefined();
       expect(typeof headers).toBe('object');
@@ -55,7 +55,7 @@ describe('HttpClient - Integration Tests', () => {
     }, 10000);
 
     it('should get final URL after redirects', async () => {
-      const finalUrl = await httpClient.getFinalUrl('https://httpbin.org/redirect/1');
+      const finalUrl = await httpClient.getFinalUrl('https://postman-echo.com/redirect-to?url=https%3A%2F%2Fexample.com');
 
       expect(finalUrl).toBeDefined();
       expect(typeof finalUrl).toBe('string');
@@ -99,13 +99,13 @@ describe('HttpClient - Integration Tests', () => {
     }, 10000);
 
     it('should handle timeout errors', async () => {
-      await expect(httpClient.get('https://httpbin.org/delay/10', { timeout: 1000 })).rejects.toThrow();
+      await expect(httpClient.get('https://postman-echo.com/delay/10', { timeout: 1000 })).rejects.toThrow();
     }, 15000);
   });
 
   describe('meta tag extraction', () => {
     it('should extract meta tags from real page', async () => {
-      const metaTags = await httpClient.extractMetaTags('https://httpbin.org/html');
+      const metaTags = await httpClient.extractMetaTags('https://example.com');
 
       expect(metaTags).toBeDefined();
       expect(typeof metaTags).toBe('object');
