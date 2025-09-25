@@ -1,4 +1,4 @@
-// aggregateAttributesAcrossProducts is defined below with stricter types
+// CSV generation and parsing utilities
 
 export function buildParentHeaders(attrKeys: string[]): string[] {
   const headers: string[] = [];
@@ -18,8 +18,6 @@ export function formatAttributeDataFlags(
 ): string {
   return `${position}|${visible}|${isTaxonomy}|${inVariations}`;
 }
-
-// Phase 2: Additional helpers for CSV generation
 
 export function aggregateAttributesAcrossProducts(
   products: Array<{

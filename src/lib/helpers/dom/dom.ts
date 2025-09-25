@@ -1,4 +1,4 @@
-// Intentionally no imports
+// DOM manipulation and selection utilities
 
 export interface RadioGroup {
   name: string;
@@ -45,8 +45,7 @@ export function getAttributeNameFor(el: Element, scope?: Element | Document): st
   return null;
 }
 
-
-// New DOM selection helpers per Phase 1
+// DOM selection helpers
 export function selectText(dom: Document | { window: { document: Document } }, selector: string): string {
   const doc = (dom as { window?: { document: Document } }).window?.document || (dom as Document);
   try {
@@ -117,4 +116,3 @@ export function extractWithFallbacks(
   }
   return '';
 }
-

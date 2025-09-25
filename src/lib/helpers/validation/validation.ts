@@ -1,3 +1,5 @@
+// Validation utilities
+
 import { z } from 'zod';
 
 // Schema for POST /api/scrape/init
@@ -33,5 +35,3 @@ export const DownloadParamsSchema = z.object({
   jobId: z.string().min(1, 'jobId is required'),
   type: z.enum(['parent', 'variation'], { required_error: 'type is required' }),
 });
-
-

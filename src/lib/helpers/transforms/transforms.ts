@@ -1,4 +1,4 @@
-// Text transform helpers extracted per Phase 1
+// Text transformation utilities
 
 export type TransformSpec = string;
 
@@ -44,5 +44,3 @@ export function applyAttributeTransforms(
   }
   return result;
 }
-
-
