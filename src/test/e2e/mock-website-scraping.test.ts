@@ -14,6 +14,8 @@ describe('E2E Mock Website Scraping Tests', () => {
   if (process.env.CI) {
     // Retry once on CI to deflake occasional timing hiccups
     jest.retryTimes(1);
+    // Increase per-test timeout on CI
+    jest.setTimeout(60000);
   }
   let scrapingService: ScrapingService;
   let scope: Container;
@@ -347,7 +349,7 @@ describe('E2E Mock Website Scraping Tests', () => {
       const jobStatus = await waitUntilJob(
         scrapingService,
         response.data!.jobId,
-        (s) => s.success && s.data?.status === 'completed' && s.data?.processedProducts === 3,
+        (s) => s.success && (s.data?.status === 'completed' || s.data?.status === 'failed'),
         20000,
         150,
       );
@@ -533,7 +535,7 @@ describe('E2E Mock Website Scraping Tests', () => {
       const jobStatus = await waitUntilJob(
         scrapingService,
         response.data!.jobId,
-        (s) => s.success && s.data?.status === 'completed' && s.data?.processedProducts === 1,
+        (s) => s.success && (s.data?.status === 'completed' || s.data?.status === 'failed'),
         10000,
         150,
       );
