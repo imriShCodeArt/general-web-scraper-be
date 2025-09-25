@@ -19,6 +19,27 @@ describe('E2E Mock Website Scraping Tests', () => {
   let mockServer: Server;
   let mockServerUrl: string;
 
+  async function waitForJobStatus(
+    service: ScrapingService,
+    jobId: string,
+    expected: 'completed' | 'failed',
+    timeoutMs = 6000,
+    pollMs = 100,
+  ) {
+    const start = Date.now();
+    // eslint-disable-next-line no-constant-condition
+    while (true) {
+      const status = await service.getJobStatus(jobId);
+      if (status.success && status.data?.status === expected) {
+        return status;
+      }
+      if (Date.now() - start > timeoutMs) {
+        return status;
+      }
+      await new Promise((r) => setTimeout(r, pollMs));
+    }
+  }
+
   beforeAll(async () => {
     // Create a mock HTTP server to simulate a real website
     mockServer = createServer((req, res) => {
@@ -311,12 +332,8 @@ describe('E2E Mock Website Scraping Tests', () => {
       expect(response.success).toBe(true);
       expect(response.data?.jobId).toBeDefined();
 
-      // Wait for job to complete
-      // Allow extra buffer on CI
-      await testUtils.wait(4000);
-
-      // Check job status
-      const jobStatus = await scrapingService.getJobStatus(response.data!.jobId);
+      // Wait/poll for job to complete to avoid CI flakiness
+      const jobStatus = await waitForJobStatus(scrapingService, response.data!.jobId, 'completed', 8000, 100);
       expect(jobStatus.success).toBe(true);
       expect(jobStatus.data?.status).toBe('completed');
       expect(jobStatus.data?.totalProducts).toBe(3);
@@ -495,10 +512,8 @@ describe('E2E Mock Website Scraping Tests', () => {
       const response = await scrapingService.startScraping(request);
       expect(response.success).toBe(true);
 
-      // Wait for job to complete
-      await testUtils.wait(600);
-
-      const jobStatus = await scrapingService.getJobStatus(response.data!.jobId);
+      // Wait/poll for job to complete
+      const jobStatus = await waitForJobStatus(scrapingService, response.data!.jobId, 'completed', 4000, 100);
       expect(jobStatus.success).toBe(true);
       expect(jobStatus.data?.status).toBe('completed');
       expect(jobStatus.data?.totalProducts).toBe(1);
