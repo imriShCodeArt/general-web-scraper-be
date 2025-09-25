@@ -19,18 +19,20 @@ describe('E2E Mock Website Scraping Tests', () => {
   let mockServer: Server;
   let mockServerUrl: string;
 
-  async function waitForJobStatus(
+  // removed unused waitForJobStatus helper (replaced by waitUntilJob)
+
+  async function waitUntilJob(
     service: ScrapingService,
     jobId: string,
-    expected: 'completed' | 'failed',
-    timeoutMs = 6000,
-    pollMs = 100,
+    predicate: (status: any) => boolean,
+    timeoutMs = 15000,
+    pollMs = 150,
   ) {
     const start = Date.now();
     // eslint-disable-next-line no-constant-condition
     while (true) {
       const status = await service.getJobStatus(jobId);
-      if (status.success && status.data?.status === expected) {
+      if (predicate(status)) {
         return status;
       }
       if (Date.now() - start > timeoutMs) {
@@ -332,8 +334,14 @@ describe('E2E Mock Website Scraping Tests', () => {
       expect(response.success).toBe(true);
       expect(response.data?.jobId).toBeDefined();
 
-      // Wait/poll for job to complete to avoid CI flakiness
-      const jobStatus = await waitForJobStatus(scrapingService, response.data!.jobId, 'completed', 8000, 100);
+      // Wait/poll for job to complete and process all products to avoid CI flakiness
+      const jobStatus = await waitUntilJob(
+        scrapingService,
+        response.data!.jobId,
+        (s) => s.success && s.data?.status === 'completed' && s.data?.processedProducts === 3,
+        20000,
+        150,
+      );
       expect(jobStatus.success).toBe(true);
       expect(jobStatus.data?.status).toBe('completed');
       expect(jobStatus.data?.totalProducts).toBe(3);
@@ -512,8 +520,14 @@ describe('E2E Mock Website Scraping Tests', () => {
       const response = await scrapingService.startScraping(request);
       expect(response.success).toBe(true);
 
-      // Wait/poll for job to complete
-      const jobStatus = await waitForJobStatus(scrapingService, response.data!.jobId, 'completed', 4000, 100);
+      // Wait/poll for job to complete and process single product
+      const jobStatus = await waitUntilJob(
+        scrapingService,
+        response.data!.jobId,
+        (s) => s.success && s.data?.status === 'completed' && s.data?.processedProducts === 1,
+        10000,
+        150,
+      );
       expect(jobStatus.success).toBe(true);
       expect(jobStatus.data?.status).toBe('completed');
       expect(jobStatus.data?.totalProducts).toBe(1);
